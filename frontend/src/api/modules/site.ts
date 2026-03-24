@@ -41,6 +41,7 @@ export interface MomentData {
   title: string;
   content?: string;
   coverImage?: string;
+  imageUrls?: string;
   happenedAt?: string;
   sortOrder?: number;
   published?: number;
@@ -58,6 +59,22 @@ export interface ProjectData {
   techStack?: string;
   projectLink?: string;
   coverImage?: string;
+  sortOrder?: number;
+  published?: number;
+  updatedAt?: string;
+}
+
+/**
+ * 荣誉数据结构。
+ */
+export interface HonorData {
+  id: number;
+  title: string;
+  issuer?: string;
+  description?: string;
+  coverImage?: string;
+  imageUrls?: string;
+  awardAt?: string;
   sortOrder?: number;
   published?: number;
   updatedAt?: string;
@@ -85,6 +102,7 @@ export interface HomeData {
   latestPosts?: PostData[];
   latestMoments?: MomentData[];
   featuredProjects?: ProjectData[];
+  latestHonors?: HonorData[];
 }
 
 /**
@@ -113,6 +131,13 @@ export function getMoments() {
  */
 export function getProjects() {
   return http.get('/site/projects');
+}
+
+/**
+ * 获取荣誉列表。
+ */
+export function getHonors() {
+  return http.get('/site/honors');
 }
 
 /**

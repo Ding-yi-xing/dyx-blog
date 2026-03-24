@@ -7,19 +7,20 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 /**
- * 动态实体。
+ * 荣誉实体。
  */
 @Data
-@TableName("dyx_moment")
-public class Moment {
+@TableName("dyx_honor")
+public class Honor {
 
     @TableId
     private Long id;
     private String title;
-    private String content;
+    private String issuer;
+    private String description;
     private String coverImage;
     private String imageUrls;
-    private LocalDateTime happenedAt;
+    private LocalDateTime awardAt;
     private Integer sortOrder;
     private Integer published;
     private LocalDateTime createdAt;

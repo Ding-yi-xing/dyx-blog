@@ -1,5 +1,6 @@
 package com.dyx.blog.service;
 
+import com.dyx.blog.entity.Honor;
 import com.dyx.blog.entity.Moment;
 import com.dyx.blog.entity.Photo;
 import com.dyx.blog.entity.Post;
@@ -87,6 +88,28 @@ public interface AdminService {
      * @param id 项目经历主键。
      */
     void deleteProject(Long id);
+
+    /**
+     * 查询全部荣誉。
+     *
+     * @return 荣誉列表。
+     */
+    List<Honor> listHonors();
+
+    /**
+     * 保存荣誉。
+     *
+     * @param honor 荣誉对象。
+     * @return 保存后的荣誉。
+     */
+    Honor saveHonor(Honor honor);
+
+    /**
+     * 删除荣誉。
+     *
+     * @param id 荣誉主键。
+     */
+    void deleteHonor(Long id);
 
     /**
      * 查询全部照片。

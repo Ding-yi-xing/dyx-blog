@@ -21,9 +21,8 @@
 <script setup lang="ts">
 const dyxNavItems = [
   { path: '/moments', label: '最新动态' },
-  { path: '/projects', label: '项目经历' },
   { path: '/photos', label: '个人照片' },
-  { path: '/experience', label: '个人经历' },
+  { path: '/experience', label: '简历' },
   { path: '/profile', label: '个人信息' },
   { path: '/blog', label: '博客文章' }
 ];

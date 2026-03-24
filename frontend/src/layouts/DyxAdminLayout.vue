@@ -17,7 +17,7 @@
         <header class="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-4">
           <div>
             <h1 class="text-lg font-semibold text-slate-900">后台管理</h1>
-            <p class="text-sm text-slate-500">统一管理博客、个人信息与媒体资源</p>
+            <p class="text-sm text-slate-500">统一管理博客、简历、荣誉与媒体资源</p>
           </div>
           <button class="rounded-full bg-slate-900 px-4 py-2 text-sm text-white" @click="handleLogout">退出登录</button>
         </header>
@@ -41,9 +41,9 @@ const adminNavItems = [
   { path: '/admin/dashboard', label: '仪表盘' },
   { path: '/admin/posts', label: '博客管理' },
   { path: '/admin/moments', label: '动态管理' },
-  { path: '/admin/projects', label: '项目经历' },
+  { path: '/admin/honors', label: '荣誉管理' },
   { path: '/admin/photos', label: '照片管理' },
-  { path: '/admin/profile', label: '个人资料' },
+  { path: '/admin/profile', label: '简历管理' },
   { path: '/admin/media', label: '媒体资源' },
   { path: '/admin/users', label: '用户管理' }
 ];

@@ -14,7 +14,7 @@ const webRoutes: RouteRecordRaw[] = [
     children: [
       { path: '', name: 'dyx-home', component: () => import('@/views/web/DyxHomeView.vue') },
       { path: 'moments', name: 'dyx-moments', component: () => import('@/views/web/DyxMomentsView.vue') },
-      { path: 'projects', name: 'dyx-projects', component: () => import('@/views/web/DyxProjectsView.vue') },
+      { path: 'projects', redirect: '/experience' },
       { path: 'photos', name: 'dyx-photos', component: () => import('@/views/web/DyxPhotosView.vue') },
       { path: 'experience', name: 'dyx-experience', component: () => import('@/views/web/DyxExperienceView.vue') },
       { path: 'profile', name: 'dyx-profile', component: () => import('@/views/web/DyxProfileView.vue') },
@@ -43,7 +43,8 @@ const adminRoutes: RouteRecordRaw[] = [
       { path: 'dashboard', name: 'dyx-admin-dashboard', component: () => import('@/views/admin/DyxAdminDashboardView.vue') },
       { path: 'posts', name: 'dyx-admin-posts', component: () => import('@/views/admin/DyxAdminPostsView.vue') },
       { path: 'moments', name: 'dyx-admin-moments', component: () => import('@/views/admin/DyxAdminMomentsView.vue') },
-      { path: 'projects', name: 'dyx-admin-projects', component: () => import('@/views/admin/DyxAdminProjectsView.vue') },
+      { path: 'projects', redirect: '/admin/profile' },
+      { path: 'honors', name: 'dyx-admin-honors', component: () => import('@/views/admin/DyxAdminHonorsView.vue') },
       { path: 'photos', name: 'dyx-admin-photos', component: () => import('@/views/admin/DyxAdminPhotosView.vue') },
       { path: 'profile', name: 'dyx-admin-profile', component: () => import('@/views/admin/DyxAdminProfileView.vue') },
       { path: 'media', name: 'dyx-admin-media', component: () => import('@/views/admin/DyxAdminMediaView.vue') },

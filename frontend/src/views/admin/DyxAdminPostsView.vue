@@ -39,7 +39,7 @@
           <el-input v-model="form.summary" type="textarea" :rows="3" placeholder="请输入文章摘要" />
         </el-form-item>
         <el-form-item label="封面图">
-          <el-input v-model="form.coverImage" placeholder="请输入封面图片地址" />
+          <AdminMediaPicker v-model="form.coverImage" button-text="选择文章封面" empty-text="暂未选择文章封面" />
         </el-form-item>
         <el-form-item label="正文内容">
           <el-input v-model="form.content" type="textarea" :rows="8" placeholder="请输入文章正文" />
@@ -62,6 +62,7 @@
 <script setup lang="ts">
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { computed, onMounted, reactive, ref } from 'vue';
+import AdminMediaPicker from '@/views/admin/AdminMediaPicker.vue';
 import { deleteAdminPost, getAdminPosts, saveAdminPost } from '@/api/modules/admin';
 import type { PostData } from '@/api/modules/site';
 
@@ -101,35 +102,22 @@ function resetForm(): void {
   });
 }
 
-/**
- * 获取后台文章列表。
- */
 async function loadAdminPosts(): Promise<void> {
   const response = await getAdminPosts();
   rawList.value = response.data ?? [];
 }
 
-/**
- * 打开新建弹窗。
- */
 function openCreateDialog(): void {
   resetForm();
   dialogVisible.value = true;
 }
 
-/**
- * 打开编辑弹窗。
- * @param item 当前文章数据。
- */
 function openEditDialog(item: PostData): void {
   resetForm();
   Object.assign(form, item);
   dialogVisible.value = true;
 }
 
-/**
- * 保存文章数据。
- */
 async function handleSave(): Promise<void> {
   if (saving.value) {
     return;
@@ -147,10 +135,6 @@ async function handleSave(): Promise<void> {
   }
 }
 
-/**
- * 删除文章数据。
- * @param item 当前文章数据。
- */
 async function handleDelete(item: PostData): Promise<void> {
   try {
     await ElMessageBox.confirm(`确认删除文章“${item.title}”吗？`, '删除确认', {

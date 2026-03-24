@@ -28,8 +28,8 @@
         <el-form-item label="标题">
           <el-input v-model="form.title" placeholder="请输入照片标题" />
         </el-form-item>
-        <el-form-item label="图片地址">
-          <el-input v-model="form.imageUrl" placeholder="请输入图片地址，可先从媒体资源页上传后复制" />
+        <el-form-item label="图片">
+          <AdminMediaPicker v-model="form.imageUrl" button-text="选择照片" empty-text="暂未选择照片" />
         </el-form-item>
         <el-form-item label="图片描述">
           <el-input v-model="form.description" type="textarea" :rows="4" placeholder="请输入照片描述" />
@@ -60,6 +60,7 @@
 <script setup lang="ts">
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { computed, onMounted, reactive, ref } from 'vue';
+import AdminMediaPicker from '@/views/admin/AdminMediaPicker.vue';
 import { deleteAdminPhoto, getAdminPhotos, saveAdminPhoto } from '@/api/modules/admin';
 import type { PhotoData } from '@/api/modules/site';
 
@@ -97,35 +98,22 @@ function resetForm(): void {
   });
 }
 
-/**
- * 获取后台照片列表。
- */
 async function loadPhotos(): Promise<void> {
   const response = await getAdminPhotos();
   rawList.value = response.data ?? [];
 }
 
-/**
- * 打开新建弹窗。
- */
 function openCreateDialog(): void {
   resetForm();
   dialogVisible.value = true;
 }
 
-/**
- * 打开编辑弹窗。
- * @param item 当前照片数据。
- */
 function openEditDialog(item: PhotoData): void {
   resetForm();
   Object.assign(form, item);
   dialogVisible.value = true;
 }
 
-/**
- * 保存照片数据。
- */
 async function handleSave(): Promise<void> {
   if (saving.value) {
     return;
@@ -143,10 +131,6 @@ async function handleSave(): Promise<void> {
   }
 }
 
-/**
- * 删除照片数据。
- * @param item 当前照片数据。
- */
 async function handleDelete(item: PhotoData): Promise<void> {
   try {
     await ElMessageBox.confirm(`确认删除照片“${item.title}”吗？`, '删除确认', {

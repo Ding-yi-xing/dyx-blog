@@ -1,6 +1,7 @@
 package com.dyx.blog.controller.publics;
 
 import com.dyx.blog.common.response.Result;
+import com.dyx.blog.entity.Honor;
 import com.dyx.blog.entity.Moment;
 import com.dyx.blog.entity.Photo;
 import com.dyx.blog.entity.Post;
@@ -65,6 +66,16 @@ public class SiteController {
     @GetMapping("/site/projects")
     public Result<List<Project>> listProjects() {
         return Result.success(dyxSiteService.listProjects());
+    }
+
+    /**
+     * 获取荣誉列表。
+     *
+     * @return 荣誉结果列表。
+     */
+    @GetMapping("/site/honors")
+    public Result<List<Honor>> listHonors() {
+        return Result.success(dyxSiteService.listHonors());
     }
 
     /**

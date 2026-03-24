@@ -8,6 +8,15 @@
           <p class="text-sm text-slate-500">{{ item.happenedAt || '未设置时间' }}</p>
           <h2 class="mt-2 text-xl font-semibold">{{ item.title }}</h2>
           <p class="mt-3 text-sm leading-7 text-slate-600">{{ item.content || '暂无内容描述' }}</p>
+          <div v-if="resolveImages(item).length" class="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <img
+              v-for="(url, index) in resolveImages(item)"
+              :key="`${item.id}-${index}`"
+              :src="url"
+              :alt="item.title"
+              class="h-40 w-full rounded-2xl object-cover"
+            />
+          </div>
         </article>
       </div>
     </div>
@@ -17,6 +26,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { getMoments, type MomentData } from '@/api/modules/site';
+import { parseImageUrls } from '@/utils/media';
 
 const moments = ref<MomentData[]>([]);
 
@@ -26,6 +36,14 @@ const moments = ref<MomentData[]>([]);
 async function loadMoments(): Promise<void> {
   const response = await getMoments();
   moments.value = response.data ?? [];
+}
+
+function resolveImages(item: MomentData): string[] {
+  const imageUrls = parseImageUrls(item.imageUrls);
+  if (item.coverImage && !imageUrls.includes(item.coverImage)) {
+    return [item.coverImage, ...imageUrls];
+  }
+  return imageUrls;
 }
 
 onMounted(() => {

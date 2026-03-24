@@ -1,12 +1,14 @@
 package com.dyx.blog.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.dyx.blog.entity.Honor;
 import com.dyx.blog.entity.Moment;
 import com.dyx.blog.entity.Photo;
 import com.dyx.blog.entity.Post;
 import com.dyx.blog.entity.Profile;
 import com.dyx.blog.entity.Project;
 import com.dyx.blog.entity.User;
+import com.dyx.blog.mapper.HonorMapper;
 import com.dyx.blog.mapper.MomentMapper;
 import com.dyx.blog.mapper.PhotoMapper;
 import com.dyx.blog.mapper.PostMapper;
@@ -35,6 +37,7 @@ public class AdminServiceImpl implements AdminService {
     private final PhotoMapper dyxPhotoMapper;
     private final ProfileMapper dyxProfileMapper;
     private final UserMapper dyxUserMapper;
+    private final HonorMapper dyxHonorMapper;
 
     /**
      * 获取后台仪表盘摘要。
@@ -46,7 +49,7 @@ public class AdminServiceImpl implements AdminService {
         Map<String, Object> result = new HashMap<>();
         result.put("postCount", dyxPostMapper.selectCount(null));
         result.put("momentCount", dyxMomentMapper.selectCount(null));
-        result.put("projectCount", dyxProjectMapper.selectCount(null));
+        result.put("honorCount", dyxHonorMapper.selectCount(null));
         result.put("photoCount", dyxPhotoMapper.selectCount(null));
         result.put("userCount", dyxUserMapper.selectCount(null));
         return result;
@@ -169,6 +172,48 @@ public class AdminServiceImpl implements AdminService {
     @Override
     public void deleteProject(Long id) {
         dyxProjectMapper.deleteById(id);
+    }
+
+    /**
+     * 查询全部荣誉。
+     *
+     * @return 荣誉列表。
+     */
+    @Override
+    public List<Honor> listHonors() {
+        return dyxHonorMapper.selectList(new LambdaQueryWrapper<Honor>()
+                .orderByDesc(Honor::getAwardAt)
+                .orderByAsc(Honor::getSortOrder)
+                .orderByDesc(Honor::getUpdatedAt));
+    }
+
+    /**
+     * 保存荣誉。
+     *
+     * @param honor 荣誉对象。
+     * @return 保存后的荣誉。
+     */
+    @Override
+    public Honor saveHonor(Honor honor) {
+        LocalDateTime now = LocalDateTime.now();
+        honor.setUpdatedAt(now);
+        if (honor.getId() == null) {
+            honor.setCreatedAt(now);
+            dyxHonorMapper.insert(honor);
+        } else {
+            dyxHonorMapper.updateById(honor);
+        }
+        return honor;
+    }
+
+    /**
+     * 删除荣誉。
+     *
+     * @param id 荣誉主键。
+     */
+    @Override
+    public void deleteHonor(Long id) {
+        dyxHonorMapper.deleteById(id);
     }
 
     /**

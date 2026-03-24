@@ -1,5 +1,6 @@
 package com.dyx.blog.service;
 
+import com.dyx.blog.entity.Honor;
 import com.dyx.blog.entity.Moment;
 import com.dyx.blog.entity.Photo;
 import com.dyx.blog.entity.Post;
@@ -56,6 +57,13 @@ public interface SiteService {
      * @return 项目经历列表。
      */
     List<Project> listProjects();
+
+    /**
+     * 获取已发布荣誉列表。
+     *
+     * @return 荣誉列表。
+     */
+    List<Honor> listHonors();
 
     /**
      * 获取已发布照片列表。

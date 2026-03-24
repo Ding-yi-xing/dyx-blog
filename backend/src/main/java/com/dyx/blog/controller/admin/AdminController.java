@@ -1,6 +1,7 @@
 package com.dyx.blog.controller.admin;
 
 import com.dyx.blog.common.response.Result;
+import com.dyx.blog.entity.Honor;
 import com.dyx.blog.entity.Moment;
 import com.dyx.blog.entity.Photo;
 import com.dyx.blog.entity.Post;
@@ -181,6 +182,52 @@ public class AdminController {
     @DeleteMapping("/projects/{id}")
     public Result<Void> deleteProject(@PathVariable Long id) {
         dyxAdminService.deleteProject(id);
+        return Result.success();
+    }
+
+    /**
+     * 获取荣誉列表。
+     *
+     * @return 荣誉结果列表。
+     */
+    @GetMapping("/honors")
+    public Result<List<Honor>> listHonors() {
+        return Result.success(dyxAdminService.listHonors());
+    }
+
+    /**
+     * 新增荣誉。
+     *
+     * @param honor 荣誉对象。
+     * @return 保存结果。
+     */
+    @PostMapping("/honors")
+    public Result<Honor> createHonor(@RequestBody Honor honor) {
+        return Result.success(dyxAdminService.saveHonor(honor));
+    }
+
+    /**
+     * 更新荣誉。
+     *
+     * @param id 荣誉主键。
+     * @param honor 荣誉对象。
+     * @return 保存结果。
+     */
+    @PutMapping("/honors/{id}")
+    public Result<Honor> updateHonor(@PathVariable Long id, @RequestBody Honor honor) {
+        honor.setId(id);
+        return Result.success(dyxAdminService.saveHonor(honor));
+    }
+
+    /**
+     * 删除荣誉。
+     *
+     * @param id 荣誉主键。
+     * @return 删除结果。
+     */
+    @DeleteMapping("/honors/{id}")
+    public Result<Void> deleteHonor(@PathVariable Long id) {
+        dyxAdminService.deleteHonor(id);
         return Result.success();
     }
 

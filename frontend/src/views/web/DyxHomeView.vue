@@ -10,12 +10,12 @@
           <p class="mt-6 max-w-2xl text-base leading-8 text-slate-600 md:text-lg">
             {{
               homeData.profile?.heroSubtitle ||
-              '这里用于承载博客文章、个人动态、项目经历、照片集以及教育与工作经历，整体视觉方向强调简洁、通透与高级留白。'
+              '这里用于承载博客文章、个人动态、荣誉成果、照片集以及教育、工作与项目经历，整体视觉方向强调简洁、通透与高级留白。'
             }}
           </p>
           <div class="mt-8 flex flex-wrap gap-4">
             <RouterLink to="/blog" class="rounded-full bg-slate-900 px-6 py-3 text-sm text-white">查看博客</RouterLink>
-            <RouterLink to="/profile" class="rounded-full border border-slate-300 px-6 py-3 text-sm text-slate-700">了解我</RouterLink>
+            <RouterLink to="/experience" class="rounded-full border border-slate-300 px-6 py-3 text-sm text-slate-700">查看简历</RouterLink>
           </div>
         </div>
         <div class="grid gap-4">
@@ -24,8 +24,8 @@
             <p class="mt-3 text-2xl font-semibold">{{ homeData.latestPosts?.length ?? 0 }} 篇</p>
           </article>
           <article class="dyx-glass-panel rounded-[28px] p-6">
-            <p class="text-sm text-slate-500">精选项目</p>
-            <p class="mt-3 text-2xl font-semibold">{{ homeData.featuredProjects?.length ?? 0 }} 个</p>
+            <p class="text-sm text-slate-500">荣誉成果</p>
+            <p class="mt-3 text-2xl font-semibold">{{ homeData.latestHonors?.length ?? 0 }} 项</p>
           </article>
         </div>
       </div>
@@ -55,18 +55,18 @@ const featureItems = computed(() => [
   },
   {
     caption: '02',
-    title: '项目经历',
-    description: `当前已收录 ${homeData.value.featuredProjects?.length ?? 0} 个精选项目。`
+    title: '简历项目',
+    description: `当前已整合 ${homeData.value.featuredProjects?.length ?? 0} 个项目案例进入简历模块。`
   },
   {
     caption: '03',
-    title: '个人照片',
-    description: '通过图像叙事补充个人风格与生活化表达。'
+    title: '荣誉时间线',
+    description: `当前已沉淀 ${homeData.value.latestHonors?.length ?? 0} 项阶段性荣誉成果。`
   },
   {
     caption: '04',
-    title: '个人经历',
-    description: '系统展示教育经历与工作历程，形成完整履历。'
+    title: '个人照片',
+    description: '通过图像叙事补充个人风格与生活化表达。'
   },
   {
     caption: '05',

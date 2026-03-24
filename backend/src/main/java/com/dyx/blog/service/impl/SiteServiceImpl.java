@@ -1,11 +1,13 @@
 package com.dyx.blog.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.dyx.blog.entity.Honor;
 import com.dyx.blog.entity.Moment;
 import com.dyx.blog.entity.Photo;
 import com.dyx.blog.entity.Post;
 import com.dyx.blog.entity.Profile;
 import com.dyx.blog.entity.Project;
+import com.dyx.blog.mapper.HonorMapper;
 import com.dyx.blog.mapper.MomentMapper;
 import com.dyx.blog.mapper.PhotoMapper;
 import com.dyx.blog.mapper.PostMapper;
@@ -31,6 +33,7 @@ public class SiteServiceImpl implements SiteService {
     private final ProjectMapper dyxProjectMapper;
     private final PhotoMapper dyxPhotoMapper;
     private final ProfileMapper dyxProfileMapper;
+    private final HonorMapper dyxHonorMapper;
 
     /**
      * 获取首页聚合数据。
@@ -44,6 +47,7 @@ public class SiteServiceImpl implements SiteService {
         result.put("latestPosts", listPosts().stream().limit(3).toList());
         result.put("latestMoments", listMoments().stream().limit(3).toList());
         result.put("featuredProjects", listProjects().stream().limit(3).toList());
+        result.put("latestHonors", listHonors().stream().limit(3).toList());
         return result;
     }
 
@@ -103,6 +107,20 @@ public class SiteServiceImpl implements SiteService {
                 .eq(Project::getPublished, 1)
                 .orderByAsc(Project::getSortOrder)
                 .orderByDesc(Project::getUpdatedAt));
+    }
+
+    /**
+     * 获取已发布荣誉列表。
+     *
+     * @return 荣誉列表。
+     */
+    @Override
+    public List<Honor> listHonors() {
+        return dyxHonorMapper.selectList(new LambdaQueryWrapper<Honor>()
+                .eq(Honor::getPublished, 1)
+                .orderByDesc(Honor::getAwardAt)
+                .orderByAsc(Honor::getSortOrder)
+                .orderByDesc(Honor::getUpdatedAt));
     }
 
     /**

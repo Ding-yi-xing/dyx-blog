@@ -1,5 +1,5 @@
 import http from '@/api/http';
-import type { MomentData, PhotoData, PostData, ProfileData, ProjectData } from '@/api/modules/site';
+import type { HonorData, MomentData, PhotoData, PostData, ProfileData, ProjectData } from '@/api/modules/site';
 
 /**
  * 后台登录用户信息。
@@ -25,7 +25,7 @@ export interface AdminLoginData {
 export interface DashboardSummaryData {
   postCount?: number;
   momentCount?: number;
-  projectCount?: number;
+  honorCount?: number;
   photoCount?: number;
   userCount?: number;
 }
@@ -139,6 +139,32 @@ export function saveAdminProject(payload: Partial<ProjectData>) {
  */
 export function deleteAdminProject(id: number) {
   return http.delete(`/admin/projects/${id}`);
+}
+
+/**
+ * 调用后台荣誉列表接口。
+ */
+export function getAdminHonors() {
+  return http.get('/admin/honors');
+}
+
+/**
+ * 调用后台荣誉保存接口。
+ * @param payload 荣誉表单数据。
+ */
+export function saveAdminHonor(payload: Partial<HonorData>) {
+  if (payload.id) {
+    return http.put(`/admin/honors/${payload.id}`, payload);
+  }
+  return http.post('/admin/honors', payload);
+}
+
+/**
+ * 调用后台荣誉删除接口。
+ * @param id 荣誉主键。
+ */
+export function deleteAdminHonor(id: number) {
+  return http.delete(`/admin/honors/${id}`);
 }
 
 /**

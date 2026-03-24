@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS dyx_moment (
     title VARCHAR(200) NOT NULL,
     content TEXT,
     cover_image VARCHAR(255),
+    image_urls TEXT,
     happened_at DATETIME,
     sort_order INT NOT NULL DEFAULT 0,
     published TINYINT NOT NULL DEFAULT 0,
@@ -46,6 +47,20 @@ CREATE TABLE IF NOT EXISTS dyx_project (
     tech_stack VARCHAR(255),
     project_link VARCHAR(255),
     cover_image VARCHAR(255),
+    sort_order INT NOT NULL DEFAULT 0,
+    published TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS dyx_honor (
+    id BIGINT PRIMARY KEY,
+    title VARCHAR(200) NOT NULL,
+    issuer VARCHAR(200),
+    description TEXT,
+    cover_image VARCHAR(255),
+    image_urls TEXT,
+    award_at DATETIME,
     sort_order INT NOT NULL DEFAULT 0,
     published TINYINT NOT NULL DEFAULT 0,
     created_at DATETIME NOT NULL,
@@ -103,7 +118,7 @@ VALUES (
     1,
     'dyx-blog',
     '构建一个兼具内容表达与个人展示的现代博客网站。',
-    '用于承载博客文章、个人动态、项目经历、照片集以及教育与工作经历，整体视觉保持简洁、通透与高级留白。',
+    '用于承载博客文章、个人动态、荣誉成果、照片集以及教育与工作经历，整体视觉保持简洁、通透与高级留白。',
     '你好，我是 DYX，持续关注前端工程化、Java 后端开发与产品表达。我希望通过这个站点沉淀项目实践、技术思考和个人阶段性成长。',
     '2018 - 2022：完成计算机相关专业学习，系统积累 Web 开发、数据库与软件工程基础。\n2022 - 2024：持续通过个人项目和实战练习深化前端交互、接口设计与全栈协作能力。',
     '2024 - 至今：以个人博客与项目实战为主线，持续打磨 Vue 3、Spring Boot 3、后台管理系统与内容型网站的完整交付能力。',
@@ -180,12 +195,13 @@ ON DUPLICATE KEY UPDATE
     view_count = VALUES(view_count),
     updated_at = NOW();
 
-INSERT INTO dyx_moment (id, title, content, cover_image, happened_at, sort_order, published, created_at, updated_at)
+INSERT INTO dyx_moment (id, title, content, cover_image, image_urls, happened_at, sort_order, published, created_at, updated_at)
 VALUES
     (
         201,
         '完成后台博客管理真实 CRUD 接入',
         '后台博客管理页已支持新建、编辑、删除与列表刷新，前后台数据链路进一步打通。',
+        '',
         '',
         NOW(),
         1,
@@ -198,6 +214,7 @@ VALUES
         '补齐动态、项目、照片管理页的数据闭环',
         '三个后台模块均已接入真实接口，前台对应页面也可以同步消费发布后的内容。',
         '',
+        '',
         NOW(),
         2,
         1,
@@ -209,6 +226,7 @@ VALUES
         '为站点补充初始展示内容',
         '通过初始化 SQL 为各模块写入演示数据，保证首次运行时前后台都能看到完整内容。',
         '',
+        '',
         NOW(),
         3,
         1,
@@ -219,6 +237,7 @@ ON DUPLICATE KEY UPDATE
     title = VALUES(title),
     content = VALUES(content),
     cover_image = VALUES(cover_image),
+    image_urls = VALUES(image_urls),
     happened_at = VALUES(happened_at),
     sort_order = VALUES(sort_order),
     published = VALUES(published),
@@ -272,6 +291,58 @@ ON DUPLICATE KEY UPDATE
     tech_stack = VALUES(tech_stack),
     project_link = VALUES(project_link),
     cover_image = VALUES(cover_image),
+    sort_order = VALUES(sort_order),
+    published = VALUES(published),
+    updated_at = NOW();
+
+INSERT INTO dyx_honor (id, title, issuer, description, cover_image, image_urls, award_at, sort_order, published, created_at, updated_at)
+VALUES
+    (
+        501,
+        '校园优秀毕业设计',
+        'XX 大学计算机学院',
+        '毕业设计围绕前后端分离架构与内容管理系统展开，获得院级优秀毕业设计认定。',
+        '',
+        '',
+        '2022-06-15 10:00:00',
+        1,
+        1,
+        NOW(),
+        NOW()
+    ),
+    (
+        502,
+        '校级技术竞赛二等奖',
+        'XX 大学创新创业中心',
+        '在校级 Web 应用开发竞赛中完成从界面实现到接口联调的完整交付，获得二等奖。',
+        '',
+        '',
+        '2021-11-20 10:00:00',
+        2,
+        1,
+        NOW(),
+        NOW()
+    ),
+    (
+        503,
+        '全栈项目实践结项优秀',
+        '个人项目训练营',
+        '围绕 Vue 3 与 Spring Boot 3 的整站项目实践获得优秀结项评价。',
+        '',
+        '',
+        '2024-08-01 10:00:00',
+        3,
+        1,
+        NOW(),
+        NOW()
+    )
+ON DUPLICATE KEY UPDATE
+    title = VALUES(title),
+    issuer = VALUES(issuer),
+    description = VALUES(description),
+    cover_image = VALUES(cover_image),
+    image_urls = VALUES(image_urls),
+    award_at = VALUES(award_at),
     sort_order = VALUES(sort_order),
     published = VALUES(published),
     updated_at = NOW();
