@@ -1,0 +1,28 @@
+:root {
+  --dyx-font-size-xs: 12px;
+  --dyx-font-size-sm: 14px;
+  --dyx-font-size-md: 16px;
+  --dyx-font-size-lg: 20px;
+  --dyx-font-size-xl: 32px;
+  --dyx-radius-sm: 12px;
+  --dyx-radius-md: 20px;
+  --dyx-radius-lg: 32px;
+  --dyx-color-text: #0f172a;
+  --dyx-color-muted: #64748b;
+  --dyx-color-bg: #ffffff;
+  --dyx-color-primary: #2563eb;
+  --dyx-color-border: rgba(148, 163, 184, 0.18);
+  --dyx-shadow-card: 0 24px 60px rgba(15, 23, 42, 0.12);
+}
+
+.dyx-glass-panel {
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid var(--dyx-color-border);
+  box-shadow: var(--dyx-shadow-card);
+  backdrop-filter: blur(18px);
+}
+
+.dyx-page-shell {
+  width: min(1200px, calc(100% - 32px));
+  margin: 0 auto;
+}

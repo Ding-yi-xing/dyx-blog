@@ -1,0 +1,180 @@
+<template>
+  <section class="rounded-[28px] bg-white p-6 shadow-sm">
+    <div class="mb-6 flex items-center justify-between gap-4">
+      <div>
+        <h2 class="text-xl font-semibold text-slate-900">项目经历管理</h2>
+        <p class="mt-2 text-sm text-slate-500">维护项目名称、技术栈、角色与成果描述。</p>
+      </div>
+      <el-button type="primary" @click="openCreateDialog">新建项目</el-button>
+    </div>
+
+    <el-table :data="projects" border>
+      <el-table-column prop="name" label="项目名称" min-width="220" />
+      <el-table-column prop="techStack" label="技术栈" min-width="180" />
+      <el-table-column prop="roleName" label="角色" width="140" />
+      <el-table-column prop="sortOrder" label="排序" width="100" />
+      <el-table-column prop="statusText" label="状态" width="120" />
+      <el-table-column prop="updatedAt" label="更新时间" width="180" />
+      <el-table-column label="操作" width="180" fixed="right">
+        <template #default="scope">
+          <el-button link type="primary" @click="openEditDialog(scope.row.raw)">编辑</el-button>
+          <el-button link type="danger" @click="handleDelete(scope.row.raw)">删除</el-button>
+        </template>
+      </el-table-column>
+    </el-table>
+
+    <el-dialog v-model="dialogVisible" :title="form.id ? '编辑项目' : '新建项目'" width="720px">
+      <el-form label-position="top">
+        <div class="grid gap-4 sm:grid-cols-2">
+          <el-form-item label="项目名称">
+            <el-input v-model="form.name" placeholder="请输入项目名称" />
+          </el-form-item>
+          <el-form-item label="角色">
+            <el-input v-model="form.roleName" placeholder="请输入承担角色" />
+          </el-form-item>
+        </div>
+        <el-form-item label="技术栈">
+          <el-input v-model="form.techStack" placeholder="请输入技术栈" />
+        </el-form-item>
+        <el-form-item label="项目链接">
+          <el-input v-model="form.projectLink" placeholder="请输入项目链接" />
+        </el-form-item>
+        <el-form-item label="封面图">
+          <el-input v-model="form.coverImage" placeholder="请输入封面图片地址" />
+        </el-form-item>
+        <el-form-item label="项目描述">
+          <el-input v-model="form.description" type="textarea" :rows="5" placeholder="请输入项目描述" />
+        </el-form-item>
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <el-form-item label="排序">
+            <el-input-number v-model="form.sortOrder" :min="0" class="!w-full" />
+          </el-form-item>
+          <el-form-item label="发布状态">
+            <el-select v-model="form.published" class="!w-full">
+              <el-option label="草稿" :value="0" />
+              <el-option label="已发布" :value="1" />
+            </el-select>
+          </el-form-item>
+        </div>
+      </el-form>
+      <template #footer>
+        <el-button @click="dialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="saving" @click="handleSave">保存</el-button>
+      </template>
+    </el-dialog>
+  </section>
+</template>
+
+<script setup lang="ts">
+import { ElMessage, ElMessageBox } from 'element-plus';
+import { computed, onMounted, reactive, ref } from 'vue';
+import { deleteAdminProject, getAdminProjects, saveAdminProject } from '@/api/modules/admin';
+import type { ProjectData } from '@/api/modules/site';
+
+const rawList = ref<ProjectData[]>([]);
+const dialogVisible = ref(false);
+const saving = ref(false);
+
+const form = reactive<Partial<ProjectData>>({
+  id: undefined,
+  name: '',
+  roleName: '',
+  description: '',
+  techStack: '',
+  projectLink: '',
+  coverImage: '',
+  sortOrder: 0,
+  published: 1
+});
+
+const projects = computed(() =>
+  rawList.value.map((item) => ({
+    ...item,
+    statusText: item.published === 1 ? '已发布' : '草稿',
+    raw: item
+  }))
+);
+
+function resetForm(): void {
+  Object.assign(form, {
+    id: undefined,
+    name: '',
+    roleName: '',
+    description: '',
+    techStack: '',
+    projectLink: '',
+    coverImage: '',
+    sortOrder: 0,
+    published: 1
+  });
+}
+
+/**
+ * 获取后台项目列表。
+ */
+async function loadProjects(): Promise<void> {
+  const response = await getAdminProjects();
+  rawList.value = response.data ?? [];
+}
+
+/**
+ * 打开新建弹窗。
+ */
+function openCreateDialog(): void {
+  resetForm();
+  dialogVisible.value = true;
+}
+
+/**
+ * 打开编辑弹窗。
+ * @param item 当前项目数据。
+ */
+function openEditDialog(item: ProjectData): void {
+  resetForm();
+  Object.assign(form, item);
+  dialogVisible.value = true;
+}
+
+/**
+ * 保存项目数据。
+ */
+async function handleSave(): Promise<void> {
+  if (saving.value) {
+    return;
+  }
+  saving.value = true;
+  try {
+    await saveAdminProject({ ...form });
+    ElMessage.success(form.id ? '项目更新成功' : '项目创建成功');
+    dialogVisible.value = false;
+    await loadProjects();
+  } catch (error) {
+    ElMessage.error('项目保存失败');
+  } finally {
+    saving.value = false;
+  }
+}
+
+/**
+ * 删除项目数据。
+ * @param item 当前项目数据。
+ */
+async function handleDelete(item: ProjectData): Promise<void> {
+  try {
+    await ElMessageBox.confirm(`确认删除项目“${item.name}”吗？`, '删除确认', {
+      type: 'warning'
+    });
+    await deleteAdminProject(item.id);
+    ElMessage.success('项目删除成功');
+    await loadProjects();
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('项目删除失败');
+    }
+  }
+}
+
+onMounted(() => {
+  void loadProjects();
+});
+</script>
