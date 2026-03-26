@@ -20,6 +20,7 @@ public class Honor {
     private String description;
     private String coverImage;
     private String imageUrls;
+    private String attachmentUrl;
     private LocalDateTime awardAt;
     private Integer sortOrder;
     private Integer published;

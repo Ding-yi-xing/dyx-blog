@@ -2,12 +2,13 @@ package com.dyx.blog.service;
 
 import com.dyx.blog.entity.Honor;
 import com.dyx.blog.entity.Moment;
-import com.dyx.blog.entity.Photo;
 import com.dyx.blog.entity.Post;
 import com.dyx.blog.entity.Profile;
 import com.dyx.blog.entity.Project;
 import com.dyx.blog.entity.User;
+import com.dyx.blog.entity.Work;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -22,6 +23,34 @@ public interface AdminService {
      * @return 统计摘要。
      */
     Map<String, Object> getDashboardSummary();
+
+    /**
+     * 获取访问日志列表（分页）。
+     *
+     * @param startTime 开始时间。
+     * @param endTime 结束时间。
+     * @param pageKey 页面标识。
+     * @param deviceType 设备类型。
+     * @param ipAddress IP 地址。
+     * @param page 页码（从 1 开始）。
+     * @param pageSize 每页数量。
+     * @return 包含访问日志记录及分页信息的结果。
+     */
+    Map<String, Object> listVisitLogs(LocalDateTime startTime, LocalDateTime endTime, String pageKey, String deviceType, String ipAddress, Integer page, Integer pageSize);
+
+    /**
+     * 删除访问日志。
+     *
+     * @param id 访问日志主键。
+     */
+    void deleteVisitLog(Long id);
+
+    /**
+     * 批量删除访问日志。
+     *
+     * @param ids 访问日志主键列表。
+     */
+    void deleteVisitLogs(List<Long> ids);
 
     /**
      * 查询全部文章。
@@ -90,6 +119,28 @@ public interface AdminService {
     void deleteProject(Long id);
 
     /**
+     * 查询全部个人作品。
+     *
+     * @return 作品列表。
+     */
+    List<Work> listWorks();
+
+    /**
+     * 保存个人作品。
+     *
+     * @param work 作品对象。
+     * @return 保存后的作品。
+     */
+    Work saveWork(Work work);
+
+    /**
+     * 删除个人作品。
+     *
+     * @param id 作品主键。
+     */
+    void deleteWork(Long id);
+
+    /**
      * 查询全部荣誉。
      *
      * @return 荣誉列表。
@@ -112,26 +163,19 @@ public interface AdminService {
     void deleteHonor(Long id);
 
     /**
-     * 查询全部照片。
+     * 获取首页横幅配置。
      *
-     * @return 照片列表。
+     * @return 首页横幅相关资料。
      */
-    List<Photo> listPhotos();
+    Profile getHeroProfile();
 
     /**
-     * 保存照片。
+     * 保存首页横幅配置。
      *
-     * @param photo 照片对象。
-     * @return 保存后的照片。
+     * @param profile 首页横幅相关资料。
+     * @return 保存后的个人资料。
      */
-    Photo savePhoto(Photo photo);
-
-    /**
-     * 删除照片。
-     *
-     * @param id 照片主键。
-     */
-    void deletePhoto(Long id);
+    Profile saveHeroProfile(Profile profile);
 
     /**
      * 获取个人资料。
@@ -154,4 +198,19 @@ public interface AdminService {
      * @return 用户列表。
      */
     List<User> listUsers();
+
+    /**
+     * 保存后台用户。
+     *
+     * @param user 用户对象。
+     * @return 保存后的用户。
+     */
+    User saveUser(User user);
+
+    /**
+     * 删除后台用户。
+     *
+     * @param id 用户主键。
+     */
+    void deleteUser(Long id);
 }

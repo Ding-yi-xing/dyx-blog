@@ -3,14 +3,16 @@ package com.dyx.blog.controller.publics;
 import com.dyx.blog.common.response.Result;
 import com.dyx.blog.entity.Honor;
 import com.dyx.blog.entity.Moment;
-import com.dyx.blog.entity.Photo;
 import com.dyx.blog.entity.Post;
 import com.dyx.blog.entity.Profile;
 import com.dyx.blog.entity.Project;
+import com.dyx.blog.entity.Work;
 import com.dyx.blog.service.SiteService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -59,6 +61,17 @@ public class SiteController {
     }
 
     /**
+     * 获取动态详情。
+     *
+     * @param id 动态主键。
+     * @return 动态详情。
+     */
+    @GetMapping("/site/moments/{id}")
+    public Result<Moment> getMomentDetail(@PathVariable Long id) {
+        return Result.success(dyxSiteService.getMomentDetail(id));
+    }
+
+    /**
      * 获取项目经历列表。
      *
      * @return 项目经历结果列表。
@@ -66,6 +79,16 @@ public class SiteController {
     @GetMapping("/site/projects")
     public Result<List<Project>> listProjects() {
         return Result.success(dyxSiteService.listProjects());
+    }
+
+    /**
+     * 获取个人作品列表。
+     *
+     * @return 个人作品结果列表。
+     */
+    @GetMapping("/site/works")
+    public Result<List<Work>> listWorks() {
+        return Result.success(dyxSiteService.listWorks());
     }
 
     /**
@@ -79,13 +102,16 @@ public class SiteController {
     }
 
     /**
-     * 获取照片列表。
+     * 记录页面访问。
      *
-     * @return 照片结果列表。
+     * @param pageKey 页面标识。
+     * @param request 当前请求。
+     * @return 成功结果。
      */
-    @GetMapping("/site/photos")
-    public Result<List<Photo>> listPhotos() {
-        return Result.success(dyxSiteService.listPhotos());
+    @PostMapping("/site/visit/{pageKey}")
+    public Result<Void> recordSiteVisit(@PathVariable String pageKey, HttpServletRequest request) {
+        dyxSiteService.recordSiteVisit(pageKey, request);
+        return Result.success();
     }
 
     /**

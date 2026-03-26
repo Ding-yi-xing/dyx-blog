@@ -3,9 +3,11 @@ package com.dyx.blog.common.exception;
 import com.dyx.blog.common.response.Result;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.validation.BindException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 /**
@@ -22,6 +24,7 @@ public class GlobalExceptionHandler {
      * @param exception 业务异常对象。
      * @return 统一失败响应。
      */
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(BusinessException.class)
     public Result<Void> handleBusinessException(BusinessException exception) {
         return Result.failure(400, exception.getMessage());
@@ -33,6 +36,7 @@ public class GlobalExceptionHandler {
      * @param exception 参数校验异常。
      * @return 统一失败响应。
      */
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public Result<Void> handleMethodArgumentNotValidException(MethodArgumentNotValidException exception) {
         String message = exception.getBindingResult().getFieldError() == null
@@ -47,6 +51,7 @@ public class GlobalExceptionHandler {
      * @param exception 绑定异常。
      * @return 统一失败响应。
      */
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(BindException.class)
     public Result<Void> handleBindException(BindException exception) {
         String message = exception.getBindingResult().getFieldError() == null
@@ -61,6 +66,7 @@ public class GlobalExceptionHandler {
      * @param exception 约束校验异常。
      * @return 统一失败响应。
      */
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(ConstraintViolationException.class)
     public Result<Void> handleConstraintViolationException(ConstraintViolationException exception) {
         return Result.failure(400, exception.getMessage());
@@ -72,6 +78,7 @@ public class GlobalExceptionHandler {
      * @param exception 系统异常对象。
      * @return 统一失败响应。
      */
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     @ExceptionHandler(Exception.class)
     public Result<Void> handleException(Exception exception) {
         log.error("系统异常", exception);

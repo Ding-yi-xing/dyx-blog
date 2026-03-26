@@ -7,18 +7,21 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 /**
- * 照片实体。
+ * 个人作品实体。
  */
 @Data
-@TableName("dyx_photo")
-public class Photo {
+@TableName("dyx_work")
+public class Work {
 
     @TableId
     private Long id;
     private String title;
-    private String imageUrl;
-    private String description;
-    private LocalDateTime shotAt;
+    private String summary;
+    private String coverImage;
+    private String imageUrls;
+    private String videoUrl;
+    private String videoPoster;
+    private String workLink;
     private Integer sortOrder;
     private Integer published;
     private LocalDateTime createdAt;

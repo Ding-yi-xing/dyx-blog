@@ -19,9 +19,23 @@ public interface MediaService {
     Media upload(MultipartFile file);
 
     /**
+     * 导入 uploads 目录下已存在的文件。
+     *
+     * @return 导入后的媒体资源数量。
+     */
+    int importExistingFiles();
+
+    /**
      * 查询全部媒体资源。
      *
      * @return 媒体资源列表。
      */
     List<Media> listAll();
+
+    /**
+     * 删除未被引用的媒体资源。
+     *
+     * @param id 媒体主键。
+     */
+    void deleteById(Long id);
 }

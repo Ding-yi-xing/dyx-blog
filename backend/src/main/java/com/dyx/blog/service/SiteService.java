@@ -2,10 +2,11 @@ package com.dyx.blog.service;
 
 import com.dyx.blog.entity.Honor;
 import com.dyx.blog.entity.Moment;
-import com.dyx.blog.entity.Photo;
 import com.dyx.blog.entity.Post;
 import com.dyx.blog.entity.Profile;
 import com.dyx.blog.entity.Project;
+import com.dyx.blog.entity.Work;
+import jakarta.servlet.http.HttpServletRequest;
 
 import java.util.List;
 import java.util.Map;
@@ -52,11 +53,26 @@ public interface SiteService {
     List<Moment> listMoments();
 
     /**
+     * 获取已发布动态详情。
+     *
+     * @param id 动态主键。
+     * @return 动态详情。
+     */
+    Moment getMomentDetail(Long id);
+
+    /**
      * 获取已发布项目经历列表。
      *
      * @return 项目经历列表。
      */
     List<Project> listProjects();
+
+    /**
+     * 获取已发布个人作品列表。
+     *
+     * @return 作品列表。
+     */
+    List<Work> listWorks();
 
     /**
      * 获取已发布荣誉列表。
@@ -66,9 +82,10 @@ public interface SiteService {
     List<Honor> listHonors();
 
     /**
-     * 获取已发布照片列表。
+     * 记录公开页面访问。
      *
-     * @return 照片列表。
+     * @param pageKey 页面标识。
+     * @param request 当前请求。
      */
-    List<Photo> listPhotos();
+    void recordSiteVisit(String pageKey, HttpServletRequest request);
 }

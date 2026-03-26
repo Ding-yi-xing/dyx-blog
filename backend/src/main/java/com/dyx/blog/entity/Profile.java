@@ -18,6 +18,7 @@ public class Profile {
     private String siteTitle;
     private String heroTitle;
     private String heroSubtitle;
+    private String heroConfig;
     private String aboutContent;
     private String educationExperience;
     private String workExperience;
@@ -26,5 +27,6 @@ public class Profile {
     private String wechat;
     private String githubUrl;
     private String avatarUrl;
+    private String resumePdfUrl;
     private LocalDateTime updatedAt;
 }

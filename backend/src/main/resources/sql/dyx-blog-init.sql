@@ -53,6 +53,21 @@ CREATE TABLE IF NOT EXISTS dyx_project (
     updated_at DATETIME NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS dyx_work (
+    id BIGINT PRIMARY KEY,
+    title VARCHAR(200) NOT NULL,
+    summary TEXT,
+    cover_image VARCHAR(255),
+    image_urls TEXT,
+    video_url VARCHAR(255),
+    video_poster VARCHAR(255),
+    work_link VARCHAR(255),
+    sort_order INT NOT NULL DEFAULT 0,
+    published TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS dyx_honor (
     id BIGINT PRIMARY KEY,
     title VARCHAR(200) NOT NULL,
@@ -60,19 +75,8 @@ CREATE TABLE IF NOT EXISTS dyx_honor (
     description TEXT,
     cover_image VARCHAR(255),
     image_urls TEXT,
+    attachment_url VARCHAR(255),
     award_at DATETIME,
-    sort_order INT NOT NULL DEFAULT 0,
-    published TINYINT NOT NULL DEFAULT 0,
-    created_at DATETIME NOT NULL,
-    updated_at DATETIME NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS dyx_photo (
-    id BIGINT PRIMARY KEY,
-    title VARCHAR(200) NOT NULL,
-    image_url VARCHAR(255),
-    description VARCHAR(500),
-    shot_at DATETIME,
     sort_order INT NOT NULL DEFAULT 0,
     published TINYINT NOT NULL DEFAULT 0,
     created_at DATETIME NOT NULL,
@@ -84,6 +88,7 @@ CREATE TABLE IF NOT EXISTS dyx_profile (
     site_title VARCHAR(200),
     hero_title VARCHAR(200),
     hero_subtitle VARCHAR(500),
+    hero_config LONGTEXT,
     about_content TEXT,
     education_experience TEXT,
     work_experience TEXT,
@@ -92,6 +97,7 @@ CREATE TABLE IF NOT EXISTS dyx_profile (
     wechat VARCHAR(64),
     github_url VARCHAR(255),
     avatar_url VARCHAR(255),
+    resume_pdf_url VARCHAR(255),
     updated_at DATETIME NOT NULL
 );
 
@@ -105,6 +111,36 @@ CREATE TABLE IF NOT EXISTS dyx_media (
     created_at DATETIME NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS dyx_site_visit_log (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    page_key VARCHAR(64) NOT NULL,
+    ip_address VARCHAR(45) NOT NULL,
+    user_agent VARCHAR(512),
+    device_type VARCHAR(32) NOT NULL,
+    device_name VARCHAR(128),
+    created_at DATETIME NOT NULL,
+    INDEX idx_site_visit_log_created_at (created_at),
+    INDEX idx_site_visit_log_page_key (page_key),
+    INDEX idx_site_visit_log_device_type (device_type)
+);
+
+INSERT INTO dyx_media (id, original_name, file_name, file_url, media_type, file_size, created_at)
+VALUES
+    (601, '42263dcc-1292-434c-8aa8-878f5b8ba6bc.jpg', '42263dcc-1292-434c-8aa8-878f5b8ba6bc.jpg', '/media/42263dcc-1292-434c-8aa8-878f5b8ba6bc.jpg', 'image/jpeg', 0, NOW()),
+    (602, '2024福建省职业技能大赛.jpeg', '2024福建省职业技能大赛.jpeg', '/media/2024福建省职业技能大赛.jpeg', 'image/jpeg', 0, NOW()),
+    (603, '20220323203851-0001.jpg', '20220323203851-0001.jpg', '/media/20220323203851-0001.jpg', 'image/jpeg', 0, NOW()),
+    (604, '金砖.jpg', '金砖.jpg', '/media/金砖.jpg', 'image/jpeg', 0, NOW()),
+    (605, '文件_福建船政交通职业学院-微视频结果(4).pdf', '文件_福建船政交通职业学院-微视频结果(4).pdf', '/media/文件_福建船政交通职业学院-微视频结果(4).pdf', 'application/pdf', 0, NOW()),
+    (606, '直聘简历-未命名.pdf', '直聘简历-未命名.pdf', '/media/直聘简历-未命名.pdf', 'application/pdf', 0, NOW()),
+    (607, '丁益星(350784200310120035).pdf', '丁益星(350784200310120035).pdf', '/media/丁益星(350784200310120035).pdf', 'application/pdf', 0, NOW()),
+    (608, '丁益星(350784200310120035)_20250821_022043.pdf', '丁益星(350784200310120035)_20250821_022043.pdf', '/media/丁益星(350784200310120035)_20250821_022043.pdf', 'application/pdf', 0, NOW())
+ON DUPLICATE KEY UPDATE
+    original_name = VALUES(original_name),
+    file_name = VALUES(file_name),
+    file_url = VALUES(file_url),
+    media_type = VALUES(media_type),
+    file_size = VALUES(file_size);
+
 INSERT INTO dyx_user (id, username, password, display_name, role, enabled, created_at, updated_at)
 VALUES (1, 'admin', 'admin123456', 'DYX 管理员', 'ADMIN', 1, NOW(), NOW())
 ON DUPLICATE KEY UPDATE
@@ -113,12 +149,13 @@ ON DUPLICATE KEY UPDATE
     enabled = VALUES(enabled),
     updated_at = NOW();
 
-INSERT INTO dyx_profile (id, site_title, hero_title, hero_subtitle, about_content, education_experience, work_experience, email, phone, wechat, github_url, avatar_url, updated_at)
+INSERT INTO dyx_profile (id, site_title, hero_title, hero_subtitle, hero_config, about_content, education_experience, work_experience, email, phone, wechat, github_url, avatar_url, resume_pdf_url, updated_at)
 VALUES (
     1,
     'dyx-blog',
     '构建一个兼具内容表达与个人展示的现代博客网站。',
-    '用于承载博客文章、个人动态、荣誉成果、照片集以及教育与工作经历，整体视觉保持简洁、通透与高级留白。',
+    '用于承载博客文章、个人动态、荣誉成果以及教育与工作经历，整体视觉保持简洁、通透与高级留白。',
+    '{"version":1,"blocks":[{"id":"eyebrow-default","type":"eyebrow","column":"left","text":"dyx-blog"},{"id":"title-default","type":"title","column":"left","text":"构建一个兼具内容表达与个人展示的现代博客网站。"},{"id":"subtitle-default","type":"subtitle","column":"left","text":"用于承载博客文章、个人动态、荣誉成果以及教育与工作经历，整体视觉保持简洁、通透与高级留白。"},{"id":"tags-default","type":"tags","column":"left","items":["后端 · Java","安全 / 基础设施","随笔与长文"]},{"id":"image-default","type":"image","column":"right","imageUrl":"/media/42263dcc-1292-434c-8aa8-878f5b8ba6bc.jpg","alt":"avatar"}]}',
     '你好，我是 DYX，持续关注前端工程化、Java 后端开发与产品表达。我希望通过这个站点沉淀项目实践、技术思考和个人阶段性成长。',
     '2018 - 2022：完成计算机相关专业学习，系统积累 Web 开发、数据库与软件工程基础。\n2022 - 2024：持续通过个人项目和实战练习深化前端交互、接口设计与全栈协作能力。',
     '2024 - 至今：以个人博客与项目实战为主线，持续打磨 Vue 3、Spring Boot 3、后台管理系统与内容型网站的完整交付能力。',
@@ -126,13 +163,15 @@ VALUES (
     '13800000000',
     'dyx-wechat',
     'https://github.com/example',
-    '',
+    '/media/42263dcc-1292-434c-8aa8-878f5b8ba6bc.jpg',
+    '/media/直聘简历-未命名.pdf',
     NOW()
 )
 ON DUPLICATE KEY UPDATE
     site_title = VALUES(site_title),
     hero_title = VALUES(hero_title),
     hero_subtitle = VALUES(hero_subtitle),
+    hero_config = VALUES(hero_config),
     about_content = VALUES(about_content),
     education_experience = VALUES(education_experience),
     work_experience = VALUES(work_experience),
@@ -141,6 +180,7 @@ ON DUPLICATE KEY UPDATE
     wechat = VALUES(wechat),
     github_url = VALUES(github_url),
     avatar_url = VALUES(avatar_url),
+    resume_pdf_url = VALUES(resume_pdf_url),
     updated_at = NOW();
 
 INSERT INTO dyx_post (id, title, summary, content, cover_image, category, tags, published, view_count, created_at, updated_at)
@@ -211,7 +251,7 @@ VALUES
     ),
     (
         202,
-        '补齐动态、项目、照片管理页的数据闭环',
+        '补齐动态、项目与荣誉管理的数据闭环',
         '三个后台模块均已接入真实接口，前台对应页面也可以同步消费发布后的内容。',
         '',
         '',
@@ -283,6 +323,19 @@ VALUES
         1,
         NOW(),
         NOW()
+    ),
+    (
+        304,
+        '校园微视频作品实践',
+        '策划 / 剪辑 / 视觉表达',
+        '围绕校园主题完成脚本整理、素材剪辑与成片输出，结果证明文件已纳入媒体库，可作为个人作品与内容表达能力的补充案例。',
+        '视频脚本 / 剪辑表达 / 视觉设计 / 内容策划',
+        '/media/文件_福建船政交通职业学院-微视频结果(4).pdf',
+        '',
+        4,
+        1,
+        NOW(),
+        NOW()
     )
 ON DUPLICATE KEY UPDATE
     name = VALUES(name),
@@ -295,16 +348,59 @@ ON DUPLICATE KEY UPDATE
     published = VALUES(published),
     updated_at = NOW();
 
-INSERT INTO dyx_honor (id, title, issuer, description, cover_image, image_urls, award_at, sort_order, published, created_at, updated_at)
+INSERT INTO dyx_work (id, title, summary, cover_image, image_urls, video_url, video_poster, work_link, sort_order, published, created_at, updated_at)
+VALUES
+    (
+        401,
+        '校园微视频作品实践',
+        '围绕校园主题完成脚本整理、素材剪辑与成片输出。',
+        '/media/2024福建省职业技能大赛.jpeg',
+        '["/media/2024福建省职业技能大赛.jpeg"]',
+        '',
+        '',
+        '/media/文件_福建船政交通职业学院-微视频结果(4).pdf',
+        1,
+        1,
+        NOW(),
+        NOW()
+    ),
+    (
+        402,
+        '图像处理与证书展示',
+        '整理个人证书与图像处理成果，用于补充作品表达。',
+        '/media/20220323203851-0001.jpg',
+        '["/media/20220323203851-0001.jpg","/media/金砖.jpg"]',
+        '',
+        '',
+        '',
+        2,
+        1,
+        NOW(),
+        NOW()
+    )
+ON DUPLICATE KEY UPDATE
+    title = VALUES(title),
+    summary = VALUES(summary),
+    cover_image = VALUES(cover_image),
+    image_urls = VALUES(image_urls),
+    video_url = VALUES(video_url),
+    video_poster = VALUES(video_poster),
+    work_link = VALUES(work_link),
+    sort_order = VALUES(sort_order),
+    published = VALUES(published),
+    updated_at = NOW();
+
+INSERT INTO dyx_honor (id, title, issuer, description, cover_image, image_urls, attachment_url, award_at, sort_order, published, created_at, updated_at)
 VALUES
     (
         501,
-        '校园优秀毕业设计',
-        'XX 大学计算机学院',
-        '毕业设计围绕前后端分离架构与内容管理系统展开，获得院级优秀毕业设计认定。',
+        '福建省职业技能大赛奖状',
+        '福建建设职业技术学院代表队',
+        '奖状中记录了 2024 年福建省职业技能大赛相关参赛与结果信息，包含队员姓名与指导教师信息，可作为阶段性赛事经历证明。',
+        '/media/2024福建省职业技能大赛.jpeg',
+        '["/media/2024福建省职业技能大赛.jpeg"]',
         '',
-        '',
-        '2022-06-15 10:00:00',
+        '2024-01-01 10:00:00',
         1,
         1,
         NOW(),
@@ -312,12 +408,13 @@ VALUES
     ),
     (
         502,
-        '校级技术竞赛二等奖',
-        'XX 大学创新创业中心',
-        '在校级 Web 应用开发竞赛中完成从界面实现到接口联调的完整交付，获得二等奖。',
-        '',
-        '',
-        '2021-11-20 10:00:00',
+        'Photoshop 图形图像处理专项职业能力',
+        '职业技能鉴定（指导）中心',
+        '2021-01-23 参加 Photoshop 图形图像处理专项职业能力考核，成绩 97.0，发证日期为 2021-05-11，可作为图像处理与视觉表达能力证明。',
+        '/media/20220323203851-0001.jpg',
+        '["/media/20220323203851-0001.jpg"]',
+        '/media/丁益星(350784200310120035).pdf',
+        '2021-05-11 10:00:00',
         2,
         1,
         NOW(),
@@ -328,6 +425,7 @@ VALUES
         '全栈项目实践结项优秀',
         '个人项目训练营',
         '围绕 Vue 3 与 Spring Boot 3 的整站项目实践获得优秀结项评价。',
+        '',
         '',
         '',
         '2024-08-01 10:00:00',
@@ -342,51 +440,24 @@ ON DUPLICATE KEY UPDATE
     description = VALUES(description),
     cover_image = VALUES(cover_image),
     image_urls = VALUES(image_urls),
+    attachment_url = VALUES(attachment_url),
     award_at = VALUES(award_at),
     sort_order = VALUES(sort_order),
     published = VALUES(published),
     updated_at = NOW();
 
-INSERT INTO dyx_photo (id, title, image_url, description, shot_at, sort_order, published, created_at, updated_at)
+INSERT INTO dyx_site_visit_stat (page_key, visit_count, updated_at)
 VALUES
-    (
-        401,
-        '城市夜色',
-        '',
-        '记录夜晚城市灯光与节奏感，用来补充站点更生活化的一面。',
-        NOW(),
-        1,
-        1,
-        NOW(),
-        NOW()
-    ),
-    (
-        402,
-        '工作台一角',
-        '',
-        '展示日常开发环境与设备陈设，传达项目实践背后的工作状态。',
-        NOW(),
-        2,
-        1,
-        NOW(),
-        NOW()
-    ),
-    (
-        403,
-        '旅途片段',
-        '',
-        '用影像记录移动中的观察与灵感，丰富个人表达维度。',
-        NOW(),
-        3,
-        1,
-        NOW(),
-        NOW()
-    )
+    ('home', 0, NOW()),
+    ('profile', 0, NOW()),
+    ('resume', 0, NOW()),
+    ('moments', 0, NOW()),
+    ('blog', 0, NOW()),
+    ('blog-detail', 0, NOW())
 ON DUPLICATE KEY UPDATE
-    title = VALUES(title),
-    image_url = VALUES(image_url),
-    description = VALUES(description),
-    shot_at = VALUES(shot_at),
-    sort_order = VALUES(sort_order),
-    published = VALUES(published),
     updated_at = NOW();
+
+INSERT INTO dyx_site_visit_log (page_key, ip_address, user_agent, device_type, device_name, created_at)
+VALUES
+    ('home', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)', 'DESKTOP', 'Windows', NOW()),
+    ('blog', '127.0.0.1', 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)', 'MOBILE', 'iPhone', NOW());

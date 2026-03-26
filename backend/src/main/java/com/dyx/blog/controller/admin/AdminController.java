@@ -3,14 +3,15 @@ package com.dyx.blog.controller.admin;
 import com.dyx.blog.common.response.Result;
 import com.dyx.blog.entity.Honor;
 import com.dyx.blog.entity.Moment;
-import com.dyx.blog.entity.Photo;
 import com.dyx.blog.entity.Post;
 import com.dyx.blog.entity.Profile;
 import com.dyx.blog.entity.Project;
 import com.dyx.blog.entity.User;
+import com.dyx.blog.entity.Work;
 import com.dyx.blog.service.AdminService;
 import com.dyx.blog.service.MediaService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -45,6 +47,48 @@ public class AdminController {
     @GetMapping("/dashboard/summary")
     public Result<Map<String, Object>> getDashboardSummary() {
         return Result.success(dyxAdminService.getDashboardSummary());
+    }
+
+    /**
+     * 获取访问日志列表（分页）。
+     *
+     * @return 包含访问日志记录及分页信息的结果。
+     */
+    @GetMapping("/visit-logs")
+    public Result<Map<String, Object>> listVisitLogs(
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime startTime,
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime endTime,
+            @RequestParam(required = false) String pageKey,
+            @RequestParam(required = false) String deviceType,
+            @RequestParam(required = false) String ipAddress,
+            @RequestParam(value = "page", defaultValue = "1") Integer page,
+            @RequestParam(value = "pageSize", defaultValue = "20") Integer pageSize
+    ) {
+        return Result.success(dyxAdminService.listVisitLogs(startTime, endTime, pageKey, deviceType, ipAddress, page, pageSize));
+    }
+
+    /**
+     * 删除访问日志。
+     *
+     * @param id 访问日志主键。
+     * @return 删除结果。
+     */
+    @DeleteMapping("/visit-logs/{id}")
+    public Result<Void> deleteVisitLog(@PathVariable Long id) {
+        dyxAdminService.deleteVisitLog(id);
+        return Result.success();
+    }
+
+    /**
+     * 批量删除访问日志。
+     *
+     * @param ids 访问日志主键列表。
+     * @return 删除结果。
+     */
+    @PostMapping("/visit-logs/batch-delete")
+    public Result<Void> deleteVisitLogs(@RequestBody List<Long> ids) {
+        dyxAdminService.deleteVisitLogs(ids);
+        return Result.success();
     }
 
     /**
@@ -186,6 +230,52 @@ public class AdminController {
     }
 
     /**
+     * 获取个人作品列表。
+     *
+     * @return 作品结果列表。
+     */
+    @GetMapping("/works")
+    public Result<List<Work>> listWorks() {
+        return Result.success(dyxAdminService.listWorks());
+    }
+
+    /**
+     * 新增个人作品。
+     *
+     * @param work 作品对象。
+     * @return 保存结果。
+     */
+    @PostMapping("/works")
+    public Result<Work> createWork(@RequestBody Work work) {
+        return Result.success(dyxAdminService.saveWork(work));
+    }
+
+    /**
+     * 更新个人作品。
+     *
+     * @param id 作品主键。
+     * @param work 作品对象。
+     * @return 保存结果。
+     */
+    @PutMapping("/works/{id}")
+    public Result<Work> updateWork(@PathVariable Long id, @RequestBody Work work) {
+        work.setId(id);
+        return Result.success(dyxAdminService.saveWork(work));
+    }
+
+    /**
+     * 删除个人作品。
+     *
+     * @param id 作品主键。
+     * @return 删除结果。
+     */
+    @DeleteMapping("/works/{id}")
+    public Result<Void> deleteWork(@PathVariable Long id) {
+        dyxAdminService.deleteWork(id);
+        return Result.success();
+    }
+
+    /**
      * 获取荣誉列表。
      *
      * @return 荣誉结果列表。
@@ -232,49 +322,24 @@ public class AdminController {
     }
 
     /**
-     * 获取照片列表。
+     * 获取首页横幅配置。
      *
-     * @return 照片结果列表。
+     * @return 首页横幅结果。
      */
-    @GetMapping("/photos")
-    public Result<List<Photo>> listPhotos() {
-        return Result.success(dyxAdminService.listPhotos());
+    @GetMapping("/profile/hero")
+    public Result<Profile> getHeroProfile() {
+        return Result.success(dyxAdminService.getHeroProfile());
     }
 
     /**
-     * 新增照片。
+     * 更新首页横幅配置。
      *
-     * @param photo 照片对象。
+     * @param profile 首页横幅对象。
      * @return 保存结果。
      */
-    @PostMapping("/photos")
-    public Result<Photo> createPhoto(@RequestBody Photo photo) {
-        return Result.success(dyxAdminService.savePhoto(photo));
-    }
-
-    /**
-     * 更新照片。
-     *
-     * @param id 照片主键。
-     * @param photo 照片对象。
-     * @return 保存结果。
-     */
-    @PutMapping("/photos/{id}")
-    public Result<Photo> updatePhoto(@PathVariable Long id, @RequestBody Photo photo) {
-        photo.setId(id);
-        return Result.success(dyxAdminService.savePhoto(photo));
-    }
-
-    /**
-     * 删除照片。
-     *
-     * @param id 照片主键。
-     * @return 删除结果。
-     */
-    @DeleteMapping("/photos/{id}")
-    public Result<Void> deletePhoto(@PathVariable Long id) {
-        dyxAdminService.deletePhoto(id);
-        return Result.success();
+    @PutMapping("/profile/hero")
+    public Result<Profile> updateHeroProfile(@RequestBody Profile profile) {
+        return Result.success(dyxAdminService.saveHeroProfile(profile));
     }
 
     /**
@@ -299,6 +364,52 @@ public class AdminController {
     }
 
     /**
+     * 获取用户列表。
+     *
+     * @return 用户列表结果。
+     */
+    @GetMapping("/users")
+    public Result<List<User>> listUsers() {
+        return Result.success(dyxAdminService.listUsers());
+    }
+
+    /**
+     * 新增用户。
+     *
+     * @param user 用户对象。
+     * @return 保存结果。
+     */
+    @PostMapping("/users")
+    public Result<User> createUser(@RequestBody User user) {
+        return Result.success(dyxAdminService.saveUser(user));
+    }
+
+    /**
+     * 更新用户。
+     *
+     * @param id 用户主键。
+     * @param user 用户对象。
+     * @return 保存结果。
+     */
+    @PutMapping("/users/{id}")
+    public Result<User> updateUser(@PathVariable Long id, @RequestBody User user) {
+        user.setId(id);
+        return Result.success(dyxAdminService.saveUser(user));
+    }
+
+    /**
+     * 删除用户。
+     *
+     * @param id 用户主键。
+     * @return 删除结果。
+     */
+    @DeleteMapping("/users/{id}")
+    public Result<Void> deleteUser(@PathVariable Long id) {
+        dyxAdminService.deleteUser(id);
+        return Result.success();
+    }
+
+    /**
      * 获取媒体列表。
      *
      * @return 媒体结果列表。
@@ -320,12 +431,24 @@ public class AdminController {
     }
 
     /**
-     * 获取后台用户列表。
+     * 删除媒体文件。
      *
-     * @return 用户结果列表。
+     * @param id 媒体主键。
+     * @return 删除结果。
      */
-    @GetMapping("/users")
-    public Result<List<User>> listUsers() {
-        return Result.success(dyxAdminService.listUsers());
+    @DeleteMapping("/media/{id}")
+    public Result<Void> deleteMedia(@PathVariable Long id) {
+        dyxMediaService.deleteById(id);
+        return Result.success();
+    }
+
+    /**
+     * 导入 uploads 目录中已存在的文件。
+     *
+     * @return 导入数量。
+     */
+    @PostMapping("/media/import-existing")
+    public Result<Integer> importExistingMedia() {
+        return Result.success(dyxMediaService.importExistingFiles());
     }
 }
