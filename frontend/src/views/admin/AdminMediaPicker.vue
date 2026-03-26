@@ -7,6 +7,7 @@
         class="group relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-50"
       >
         <img v-if="isImageUrl(url)" :src="url" alt="selected media" class="h-32 w-full object-cover" />
+        <video v-else-if="isVideoUrl(url)" :src="url" controls preload="metadata" class="h-32 w-full bg-black object-cover"></video>
         <div v-else class="flex h-32 flex-col justify-between bg-slate-950 px-4 py-4 text-white">
           <span class="w-fit rounded-full bg-white/15 px-3 py-1 text-[11px] uppercase tracking-[0.24em]">
             {{ isPdfUrl(url) ? 'PDF' : 'FILE' }}
@@ -31,7 +32,7 @@
       <el-button v-if="selectedUrls.length" @click="clearSelection">清空已选</el-button>
     </div>
     <p class="mt-2 text-xs leading-6 text-slate-400">
-      {{ multiple ? '支持多选图片、PDF 与其他媒体文件。' : '支持从媒体库选择单个文件，也可在弹窗内直接上传。' }}
+      {{ multiple ? '支持多选图片、视频、PDF 与其他媒体文件。' : '支持从媒体库选择单个媒体文件，也可在弹窗内直接上传。' }}
     </p>
 
     <el-dialog v-model="dialogVisible" :title="title" width="960px">
@@ -64,6 +65,14 @@
               :alt="item.originalName || item.fileName || 'media'"
               class="h-full w-full object-cover"
             />
+            <video
+              v-else-if="isVideoUrl(item.fileUrl)"
+              :src="item.fileUrl"
+              preload="metadata"
+              muted
+              playsinline
+              class="h-full w-full bg-black object-cover"
+            ></video>
             <div v-else class="flex h-full flex-col justify-between bg-slate-950 px-4 py-4 text-white">
               <span class="w-fit rounded-full bg-white/15 px-3 py-1 text-[11px] uppercase tracking-[0.24em]">
                 {{ isPdfUrl(item.fileUrl) ? 'PDF' : 'FILE' }}
@@ -72,6 +81,12 @@
                 {{ item.originalName || item.fileName || '未命名文件' }}
               </p>
             </div>
+            <span
+              v-if="isVideoUrl(item.fileUrl)"
+              class="absolute left-3 top-3 rounded-full bg-black/65 px-3 py-1 text-[11px] uppercase tracking-[0.24em] text-white"
+            >
+              Video
+            </span>
             <span
               v-if="isSelected(item.fileUrl)"
               class="absolute right-3 top-3 rounded-full bg-slate-900 px-3 py-1 text-xs text-white"
@@ -105,7 +120,7 @@ import { ElMessage, type UploadRequestOptions } from 'element-plus';
 import { computed, ref, watch } from 'vue';
 import { getAdminMedia, uploadAdminMedia } from '@/api/modules/admin';
 import type { MediaPickerItem } from '@/types/media';
-import { extractFileName, isImageUrl, isPdfUrl } from '@/utils/media';
+import { extractFileName, isImageUrl, isPdfUrl, isVideoUrl } from '@/utils/media';
 
 const props = withDefaults(
   defineProps<{

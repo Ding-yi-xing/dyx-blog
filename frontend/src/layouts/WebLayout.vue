@@ -19,7 +19,6 @@ const THEME_STORAGE_KEY = 'dyx-theme';
 
 const route = useRoute();
 const theme = ref<ThemeMode>('dark');
-const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
 
 const pageBgClass = computed(() =>
   typeof route.meta.pageBgClass === 'string' ? route.meta.pageBgClass : 'dyx-page-bg-default'
@@ -33,9 +32,11 @@ const layoutClass = computed(() =>
 
 const mainClass = computed(() =>
   isHomeRoute.value
-    ? 'relative z-10 h-[calc(100vh-82px)] overflow-hidden pb-3 pt-0 sm:h-[calc(100vh-94px)] sm:pb-4'
+    ? 'relative z-10 -mt-[82px] h-screen overflow-hidden sm:-mt-[94px]'
     : 'relative z-10 pb-16 pt-4 sm:pb-20 sm:pt-6'
 );
+
+let scheduledThemeTimer: number | null = null;
 
 function syncDocumentTheme(nextTheme: ThemeMode): void {
   theme.value = nextTheme;
@@ -48,34 +49,74 @@ function getStoredTheme(): ThemeMode | null {
   return stored === 'light' || stored === 'dark' ? stored : null;
 }
 
-function applyThemeFromSystem(): void {
-  syncDocumentTheme(mediaQuery.matches ? 'dark' : 'light');
+function getAutoTheme(now = new Date()): ThemeMode {
+  const hour = now.getHours();
+  return hour >= 8 && hour < 18 ? 'light' : 'dark';
+}
+
+function clearScheduledThemeTimer(): void {
+  if (scheduledThemeTimer !== null) {
+    window.clearTimeout(scheduledThemeTimer);
+    scheduledThemeTimer = null;
+  }
+}
+
+function getNextThemeBoundary(now = new Date()): Date {
+  const nextBoundary = new Date(now);
+  nextBoundary.setSeconds(0, 0);
+  const hour = now.getHours();
+  if (hour < 8) {
+    nextBoundary.setHours(8, 0, 0, 0);
+    return nextBoundary;
+  }
+  if (hour < 18) {
+    nextBoundary.setHours(18, 0, 0, 0);
+    return nextBoundary;
+  }
+  nextBoundary.setDate(nextBoundary.getDate() + 1);
+  nextBoundary.setHours(8, 0, 0, 0);
+  return nextBoundary;
+}
+
+function scheduleNextThemeSwitch(): void {
+  clearScheduledThemeTimer();
+  if (getStoredTheme()) {
+    return;
+  }
+  const now = new Date();
+  const nextBoundary = getNextThemeBoundary(now);
+  const delay = Math.max(1000, nextBoundary.getTime() - now.getTime());
+  scheduledThemeTimer = window.setTimeout(() => {
+    if (!getStoredTheme()) {
+      syncDocumentTheme(getAutoTheme());
+      scheduleNextThemeSwitch();
+    }
+  }, delay);
+}
+
+function applyAutoTheme(): void {
+  syncDocumentTheme(getAutoTheme());
+  scheduleNextThemeSwitch();
 }
 
 function toggleTheme(): void {
   const nextTheme: ThemeMode = theme.value === 'dark' ? 'light' : 'dark';
   syncDocumentTheme(nextTheme);
   window.localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
-}
-
-function handleSystemThemeChange(event: MediaQueryListEvent): void {
-  if (getStoredTheme()) {
-    return;
-  }
-  syncDocumentTheme(event.matches ? 'dark' : 'light');
+  clearScheduledThemeTimer();
 }
 
 onMounted(() => {
   const storedTheme = getStoredTheme();
   if (storedTheme) {
     syncDocumentTheme(storedTheme);
-  } else {
-    applyThemeFromSystem();
+    clearScheduledThemeTimer();
+    return;
   }
-  mediaQuery.addEventListener('change', handleSystemThemeChange);
+  applyAutoTheme();
 });
 
 onBeforeUnmount(() => {
-  mediaQuery.removeEventListener('change', handleSystemThemeChange);
+  clearScheduledThemeTimer();
 });
 </script>

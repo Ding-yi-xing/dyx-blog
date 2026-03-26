@@ -26,6 +26,7 @@ public class Profile {
     private String phone;
     private String wechat;
     private String githubUrl;
+    private String contactMethods;
     private String avatarUrl;
     private String resumePdfUrl;
     private LocalDateTime updatedAt;

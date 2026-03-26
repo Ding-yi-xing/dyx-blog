@@ -11,7 +11,7 @@
     <el-table :data="moments" border>
       <el-table-column prop="title" label="标题" min-width="220" />
       <el-table-column prop="happenedAt" label="时间" width="180" />
-      <el-table-column prop="imageCount" label="配图数" width="100" />
+      <el-table-column prop="mediaCount" label="媒体数" width="100" />
       <el-table-column prop="sortOrder" label="排序" width="100" />
       <el-table-column prop="statusText" label="状态" width="120" />
       <el-table-column prop="updatedAt" label="更新时间" width="180" />
@@ -31,15 +31,15 @@
         <el-form-item label="内容">
           <el-input v-model="form.content" type="textarea" :rows="5" placeholder="请输入动态内容" />
         </el-form-item>
-        <el-form-item label="封面图">
-          <AdminMediaPicker v-model="form.coverImage" button-text="选择封面图" empty-text="暂未选择动态封面" />
+        <el-form-item label="封面媒体">
+          <AdminMediaPicker v-model="form.coverImage" button-text="选择封面媒体" empty-text="暂未选择动态封面媒体" />
         </el-form-item>
-        <el-form-item label="动态图集">
+        <el-form-item label="动态媒体">
           <AdminMediaPicker
-            v-model="selectedImageUrls"
+            v-model="selectedMediaUrls"
             multiple
-            button-text="选择多张图片"
-            empty-text="暂未选择动态图片"
+            button-text="选择多项媒体"
+            empty-text="暂未选择动态媒体"
           />
         </el-form-item>
         <div class="grid gap-4 sm:grid-cols-3">
@@ -76,7 +76,7 @@ import { parseImageUrls, stringifyImageUrls } from '@/utils/media';
 const rawList = ref<MomentData[]>([]);
 const dialogVisible = ref(false);
 const saving = ref(false);
-const selectedImageUrls = ref<string[]>([]);
+const selectedMediaUrls = ref<string[]>([]);
 
 const form = reactive<Partial<MomentData>>({
   id: undefined,
@@ -92,7 +92,7 @@ const form = reactive<Partial<MomentData>>({
 const moments = computed(() =>
   rawList.value.map((item) => ({
     ...item,
-    imageCount: parseImageUrls(item.imageUrls).length,
+    mediaCount: [item.coverImage, ...parseImageUrls(item.imageUrls)].filter((url, index, list): url is string => !!url && list.indexOf(url) === index).length,
     statusText: item.published === 1 ? '已发布' : '草稿',
     raw: item
   }))
@@ -109,7 +109,7 @@ function resetForm(): void {
     sortOrder: 0,
     published: 1
   });
-  selectedImageUrls.value = [];
+  selectedMediaUrls.value = [];
 }
 
 async function loadMoments(): Promise<void> {
@@ -125,7 +125,7 @@ function openCreateDialog(): void {
 function openEditDialog(item: MomentData): void {
   resetForm();
   Object.assign(form, item);
-  selectedImageUrls.value = parseImageUrls(item.imageUrls);
+  selectedMediaUrls.value = parseImageUrls(item.imageUrls);
   dialogVisible.value = true;
 }
 
@@ -137,7 +137,7 @@ async function handleSave(): Promise<void> {
   try {
     await saveAdminMoment({
       ...form,
-      imageUrls: stringifyImageUrls(selectedImageUrls.value)
+      imageUrls: stringifyImageUrls(selectedMediaUrls.value)
     });
     ElMessage.success(form.id ? '动态更新成功' : '动态创建成功');
     dialogVisible.value = false;

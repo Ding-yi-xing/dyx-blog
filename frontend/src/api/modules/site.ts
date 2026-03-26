@@ -28,6 +28,7 @@ export interface HeroTagsBlock extends HeroBaseBlock {
 export interface HeroImageBlock extends HeroBaseBlock {
   type: 'image';
   imageUrl?: string;
+  backgroundImageUrl?: string;
   alt?: string;
 }
 
@@ -186,6 +187,7 @@ export function createDefaultHeroConfig(profile?: Pick<ProfileData, 'siteTitle' 
         type: 'image',
         column: 'right',
         imageUrl: profile?.avatarUrl,
+        backgroundImageUrl: '',
         alt: 'avatar'
       }
     ]
@@ -224,6 +226,76 @@ export function parseContactMethods(value?: string | ContactMethodData[] | null)
   } catch {
     return [];
   }
+}
+
+export function stringifyContactMethods(items: ContactMethodData[]): string {
+  return JSON.stringify(
+    items
+      .map((item) => ({
+        type: item.type?.trim(),
+        label: item.label?.trim(),
+        value: item.value?.trim()
+      }))
+      .filter((item) => item.value)
+  );
+}
+
+export function resolveProfileContactMethods(
+  profile?: Pick<ProfileData, 'contactMethods' | 'email' | 'phone' | 'wechat' | 'githubUrl'> | null
+): ContactMethodData[] {
+  const parsed = parseContactMethods(profile?.contactMethods);
+  if (parsed.length) {
+    return parsed
+      .map((item) => ({
+        type: item.type || item.label || 'contact',
+        label: item.label || item.type || '联系方式',
+        value: item.value?.trim()
+      }))
+      .filter((item) => !!item.value);
+  }
+  const fallbackContacts: Array<ContactMethodData | null> = [
+    profile?.email ? { type: 'email', label: '邮箱', value: profile.email } : null,
+    profile?.phone ? { type: 'phone', label: '电话', value: profile.phone } : null,
+    profile?.wechat ? { type: 'wechat', label: '微信', value: profile.wechat } : null,
+    profile?.githubUrl ? { type: 'github', label: 'GitHub', value: profile.githubUrl } : null
+  ];
+  return fallbackContacts.filter((item): item is ContactMethodData => !!item?.value);
+}
+
+export function resolveContactHref(item?: ContactMethodData | null): string {
+  const value = item?.value?.trim();
+  if (!value) {
+    return '';
+  }
+  const normalizedType = `${item?.type || ''} ${item?.label || ''}`.toLowerCase();
+  if (normalizedType.includes('email') || normalizedType.includes('邮箱') || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+    return `mailto:${value}`;
+  }
+  if (normalizedType.includes('phone') || normalizedType.includes('mobile') || normalizedType.includes('电话') || normalizedType.includes('手机')) {
+    const phoneValue = value.replace(/[^\d+]/g, '');
+    return phoneValue ? `tel:${phoneValue}` : '';
+  }
+  if (normalizedType.includes('github')) {
+    if (/^https?:\/\//i.test(value)) {
+      return value;
+    }
+    const githubPath = value
+      .replace(/^@/, '')
+      .replace(/^https?:\/\/github\.com\//i, '')
+      .replace(/^github\.com\//i, '');
+    return githubPath ? `https://github.com/${githubPath}` : '';
+  }
+  if (/^(https?:)?\/\//i.test(value)) {
+    return value.startsWith('//') ? `https:${value}` : value;
+  }
+  if (/^www\./i.test(value) || /^[\w.-]+\.[a-z]{2,}(?:[/:?#].*)?$/i.test(value)) {
+    return `https://${value}`;
+  }
+  return '';
+}
+
+export function isExternalContactHref(href?: string): boolean {
+  return !!href && !href.startsWith('mailto:') && !href.startsWith('tel:');
 }
 
 /**

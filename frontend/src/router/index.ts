@@ -1,7 +1,7 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
-import DyxWebLayout from '@/layouts/DyxWebLayout.vue';
-import DyxAdminLayout from '@/layouts/DyxAdminLayout.vue';
+import WebLayout from '@/layouts/WebLayout.vue';
+import AdminLayout from '@/layouts/AdminLayout.vue';
 
 /**
  * 前台路由配置。
@@ -10,16 +10,20 @@ import DyxAdminLayout from '@/layouts/DyxAdminLayout.vue';
 const webRoutes: RouteRecordRaw[] = [
   {
     path: '/',
-    component: DyxWebLayout,
+    component: WebLayout,
+    meta: { pageBgClass: 'dyx-page-bg-default' },
     children: [
-      { path: '', name: 'dyx-home', component: () => import('@/views/web/DyxHomeView.vue') },
-      { path: 'moments', name: 'dyx-moments', component: () => import('@/views/web/DyxMomentsView.vue') },
-      { path: 'projects', redirect: '/experience' },
-      { path: 'photos', name: 'dyx-photos', component: () => import('@/views/web/DyxPhotosView.vue') },
-      { path: 'experience', name: 'dyx-experience', component: () => import('@/views/web/DyxExperienceView.vue') },
-      { path: 'profile', name: 'dyx-profile', component: () => import('@/views/web/DyxProfileView.vue') },
-      { path: 'blog', name: 'dyx-blog-list', component: () => import('@/views/web/DyxBlogListView.vue') },
-      { path: 'blog/:id', name: 'dyx-blog-detail', component: () => import('@/views/web/DyxBlogDetailView.vue') }
+      { path: '', name: 'dyx-home', component: () => import('@/views/web/HomeView.vue'), meta: { pageBgClass: 'dyx-page-bg-home-hero' } },
+      { path: 'moments', name: 'dyx-moments', component: () => import('@/views/web/MomentsView.vue') },
+      { path: 'moments/:id', name: 'dyx-moment-detail', component: () => import('@/views/web/MomentDetailView.vue') },
+      { path: 'projects', redirect: '/resume' },
+      { path: 'photos', redirect: '/about' },
+      { path: 'experience', redirect: '/resume' },
+      { path: 'resume', name: 'dyx-resume', component: () => import('@/views/web/ExperienceView.vue') },
+      { path: 'profile', redirect: '/about' },
+      { path: 'about', name: 'dyx-about', component: () => import('@/views/web/ProfileView.vue') },
+      { path: 'blog', name: 'dyx-blog-list', component: () => import('@/views/web/BlogListView.vue') },
+      { path: 'blog/:id', name: 'dyx-blog-detail', component: () => import('@/views/web/BlogDetailView.vue') }
     ]
   }
 ];
@@ -32,23 +36,28 @@ const adminRoutes: RouteRecordRaw[] = [
   {
     path: '/admin/login',
     name: 'dyx-admin-login',
-    component: () => import('@/views/admin/DyxAdminLoginView.vue')
+    component: () => import('@/views/admin/AdminLoginView.vue')
   },
   {
     path: '/admin',
-    component: DyxAdminLayout,
+    component: AdminLayout,
     meta: { requiresAuth: true },
     children: [
       { path: '', redirect: '/admin/dashboard' },
-      { path: 'dashboard', name: 'dyx-admin-dashboard', component: () => import('@/views/admin/DyxAdminDashboardView.vue') },
-      { path: 'posts', name: 'dyx-admin-posts', component: () => import('@/views/admin/DyxAdminPostsView.vue') },
-      { path: 'moments', name: 'dyx-admin-moments', component: () => import('@/views/admin/DyxAdminMomentsView.vue') },
-      { path: 'projects', redirect: '/admin/profile' },
-      { path: 'honors', name: 'dyx-admin-honors', component: () => import('@/views/admin/DyxAdminHonorsView.vue') },
-      { path: 'photos', name: 'dyx-admin-photos', component: () => import('@/views/admin/DyxAdminPhotosView.vue') },
-      { path: 'profile', name: 'dyx-admin-profile', component: () => import('@/views/admin/DyxAdminProfileView.vue') },
-      { path: 'media', name: 'dyx-admin-media', component: () => import('@/views/admin/DyxAdminMediaView.vue') },
-      { path: 'users', name: 'dyx-admin-users', component: () => import('@/views/admin/DyxAdminUsersView.vue') }
+      { path: 'dashboard', name: 'dyx-admin-dashboard', component: () => import('@/views/admin/AdminDashboardView.vue') },
+      { path: 'visit-logs', name: 'dyx-admin-visit-logs', component: () => import('@/views/admin/AdminVisitLogsView.vue') },
+      { path: 'posts', name: 'dyx-admin-posts', component: () => import('@/views/admin/AdminPostsView.vue') },
+      { path: 'moments', name: 'dyx-admin-moments', component: () => import('@/views/admin/AdminMomentsView.vue') },
+      { path: 'projects', redirect: '/admin/resume' },
+      { path: 'honors', name: 'dyx-admin-honors', component: () => import('@/views/admin/AdminHonorsView.vue') },
+      { path: 'hero', name: 'dyx-admin-hero', component: () => import('@/views/admin/AdminHeroView.vue') },
+      { path: 'photos', redirect: '/admin/media' },
+      { path: 'profile', redirect: '/admin/about' },
+      { path: 'about', name: 'dyx-admin-about', component: () => import('@/views/admin/AdminProfileView.vue') },
+      { path: 'resume', name: 'dyx-admin-resume', component: () => import('@/views/admin/AdminResumeView.vue') },
+      { path: 'works', name: 'dyx-admin-works', component: () => import('@/views/admin/AdminWorksView.vue') },
+      { path: 'media', name: 'dyx-admin-media', component: () => import('@/views/admin/AdminMediaView.vue') },
+      { path: 'users', name: 'dyx-admin-users', component: () => import('@/views/admin/AdminUsersView.vue') }
     ]
   }
 ];

@@ -96,7 +96,6 @@ public class MediaServiceImpl implements MediaService {
     @Override
     public int importExistingFiles() {
         try {
-            cleanupMissingMediaRecords();
             Path uploadDirectory = getUploadDirectory();
             Set<String> existingFileNames = dyxMediaMapper.selectList(new LambdaQueryWrapper<Media>()
                             .select(Media::getFileName))
@@ -143,7 +142,6 @@ public class MediaServiceImpl implements MediaService {
      */
     @Override
     public List<Media> listAll() {
-        cleanupMissingMediaRecords();
         return dyxMediaMapper.selectList(new LambdaQueryWrapper<Media>()
                 .orderByDesc(Media::getCreatedAt));
     }
@@ -212,7 +210,7 @@ public class MediaServiceImpl implements MediaService {
         try {
             return Files.exists(resolveStoredFilePath(media));
         } catch (IOException exception) {
-            return false;
+            return true;
         }
     }
 

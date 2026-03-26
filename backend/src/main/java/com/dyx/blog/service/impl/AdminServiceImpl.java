@@ -351,6 +351,7 @@ public class AdminServiceImpl implements AdminService {
      */
     @Override
     public Profile getProfile() {
+        ensureProfileContactMethodsColumn();
         Profile profile = dyxProfileMapper.selectById(1L);
         if (profile == null) {
             profile = new Profile();
@@ -369,6 +370,7 @@ public class AdminServiceImpl implements AdminService {
      */
     @Override
     public Profile saveProfile(Profile profile) {
+        ensureProfileContactMethodsColumn();
         HeroConfigUtil.ensureHeroConfig(profile, objectMapper);
         HeroConfigUtil.syncLegacyFields(profile, objectMapper);
         profile.setUpdatedAt(LocalDateTime.now());
@@ -588,6 +590,7 @@ public class AdminServiceImpl implements AdminService {
             case "profile" -> "关于我";
             case "resume" -> "简历";
             case "moments" -> "动态";
+            case "moment-detail" -> "动态详情";
             case "blog" -> "博客";
             case "blog-detail" -> "博客详情";
             default -> pageKey;
@@ -625,6 +628,23 @@ public class AdminServiceImpl implements AdminService {
         );
         if (columnExists == null || columnExists == 0) {
             jdbcTemplate.execute("ALTER TABLE dyx_moment ADD COLUMN image_urls TEXT NULL AFTER cover_image");
+        }
+    }
+
+    private void ensureProfileContactMethodsColumn() {
+        Integer tableExists = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'dyx_profile'",
+                Integer.class
+        );
+        if (tableExists == null || tableExists == 0) {
+            return;
+        }
+        Integer columnExists = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'dyx_profile' AND COLUMN_NAME = 'contact_methods'",
+                Integer.class
+        );
+        if (columnExists == null || columnExists == 0) {
+            jdbcTemplate.execute("ALTER TABLE dyx_profile ADD COLUMN contact_methods LONGTEXT NULL AFTER github_url");
         }
     }
 

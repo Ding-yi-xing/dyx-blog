@@ -96,6 +96,7 @@ CREATE TABLE IF NOT EXISTS dyx_profile (
     phone VARCHAR(64),
     wechat VARCHAR(64),
     github_url VARCHAR(255),
+    contact_methods LONGTEXT,
     avatar_url VARCHAR(255),
     resume_pdf_url VARCHAR(255),
     updated_at DATETIME NOT NULL
@@ -149,7 +150,7 @@ ON DUPLICATE KEY UPDATE
     enabled = VALUES(enabled),
     updated_at = NOW();
 
-INSERT INTO dyx_profile (id, site_title, hero_title, hero_subtitle, hero_config, about_content, education_experience, work_experience, email, phone, wechat, github_url, avatar_url, resume_pdf_url, updated_at)
+INSERT INTO dyx_profile (id, site_title, hero_title, hero_subtitle, hero_config, about_content, education_experience, work_experience, email, phone, wechat, github_url, contact_methods, avatar_url, resume_pdf_url, updated_at)
 VALUES (
     1,
     'dyx-blog',
@@ -163,6 +164,7 @@ VALUES (
     '13800000000',
     'dyx-wechat',
     'https://github.com/example',
+    '[{"type":"email","label":"邮箱","value":"example@example.com"},{"type":"phone","label":"电话","value":"13800000000"},{"type":"wechat","label":"微信","value":"dyx-wechat"},{"type":"github","label":"GitHub","value":"https://github.com/example"}]',
     '/media/42263dcc-1292-434c-8aa8-878f5b8ba6bc.jpg',
     '/media/直聘简历-未命名.pdf',
     NOW()
@@ -179,6 +181,7 @@ ON DUPLICATE KEY UPDATE
     phone = VALUES(phone),
     wechat = VALUES(wechat),
     github_url = VALUES(github_url),
+    contact_methods = VALUES(contact_methods),
     avatar_url = VALUES(avatar_url),
     resume_pdf_url = VALUES(resume_pdf_url),
     updated_at = NOW();

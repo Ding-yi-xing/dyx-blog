@@ -19,17 +19,22 @@
         <el-form-item label="关于我">
           <el-input v-model="form.aboutContent" type="textarea" :rows="6" />
         </el-form-item>
-        <el-form-item label="联系邮箱">
-          <el-input v-model="form.email" />
-        </el-form-item>
-        <el-form-item label="联系电话">
-          <el-input v-model="form.phone" />
-        </el-form-item>
-        <el-form-item label="微信">
-          <el-input v-model="form.wechat" />
-        </el-form-item>
-        <el-form-item label="GitHub">
-          <el-input v-model="form.githubUrl" />
+        <el-form-item label="联系方式">
+          <div class="space-y-4">
+            <div
+              v-for="(item, index) in contactMethods"
+              :key="`${index}-${item.type || item.label || 'contact'}`"
+              class="rounded-2xl border border-slate-200 bg-slate-50 p-4"
+            >
+              <div class="grid gap-4 md:grid-cols-[0.9fr_1fr_1.5fr_auto] md:items-end">
+                <el-input v-model="item.type" placeholder="类型，如 email / github / 微信" />
+                <el-input v-model="item.label" placeholder="显示名称，如 邮箱 / GitHub" />
+                <el-input v-model="item.value" placeholder="联系方式内容" />
+                <el-button type="danger" plain @click="removeContact(index)">删除</el-button>
+              </div>
+            </div>
+            <el-button plain @click="addContact">新增联系方式</el-button>
+          </div>
         </el-form-item>
         <el-button type="primary" :loading="saving" @click="handleSave">保存资料</el-button>
       </el-form>
@@ -41,10 +46,10 @@
         本页仅维护关于我、联系方式与头像。首页横幅内容请前往“首页横幅管理”单独调整。
       </p>
       <div class="mt-6 space-y-3 text-sm text-slate-600">
-        <p>邮箱：{{ form.email || '-' }}</p>
-        <p>电话：{{ form.phone || '-' }}</p>
-        <p>微信：{{ form.wechat || '-' }}</p>
-        <p>GitHub：{{ form.githubUrl || '-' }}</p>
+        <p v-if="contactMethods.length" v-for="(item, index) in contactMethods" :key="`${item.label || item.type}-${index}`">
+          {{ item.label || item.type || '联系方式' }}：{{ item.value || '-' }}
+        </p>
+        <p v-else>暂无联系方式</p>
       </div>
     </article>
   </section>
@@ -55,9 +60,10 @@ import { ElMessage } from 'element-plus';
 import { onMounted, reactive, ref } from 'vue';
 import AdminMediaPicker from '@/views/admin/AdminMediaPicker.vue';
 import { getAdminProfile, updateAdminProfile } from '@/api/modules/admin';
-import { type ProfileData } from '@/api/modules/site';
+import { resolveProfileContactMethods, stringifyContactMethods, type ContactMethodData, type ProfileData } from '@/api/modules/site';
 
 const saving = ref(false);
+const contactMethods = ref<ContactMethodData[]>([]);
 const form = reactive<ProfileData>({
   id: 1,
   siteTitle: '',
@@ -72,12 +78,37 @@ const form = reactive<ProfileData>({
   wechat: '',
   githubUrl: '',
   avatarUrl: '',
-  resumePdfUrl: ''
+  resumePdfUrl: '',
+  contactMethods: ''
 });
+
+function createEmptyContact(): ContactMethodData {
+  return {
+    type: '',
+    label: '',
+    value: ''
+  };
+}
+
+function addContact(): void {
+  contactMethods.value = [...contactMethods.value, createEmptyContact()];
+}
+
+function removeContact(index: number): void {
+  contactMethods.value = contactMethods.value.filter((_, currentIndex) => currentIndex !== index);
+}
+
+function findLegacyContactValue(types: string[]): string {
+  return contactMethods.value.find((item) => {
+    const normalized = `${item.type || ''} ${item.label || ''}`.toLowerCase();
+    return types.some((type) => normalized.includes(type));
+  })?.value?.trim() || '';
+}
 
 async function loadProfile(): Promise<void> {
   const response = await getAdminProfile();
   Object.assign(form, response.data ?? {});
+  contactMethods.value = resolveProfileContactMethods(response.data ?? {});
 }
 
 async function handleSave(): Promise<void> {
@@ -86,8 +117,17 @@ async function handleSave(): Promise<void> {
   }
   saving.value = true;
   try {
-    const response = await updateAdminProfile({ ...form });
+    const payload: ProfileData = {
+      ...form,
+      contactMethods: stringifyContactMethods(contactMethods.value),
+      email: findLegacyContactValue(['email', '邮箱']),
+      phone: findLegacyContactValue(['phone', '电话', 'mobile', '手机']),
+      wechat: findLegacyContactValue(['wechat', '微信']),
+      githubUrl: findLegacyContactValue(['github'])
+    };
+    const response = await updateAdminProfile(payload);
     Object.assign(form, response.data ?? {});
+    contactMethods.value = resolveProfileContactMethods(response.data ?? payload);
     ElMessage.success('资料保存成功');
   } finally {
     saving.value = false;

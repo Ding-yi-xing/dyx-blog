@@ -8,10 +8,18 @@
             <h1 class="text-3xl font-semibold dyx-text-main">个人简历</h1>
             <p class="text-base dyx-text-muted">教育经历、工作经历、项目经历与荣誉摘要。</p>
             <div class="flex flex-wrap gap-x-5 gap-y-2 text-sm dyx-text-muted">
-              <span v-if="profile.email">{{ profile.email }}</span>
-              <span v-if="profile.phone">{{ profile.phone }}</span>
-              <span v-if="profile.wechat">{{ profile.wechat }}</span>
-              <span v-if="profile.githubUrl">{{ profile.githubUrl }}</span>
+              <template v-for="(item, index) in linkedContactMethods" :key="`${item.label || item.type}-${index}`">
+                <a
+                  v-if="item.href"
+                  :href="item.href"
+                  :target="item.external ? '_blank' : undefined"
+                  :rel="item.external ? 'noreferrer' : undefined"
+                  class="break-all underline-offset-4 transition hover:underline"
+                >
+                  {{ item.value }}
+                </a>
+                <span v-else>{{ item.value }}</span>
+              </template>
             </div>
           </div>
           <div class="flex flex-wrap gap-3 print:hidden">
@@ -91,7 +99,7 @@
             <article v-for="item in honors.slice(0, 3)" :key="item.id" class="dyx-page-card rounded-[24px] px-5 py-4 print:border-[rgb(var(--dyx-border-subtle-rgb)/0.72)] print:bg-white">
               <div class="flex flex-wrap items-center gap-3">
                 <h3 class="text-base font-semibold dyx-text-main">{{ item.title }}</h3>
-                <span v-if="item.awardAt" class="text-sm dyx-text-meta">{{ item.awardAt.slice(0, 10) }}</span>
+                <span v-if="item.awardAt" class="text-sm dyx-text-meta">{{ formatDateYmd(item.awardAt) }}</span>
               </div>
               <p class="mt-3 text-sm leading-7 dyx-text-muted">{{ item.description || '暂无荣誉说明。' }}</p>
             </article>
@@ -107,7 +115,19 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { getHonors, getProfile, getProjects, recordSiteVisit, type HonorData, type ProfileData, type ProjectData } from '@/api/modules/site';
+import {
+  getHonors,
+  getProfile,
+  getProjects,
+  isExternalContactHref,
+  recordSiteVisit,
+  resolveContactHref,
+  resolveProfileContactMethods,
+  type HonorData,
+  type ProfileData,
+  type ProjectData
+} from '@/api/modules/site';
+import { formatDateYmd } from '@/utils/date';
 
 const profile = ref<ProfileData>({});
 const projects = ref<ProjectData[]>([]);
@@ -115,6 +135,17 @@ const honors = ref<HonorData[]>([]);
 
 const educationItems = computed(() => splitParagraphs(profile.value.educationExperience));
 const workItems = computed(() => splitParagraphs(profile.value.workExperience));
+const contactMethods = computed(() => resolveProfileContactMethods(profile.value));
+const linkedContactMethods = computed(() =>
+  contactMethods.value.map((item) => {
+    const href = resolveContactHref(item);
+    return {
+      ...item,
+      href,
+      external: isExternalContactHref(href)
+    };
+  })
+);
 
 function splitParagraphs(value?: string): string[] {
   return (value ?? '')

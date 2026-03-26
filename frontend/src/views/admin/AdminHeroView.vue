@@ -5,7 +5,7 @@
         <div>
           <h2 class="text-xl font-semibold text-slate-900">首页横幅管理</h2>
           <p class="mt-2 text-sm leading-6 text-slate-500">
-            拖拽调整首页横幅文案顺序，右侧图片区可直接从媒体库替换。
+            拖拽调整首页横幅文案顺序，右侧图片区和背景图都可直接从媒体库替换。
           </p>
         </div>
 
@@ -13,7 +13,7 @@
           <div class="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h3 class="text-lg font-semibold text-slate-900">横幅内容编排</h3>
-              <p class="text-sm leading-6 text-slate-500">拖动组件卡片即可调整首页横幅左侧文字顺序，图片区域单独维护。</p>
+              <p class="text-sm leading-6 text-slate-500">拖动组件卡片即可调整首页横幅左侧文字顺序，视觉素材区域单独维护。</p>
             </div>
           </div>
 
@@ -78,25 +78,48 @@
             <div class="rounded-[20px] border border-slate-200 bg-white p-4 shadow-sm">
               <div class="flex items-center justify-between gap-3">
                 <div>
-                  <p class="text-sm font-semibold text-slate-900">右侧图片</p>
-                  <p class="text-xs text-slate-400">用于首页横幅右侧展示</p>
+                  <p class="text-sm font-semibold text-slate-900">横幅视觉素材</p>
+                  <p class="text-xs text-slate-400">分别配置背景图和右侧人物图，均可为空。</p>
                 </div>
               </div>
 
-              <div class="mt-4 space-y-4" v-if="imageBlock">
-                <div class="flex justify-center">
-                  <div class="flex h-56 w-44 items-center justify-center overflow-hidden rounded-[28px] bg-slate-100">
-                    <img v-if="imageBlock.imageUrl" :src="imageBlock.imageUrl" :alt="imageBlock.alt || 'hero-image'" class="h-full w-full object-cover" />
-                    <span v-else class="px-4 text-center text-xs text-slate-400">暂未选择横幅图片</span>
+              <div class="mt-4 space-y-5" v-if="imageBlock">
+                <div class="space-y-3 rounded-[18px] border border-slate-200 bg-slate-50 p-4">
+                  <div>
+                    <p class="text-sm font-semibold text-slate-900">背景图</p>
+                    <p class="text-xs text-slate-400">未设置时首页仍使用当前渐变背景。</p>
                   </div>
+                  <div class="flex h-28 w-full items-center justify-center overflow-hidden rounded-[20px] bg-slate-100">
+                    <img v-if="imageBlock.backgroundImageUrl" :src="imageBlock.backgroundImageUrl" alt="hero-background" class="h-full w-full object-cover" />
+                    <span v-else class="px-4 text-center text-xs text-slate-400">暂未选择背景图</span>
+                  </div>
+                  <AdminMediaPicker
+                    :model-value="imageBlock.backgroundImageUrl"
+                    button-text="选择背景图"
+                    empty-text="暂未选择背景图"
+                    @update:model-value="updateBackgroundImageUrl"
+                  />
                 </div>
-                <AdminMediaPicker
-                  :model-value="imageBlock.imageUrl"
-                  button-text="选择横幅图片"
-                  empty-text="暂未选择横幅图片"
-                  @update:model-value="updateImageBlockUrl"
-                />
-                <el-input v-model="imageBlock.alt" placeholder="图片说明（可选）" />
+
+                <div class="space-y-3 rounded-[18px] border border-slate-200 bg-slate-50 p-4">
+                  <div>
+                    <p class="text-sm font-semibold text-slate-900">右侧人物图</p>
+                    <p class="text-xs text-slate-400">未设置时首页右侧图片区会自动隐藏。</p>
+                  </div>
+                  <div class="flex justify-center">
+                    <div class="flex h-56 w-44 items-center justify-center overflow-hidden rounded-[28px] bg-slate-100">
+                      <img v-if="imageBlock.imageUrl" :src="imageBlock.imageUrl" :alt="imageBlock.alt || 'hero-image'" class="h-full w-full object-cover" />
+                      <span v-else class="px-4 text-center text-xs text-slate-400">暂未选择右侧人物图</span>
+                    </div>
+                  </div>
+                  <AdminMediaPicker
+                    :model-value="imageBlock.imageUrl"
+                    button-text="选择右侧人物图"
+                    empty-text="暂未选择右侧人物图"
+                    @update:model-value="updateImageBlockUrl"
+                  />
+                  <el-input v-model="imageBlock.alt" placeholder="图片说明（可选）" />
+                </div>
               </div>
             </div>
           </div>
@@ -109,8 +132,9 @@
 
       <article class="rounded-[24px] border border-slate-200 bg-slate-50 p-6">
         <h3 class="text-lg font-semibold text-slate-900">横幅预览</h3>
-        <div class="mt-4 overflow-hidden rounded-[28px] bg-slate-950 px-6 py-8 text-white shadow-[0_26px_70px_rgba(15,23,42,0.18)]">
-          <div class="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-stretch">
+        <div class="relative mt-4 overflow-hidden rounded-[28px] bg-slate-950 px-6 py-8 text-white shadow-[0_26px_70px_rgba(15,23,42,0.18)]">
+          <div v-if="previewBackgroundStyle" class="home-hero-bg pointer-events-none absolute inset-0" :style="previewBackgroundStyle"></div>
+          <div class="home-hero-copy relative grid gap-8" :class="previewGridClass">
             <div class="space-y-5 lg:self-center lg:py-4">
               <template v-for="block in previewLeftBlocks" :key="block.id">
                 <p
@@ -142,15 +166,13 @@
               </template>
             </div>
 
-            <div class="mx-auto flex w-full items-stretch">
+            <div v-if="previewImageBlock?.imageUrl" class="mx-auto flex w-full items-stretch">
               <div class="flex h-[420px] w-full items-center justify-center overflow-hidden lg:h-full lg:min-h-[520px]">
                 <img
-                  v-if="previewImageBlock?.imageUrl"
                   :src="previewImageBlock.imageUrl"
                   :alt="previewImageBlock.alt || 'hero-image'"
-                  class="h-full w-full object-cover"
+                  class="h-full w-full object-cover opacity-95"
                 />
-                <span v-else class="px-4 text-center text-xs text-slate-400">右侧横幅图片会显示在这里</span>
               </div>
             </div>
           </div>
@@ -215,6 +237,17 @@ const previewHeroConfig = computed(() => parseHeroConfig(form));
 const previewLeftBlocks = computed(() => previewHeroConfig.value.blocks.filter((block): block is HeroTextBlock | HeroTagsBlock => block.type !== 'image'));
 const previewImageBlock = computed(() => previewHeroConfig.value.blocks.find((block): block is HeroImageBlock => block.type === 'image'));
 
+const previewBackgroundStyle = computed(() => {
+  const backgroundImageUrl = previewImageBlock.value?.backgroundImageUrl?.trim();
+  if (!backgroundImageUrl) {
+    return undefined;
+  }
+  return {
+    backgroundImage: `url(${backgroundImageUrl})`
+  };
+});
+const previewGridClass = computed(() => (previewImageBlock.value?.imageUrl ? 'lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-stretch' : 'lg:grid-cols-1'));
+
 watch(
   heroBlocks,
   () => {
@@ -251,7 +284,8 @@ function normalizeHeroBlocks(profile?: ProfileData): HeroBlock[] {
         nextImageBlock = {
           ...fallback,
           ...block,
-          column: 'right'
+          column: 'right',
+          backgroundImageUrl: typeof block.backgroundImageUrl === 'string' ? block.backgroundImageUrl : (fallback.backgroundImageUrl ?? '')
         };
       }
       continue;
@@ -356,6 +390,13 @@ function updateImageBlockUrl(value: string | string[] | undefined): void {
     return;
   }
   imageBlock.value.imageUrl = typeof value === 'string' ? value : '';
+}
+
+function updateBackgroundImageUrl(value: string | string[] | undefined): void {
+  if (!imageBlock.value) {
+    return;
+  }
+  imageBlock.value.backgroundImageUrl = typeof value === 'string' ? value : '';
 }
 
 function moveBlock(blockId: string, direction: number): void {

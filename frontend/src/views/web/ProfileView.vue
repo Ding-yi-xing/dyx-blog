@@ -38,31 +38,33 @@
         <div class="space-y-5">
           <article class="dyx-page-card rounded-[30px] p-6 shadow-dyx-soft">
             <p class="text-sm uppercase tracking-[0.3em] dyx-text-meta">个人介绍</p>
-            <p class="mt-5 text-sm leading-8 dyx-text-muted">
+            <p class="mt-5 whitespace-pre-line text-sm leading-8 dyx-text-muted">
               {{ profile.aboutContent || '暂无个人介绍。' }}
             </p>
           </article>
 
           <article class="dyx-page-card rounded-[30px] p-6 shadow-dyx-soft">
             <p class="text-sm uppercase tracking-[0.3em] dyx-text-meta">联系方式</p>
-            <div class="mt-5 grid gap-4 text-sm sm:grid-cols-2">
-              <div class="rounded-[22px] bg-[rgb(var(--dyx-bg-surface-muted-rgb)/0.72)] px-4 py-4">
-                <p class="text-xs uppercase tracking-[0.24em] dyx-text-meta">Email</p>
-                <p class="mt-2 break-all text-sm dyx-text-main">{{ profile.email || '-' }}</p>
-              </div>
-              <div class="rounded-[22px] bg-[rgb(var(--dyx-bg-surface-muted-rgb)/0.72)] px-4 py-4">
-                <p class="text-xs uppercase tracking-[0.24em] dyx-text-meta">Phone</p>
-                <p class="mt-2 text-sm dyx-text-main">{{ profile.phone || '-' }}</p>
-              </div>
-              <div class="rounded-[22px] bg-[rgb(var(--dyx-bg-surface-muted-rgb)/0.72)] px-4 py-4">
-                <p class="text-xs uppercase tracking-[0.24em] dyx-text-meta">WeChat</p>
-                <p class="mt-2 text-sm dyx-text-main">{{ profile.wechat || '-' }}</p>
-              </div>
-              <div class="rounded-[22px] bg-[rgb(var(--dyx-bg-surface-muted-rgb)/0.72)] px-4 py-4">
-                <p class="text-xs uppercase tracking-[0.24em] dyx-text-meta">GitHub</p>
-                <p class="mt-2 break-all text-sm dyx-text-main">{{ profile.githubUrl || '-' }}</p>
+            <div v-if="linkedContactMethods.length" class="mt-5 grid gap-4 text-sm sm:grid-cols-2">
+              <div
+                v-for="(item, index) in linkedContactMethods"
+                :key="`${item.label || item.type}-${index}`"
+                class="rounded-[22px] bg-[rgb(var(--dyx-bg-surface-muted-rgb)/0.72)] px-4 py-4"
+              >
+                <p class="text-xs uppercase tracking-[0.24em] dyx-text-meta">{{ item.label || item.type || '联系' }}</p>
+                <a
+                  v-if="item.href"
+                  :href="item.href"
+                  :target="item.external ? '_blank' : undefined"
+                  :rel="item.external ? 'noreferrer' : undefined"
+                  class="mt-2 block break-all text-sm dyx-text-main underline-offset-4 transition hover:underline"
+                >
+                  {{ item.value || '-' }}
+                </a>
+                <p v-else class="mt-2 break-all text-sm dyx-text-main">{{ item.value || '-' }}</p>
               </div>
             </div>
+            <p v-else class="mt-5 text-sm dyx-text-meta">暂无联系方式。</p>
           </article>
         </div>
       </div>
@@ -77,20 +79,29 @@
         <article
           v-for="item in works"
           :key="item.id"
-          class="dyx-page-card rounded-[28px] overflow-hidden shadow-dyx-soft transition hover:-translate-y-1"
+          class="dyx-page-card overflow-hidden rounded-[28px] shadow-dyx-soft transition hover:-translate-y-1"
         >
-          <el-image
-            v-if="resolveWorkCover(item)"
-            :src="resolveWorkCover(item)"
-            :preview-src-list="resolveWorkImages(item)"
-            fit="cover"
-            preview-teleported
-            class="block h-48 w-full"
-          />
+          <div v-if="resolveWorkMedia(item).length" class="relative h-48 w-full overflow-hidden bg-black">
+            <el-image
+              v-if="isImageUrl(resolveWorkCover(item))"
+              :src="resolveWorkCover(item)"
+              :preview-src-list="resolveWorkImages(item)"
+              fit="cover"
+              preview-teleported
+              class="block h-48 w-full"
+            />
+            <video
+              v-else-if="isVideoUrl(resolveWorkCover(item))"
+              :src="resolveWorkCover(item)"
+              controls
+              preload="metadata"
+              class="block h-48 w-full bg-black object-cover"
+            ></video>
+          </div>
           <div class="p-6">
             <div class="flex flex-wrap items-center gap-3 text-xs dyx-text-meta">
               <span class="rounded-full bg-[rgb(var(--dyx-bg-surface-muted-rgb)/0.8)] px-3 py-1.5 dyx-text-main">{{ item.videoUrl ? '视频作品' : '图文作品' }}</span>
-              <span>{{ resolveWorkImages(item).length }} 张素材</span>
+              <span>{{ resolveWorkMedia(item).length }} 项素材</span>
             </div>
             <h3 class="mt-4 text-2xl font-semibold dyx-text-main">{{ item.title }}</h3>
             <p class="mt-4 text-sm leading-7 dyx-text-muted">{{ item.summary || '暂无作品说明。' }}</p>
@@ -106,7 +117,7 @@
           </div>
         </article>
 
-        <article v-if="!works.length" class="rounded-[28px] border border-dashed border-[rgb(var(--dyx-border-subtle-rgb)/0.72)] bg-[rgb(var(--dyx-bg-surface-rgb)/0.36)] p-8 text-sm dyx-text-meta xl:col-span-3">
+        <article v-if="!works.length" class="xl:col-span-3 rounded-[28px] border border-dashed border-[rgb(var(--dyx-border-subtle-rgb)/0.72)] bg-[rgb(var(--dyx-bg-surface-rgb)/0.36)] p-8 text-sm dyx-text-meta">
           暂无已发布作品内容。
         </article>
       </div>
@@ -126,7 +137,7 @@
             :key="item.id"
             class="relative w-[340px] flex-none snap-start pt-24 first:ml-1 last:mr-1 md:w-[380px]"
           >
-            <p class="absolute left-0 top-0 text-sm font-medium tracking-[0.08em] dyx-text-meta">{{ formatAwardDate(item.awardAt) }}</p>
+            <p class="absolute left-0 top-0 text-sm font-medium tracking-[0.08em] dyx-text-meta">{{ formatDateYmd(item.awardAt) || '未设置时间' }}</p>
             <div class="absolute left-0 top-[66px] h-4 w-4 rounded-full border-4 border-[rgb(var(--dyx-bg-surface-rgb))] bg-[rgb(var(--dyx-text-main-rgb))] shadow-sm"></div>
 
             <div class="dyx-page-card rounded-[28px] p-6 shadow-dyx-soft transition hover:-translate-y-1">
@@ -135,17 +146,25 @@
                 <span v-if="item.issuer" class="rounded-full bg-[rgb(var(--dyx-bg-surface-muted-rgb)/0.8)] px-3 py-1 text-xs dyx-text-meta">{{ item.issuer }}</span>
               </div>
               <p class="mt-4 text-sm leading-7 dyx-text-muted">{{ item.description || '暂无荣誉说明。' }}</p>
-              <div v-if="resolveHonorImages(item).length" class="mt-6 grid gap-3 sm:grid-cols-2">
-                <el-image
-                  v-for="(url, index) in resolveHonorImages(item)"
-                  :key="`${item.id}-${index}`"
-                  :src="url"
-                  :preview-src-list="resolveHonorImages(item)"
-                  :initial-index="index"
-                  fit="cover"
-                  preview-teleported
-                  class="block h-40 w-full overflow-hidden rounded-2xl"
-                />
+              <div v-if="resolveHonorMedia(item).length" class="mt-6 grid gap-3 sm:grid-cols-2">
+                <template v-for="(url, index) in resolveHonorMedia(item)" :key="`${item.id}-${index}`">
+                  <el-image
+                    v-if="isImageUrl(url)"
+                    :src="url"
+                    :preview-src-list="resolveHonorImages(item)"
+                    :initial-index="resolveHonorImages(item).indexOf(url)"
+                    fit="cover"
+                    preview-teleported
+                    class="block h-40 w-full overflow-hidden rounded-2xl"
+                  />
+                  <video
+                    v-else-if="isVideoUrl(url)"
+                    :src="url"
+                    controls
+                    preload="metadata"
+                    class="block h-40 w-full rounded-2xl bg-black object-cover"
+                  ></video>
+                </template>
               </div>
               <a
                 v-if="item.attachmentUrl"
@@ -169,14 +188,38 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
-import { getHonors, getProfile, getWorks, recordSiteVisit, type HonorData, type ProfileData, type WorkData } from '@/api/modules/site';
-import { isImageUrl, parseImageUrls } from '@/utils/media';
+import { computed, onMounted, ref } from 'vue';
+import {
+  getHonors,
+  getProfile,
+  getWorks,
+  isExternalContactHref,
+  recordSiteVisit,
+  resolveContactHref,
+  resolveProfileContactMethods,
+  type HonorData,
+  type ProfileData,
+  type WorkData
+} from '@/api/modules/site';
+import { formatDateYmd } from '@/utils/date';
+import { isImageUrl, isVideoUrl, parseImageUrls } from '@/utils/media';
 
 const profile = ref<ProfileData>({});
 const honors = ref<HonorData[]>([]);
 const works = ref<WorkData[]>([]);
 const honorsScroller = ref<HTMLElement>();
+
+const contactMethods = computed(() => resolveProfileContactMethods(profile.value));
+const linkedContactMethods = computed(() =>
+  contactMethods.value.map((item) => {
+    const href = resolveContactHref(item);
+    return {
+      ...item,
+      href,
+      external: isExternalContactHref(href)
+    };
+  })
+);
 
 async function loadAboutData(): Promise<void> {
   const [profileResponse, honorResponse, workResponse] = await Promise.allSettled([getProfile(), getHonors(), getWorks()]);
@@ -185,29 +228,30 @@ async function loadAboutData(): Promise<void> {
   works.value = workResponse.status === 'fulfilled' ? (workResponse.value.data ?? []) : [];
 }
 
+function resolveWorkMedia(item: WorkData): string[] {
+  const mediaUrls = parseImageUrls(item.imageUrls);
+  const coverItems = [item.coverImage, item.videoPoster, item.videoUrl].filter((url): url is string => !!url);
+  return [...coverItems, ...mediaUrls].filter((url, index, list) => !!url && list.indexOf(url) === index);
+}
+
 function resolveWorkImages(item: WorkData): string[] {
-  const imageUrls = parseImageUrls(item.imageUrls).filter((url) => isImageUrl(url));
-  const firstImage = item.coverImage && isImageUrl(item.coverImage) ? item.coverImage : item.videoPoster && isImageUrl(item.videoPoster) ? item.videoPoster : '';
-  return firstImage && !imageUrls.includes(firstImage) ? [firstImage, ...imageUrls] : imageUrls;
+  return resolveWorkMedia(item).filter((url) => isImageUrl(url));
 }
 
 function resolveWorkCover(item: WorkData): string {
-  return resolveWorkImages(item)[0] ?? '';
+  return resolveWorkMedia(item)[0] ?? '';
+}
+
+function resolveHonorMedia(item: HonorData): string[] {
+  const mediaUrls = parseImageUrls(item.imageUrls);
+  if (item.coverImage && !mediaUrls.includes(item.coverImage)) {
+    return [item.coverImage, ...mediaUrls];
+  }
+  return mediaUrls;
 }
 
 function resolveHonorImages(item: HonorData): string[] {
-  const imageUrls = parseImageUrls(item.imageUrls).filter((url) => isImageUrl(url));
-  if (item.coverImage && isImageUrl(item.coverImage) && !imageUrls.includes(item.coverImage)) {
-    return [item.coverImage, ...imageUrls];
-  }
-  return imageUrls;
-}
-
-function formatAwardDate(value?: string): string {
-  if (!value) {
-    return '未设置时间';
-  }
-  return value.slice(0, 10);
+  return resolveHonorMedia(item).filter((url) => isImageUrl(url));
 }
 
 function handleHonorsWheel(event: WheelEvent): void {

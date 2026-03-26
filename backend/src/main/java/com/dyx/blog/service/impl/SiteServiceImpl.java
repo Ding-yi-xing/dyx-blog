@@ -71,6 +71,7 @@ public class SiteServiceImpl implements SiteService {
      */
     @Override
     public Profile getProfile() {
+        ensureProfileContactMethodsColumn();
         Profile profile = dyxProfileMapper.selectById(1L);
         if (profile == null) {
             profile = new Profile();
@@ -121,6 +122,25 @@ public class SiteServiceImpl implements SiteService {
         return dyxMomentMapper.selectList(new LambdaQueryWrapper<Moment>()
                 .eq(Moment::getPublished, 1)
                 .orderByDesc(Moment::getHappenedAt));
+    }
+
+    /**
+     * 获取已发布动态详情。
+     *
+     * @param id 动态主键。
+     * @return 动态详情。
+     */
+    @Override
+    public Moment getMomentDetail(Long id) {
+        ensureMomentImageUrlsColumn();
+        Moment moment = dyxMomentMapper.selectOne(new LambdaQueryWrapper<Moment>()
+                .eq(Moment::getId, id)
+                .eq(Moment::getPublished, 1)
+                .last("LIMIT 1"));
+        if (moment == null) {
+            throw new BusinessException("动态不存在或未发布");
+        }
+        return moment;
     }
 
     /**
@@ -348,6 +368,23 @@ public class SiteServiceImpl implements SiteService {
         );
         if (columnExists == null || columnExists == 0) {
             jdbcTemplate.execute("ALTER TABLE dyx_moment ADD COLUMN image_urls TEXT NULL AFTER cover_image");
+        }
+    }
+
+    private void ensureProfileContactMethodsColumn() {
+        Integer tableExists = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'dyx_profile'",
+                Integer.class
+        );
+        if (tableExists == null || tableExists == 0) {
+            return;
+        }
+        Integer columnExists = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'dyx_profile' AND COLUMN_NAME = 'contact_methods'",
+                Integer.class
+        );
+        if (columnExists == null || columnExists == 0) {
+            jdbcTemplate.execute("ALTER TABLE dyx_profile ADD COLUMN contact_methods LONGTEXT NULL AFTER github_url");
         }
     }
 
