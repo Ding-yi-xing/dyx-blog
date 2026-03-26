@@ -6,7 +6,13 @@
         :key="`${url}-${index}`"
         class="group relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-50"
       >
-        <img :src="url" alt="selected media" class="h-32 w-full object-cover" />
+        <img v-if="isImageUrl(url)" :src="url" alt="selected media" class="h-32 w-full object-cover" />
+        <div v-else class="flex h-32 flex-col justify-between bg-slate-950 px-4 py-4 text-white">
+          <span class="w-fit rounded-full bg-white/15 px-3 py-1 text-[11px] uppercase tracking-[0.24em]">
+            {{ isPdfUrl(url) ? 'PDF' : 'FILE' }}
+          </span>
+          <p class="line-clamp-2 text-sm font-medium leading-6">{{ extractFileName(url) || '已选择文件' }}</p>
+        </div>
         <button
           type="button"
           class="absolute right-3 top-3 rounded-full bg-black/65 px-3 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100"
@@ -25,14 +31,14 @@
       <el-button v-if="selectedUrls.length" @click="clearSelection">清空已选</el-button>
     </div>
     <p class="mt-2 text-xs leading-6 text-slate-400">
-      {{ multiple ? '支持多选图片，适合动态配图与荣誉图集。' : '支持从媒体库选择单张图片，也可在弹窗内先上传再选择。' }}
+      {{ multiple ? '支持多选图片、PDF 与其他媒体文件。' : '支持从媒体库选择单个文件，也可在弹窗内直接上传。' }}
     </p>
 
     <el-dialog v-model="dialogVisible" :title="title" width="960px">
       <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4">
-        <p class="text-sm text-slate-500">点击图片即可{{ multiple ? '多选' : '选择' }}，上传成功后会自动加入当前选择。</p>
+        <p class="text-sm text-slate-500">点击卡片即可{{ multiple ? '多选' : '选择' }}，上传成功后会自动加入当前选择。</p>
         <el-upload :show-file-list="false" :http-request="handleUpload">
-          <el-button type="primary" :loading="uploading">上传图片</el-button>
+          <el-button type="primary" :loading="uploading">上传文件</el-button>
         </el-upload>
       </div>
 
@@ -52,8 +58,20 @@
           @click="toggleMedia(item.fileUrl)"
         >
           <div class="relative h-40 overflow-hidden bg-slate-100">
-            <img v-if="item.fileUrl" :src="item.fileUrl" :alt="item.originalName || item.fileName || 'media'" class="h-full w-full object-cover" />
-            <div v-else class="flex h-full items-center justify-center text-sm text-slate-400">无预览</div>
+            <img
+              v-if="isImageUrl(item.fileUrl)"
+              :src="item.fileUrl"
+              :alt="item.originalName || item.fileName || 'media'"
+              class="h-full w-full object-cover"
+            />
+            <div v-else class="flex h-full flex-col justify-between bg-slate-950 px-4 py-4 text-white">
+              <span class="w-fit rounded-full bg-white/15 px-3 py-1 text-[11px] uppercase tracking-[0.24em]">
+                {{ isPdfUrl(item.fileUrl) ? 'PDF' : 'FILE' }}
+              </span>
+              <p class="line-clamp-3 text-sm font-medium leading-6">
+                {{ item.originalName || item.fileName || '未命名文件' }}
+              </p>
+            </div>
             <span
               v-if="isSelected(item.fileUrl)"
               class="absolute right-3 top-3 rounded-full bg-slate-900 px-3 py-1 text-xs text-white"
@@ -63,14 +81,15 @@
           </div>
           <div class="space-y-2 p-4">
             <p class="truncate text-sm font-medium text-slate-900">{{ item.originalName || item.fileName || '未命名文件' }}</p>
-            <p class="text-xs text-slate-500">{{ item.createdAt || '暂无时间' }}</p>
+            <p class="text-xs text-slate-500">{{ item.mediaType || '未知类型' }}</p>
+            <p class="text-xs text-slate-400">{{ item.createdAt || '暂无时间' }}</p>
           </div>
         </button>
       </div>
 
       <template #footer>
         <div class="flex flex-wrap items-center justify-between gap-3">
-          <p class="text-sm text-slate-500">当前已选 {{ draftUrls.length }} 张</p>
+          <p class="text-sm text-slate-500">当前已选 {{ draftUrls.length }} {{ multiple ? '项资源' : '个文件' }}</p>
           <div class="flex gap-3">
             <el-button @click="dialogVisible = false">取消</el-button>
             <el-button type="primary" @click="confirmSelection">确认选择</el-button>
@@ -86,6 +105,7 @@ import { ElMessage, type UploadRequestOptions } from 'element-plus';
 import { computed, ref, watch } from 'vue';
 import { getAdminMedia, uploadAdminMedia } from '@/api/modules/admin';
 import type { MediaPickerItem } from '@/types/media';
+import { extractFileName, isImageUrl, isPdfUrl } from '@/utils/media';
 
 const props = withDefaults(
   defineProps<{
@@ -99,7 +119,7 @@ const props = withDefaults(
     multiple: false,
     title: '选择媒体资源',
     buttonText: '从媒体库选择',
-    emptyText: '暂未选择图片'
+    emptyText: '暂未选择文件'
   }
 );
 
@@ -201,9 +221,9 @@ async function handleUpload(options: UploadRequestOptions): Promise<void> {
     if (fileUrl) {
       draftUrls.value = props.multiple ? [...new Set([...draftUrls.value, fileUrl])] : [fileUrl];
     }
-    ElMessage.success('图片上传成功');
+    ElMessage.success('文件上传成功');
   } catch (error) {
-    ElMessage.error('图片上传失败');
+    ElMessage.error('文件上传失败');
   } finally {
     uploading.value = false;
   }

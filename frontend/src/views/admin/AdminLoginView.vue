@@ -1,15 +1,16 @@
 <template>
   <div class="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,_#dbeafe,_#f8fafc_40%,_#ffffff_100%)] px-4">
-    <div class="w-full max-w-md rounded-[32px] border border-white/60 bg-white/80 p-8 shadow-dyx-soft backdrop-blur-xl">
+    <div class="relative w-full max-w-md rounded-[32px] border border-white/60 bg-white/80 p-8 shadow-dyx-soft backdrop-blur-xl">
+      <RouterLink
+        to="/"
+        class="absolute right-6 top-6 inline-flex rounded-full border border-slate-200 px-3 py-1.5 text-xs text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
+      >
+        返回站点
+      </RouterLink>
+
       <div class="text-center">
         <p class="text-sm uppercase tracking-[0.35em] text-slate-500">Admin Login</p>
         <h1 class="mt-4 text-3xl font-semibold text-slate-900">登录后台管理系统</h1>
-        <RouterLink
-          to="/"
-          class="mt-5 inline-flex rounded-full border border-slate-200 px-4 py-2 text-sm text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
-        >
-          返回博客页面
-        </RouterLink>
       </div>
 
       <el-form class="mt-8" :model="form" label-position="top" @submit.prevent>
@@ -46,10 +47,6 @@ const form = reactive({
   password: 'admin123456'
 });
 
-/**
- * 处理后台登录。
- * 调用真实后端登录接口并保存登录态。
- */
 async function handleLogin(): Promise<void> {
   if (submitting.value) {
     return;

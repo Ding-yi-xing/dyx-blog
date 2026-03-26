@@ -1,63 +1,38 @@
 <template>
   <section class="space-y-6">
-    <div class="grid gap-6 xl:grid-cols-[1fr_1.05fr]">
+    <div class="grid gap-6 xl:grid-cols-[1fr_0.9fr]">
       <article class="rounded-[28px] bg-white p-6 shadow-sm">
         <h2 class="text-xl font-semibold text-slate-900">简历管理</h2>
-        <p class="mt-2 text-sm text-slate-500">维护网站标题、简介、头像、教育经历与工作经历。</p>
         <el-form class="mt-6" label-position="top">
-          <el-form-item label="头像">
+          <el-form-item label="PDF 简历">
             <div class="space-y-4">
-              <div class="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-slate-100">
-                <img v-if="form.avatarUrl" :src="form.avatarUrl" alt="avatar" class="h-full w-full object-cover" />
-                <span v-else class="text-xs text-slate-400">暂无头像</span>
-              </div>
-              <AdminMediaPicker v-model="form.avatarUrl" button-text="选择头像" empty-text="暂未选择头像" />
+              <AdminMediaPicker v-model="form.resumePdfUrl" button-text="选择 PDF 简历" empty-text="暂未选择 PDF 简历" />
+              <a
+                v-if="form.resumePdfUrl"
+                :href="form.resumePdfUrl"
+                target="_blank"
+                rel="noreferrer"
+                class="inline-flex text-sm font-medium text-slate-700 transition hover:text-slate-950"
+              >
+                预览当前简历附件
+              </a>
             </div>
           </el-form-item>
-          <el-form-item label="站点标题">
-            <el-input v-model="form.siteTitle" />
-          </el-form-item>
-          <el-form-item label="首页主标题">
-            <el-input v-model="form.heroTitle" />
-          </el-form-item>
-          <el-form-item label="首页副标题">
-            <el-input v-model="form.heroSubtitle" type="textarea" :rows="3" />
-          </el-form-item>
-          <el-form-item label="关于我">
-            <el-input v-model="form.aboutContent" type="textarea" :rows="4" />
-          </el-form-item>
           <el-form-item label="教育经历">
-            <el-input v-model="form.educationExperience" type="textarea" :rows="5" placeholder="请输入教育经历内容" />
+            <el-input v-model="form.educationExperience" type="textarea" :rows="6" placeholder="请输入教育经历内容" />
           </el-form-item>
           <el-form-item label="工作经历">
-            <el-input v-model="form.workExperience" type="textarea" :rows="5" placeholder="请输入工作经历内容" />
+            <el-input v-model="form.workExperience" type="textarea" :rows="6" placeholder="请输入工作经历内容" />
           </el-form-item>
-          <div class="grid gap-4 sm:grid-cols-2">
-            <el-form-item label="联系邮箱">
-              <el-input v-model="form.email" />
-            </el-form-item>
-            <el-form-item label="联系电话">
-              <el-input v-model="form.phone" />
-            </el-form-item>
-          </div>
-          <div class="grid gap-4 sm:grid-cols-2">
-            <el-form-item label="微信">
-              <el-input v-model="form.wechat" />
-            </el-form-item>
-            <el-form-item label="GitHub">
-              <el-input v-model="form.githubUrl" />
-            </el-form-item>
-          </div>
-          <el-button type="primary" :loading="savingProfile" @click="handleSaveProfile">保存资料</el-button>
+          <el-button type="primary" :loading="savingProfile" @click="handleSaveProfile">保存简历信息</el-button>
         </el-form>
       </article>
 
-      <article class="rounded-[28px] bg-white p-6 shadow-sm">
-        <h2 class="text-xl font-semibold text-slate-900">资料说明</h2>
-        <div class="mt-4 space-y-4 text-sm leading-8 text-slate-600">
-          <p>本页负责聚合维护简历所需内容，保存后可同步驱动前台首页、个人信息页与简历页展示。</p>
-          <p>项目经历不再作为独立模块展示，但仍保留结构化数据与排序能力，统一归入简历管理页维护。</p>
-          <p>头像、项目封面等图片已支持从媒体库直接选择，无需再手动粘贴链接。</p>
+      <article class="rounded-[24px] border border-slate-200 bg-slate-50 p-6">
+        <h3 class="text-lg font-semibold text-slate-900">附件状态</h3>
+        <div class="mt-4 space-y-3 text-sm text-slate-600">
+          <p>PDF：{{ form.resumePdfUrl || '未设置' }}</p>
+          <p>项目数量：{{ projects.length }}</p>
         </div>
       </article>
     </div>
@@ -66,7 +41,6 @@
       <div class="mb-6 flex items-center justify-between gap-4">
         <div>
           <h2 class="text-xl font-semibold text-slate-900">项目经历管理</h2>
-          <p class="mt-2 text-sm text-slate-500">项目已并入简历模块，在这里统一维护项目名称、技术栈、角色与成果描述。</p>
         </div>
         <el-button type="primary" @click="openCreateDialog">新建项目</el-button>
       </div>
@@ -140,7 +114,7 @@ import {
   saveAdminProject,
   updateAdminProfile
 } from '@/api/modules/admin';
-import type { ProjectData, ProfileData } from '@/api/modules/site';
+import type { ProfileData, ProjectData } from '@/api/modules/site';
 
 const savingProfile = ref(false);
 const savingProject = ref(false);
@@ -159,7 +133,8 @@ const form = reactive<ProfileData>({
   phone: '',
   wechat: '',
   githubUrl: '',
-  avatarUrl: ''
+  avatarUrl: '',
+  resumePdfUrl: ''
 });
 
 const projectForm = reactive<Partial<ProjectData>>({
@@ -225,7 +200,7 @@ async function handleSaveProfile(): Promise<void> {
   try {
     const response = await updateAdminProfile({ ...form });
     Object.assign(form, response.data ?? {});
-    ElMessage.success('资料保存成功');
+    ElMessage.success('简历信息保存成功');
   } finally {
     savingProfile.value = false;
   }

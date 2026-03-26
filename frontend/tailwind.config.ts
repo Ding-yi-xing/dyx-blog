@@ -1,26 +1,32 @@
 import type { Config } from 'tailwindcss';
 
-/**
- * Tailwind 配置文件。
- * 用于定义扫描路径和主题扩展，保证前后台界面风格统一。
- */
 export default {
+  darkMode: 'class',
   content: ['./index.html', './src/**/*.{vue,ts,tsx}'],
   theme: {
     extend: {
       colors: {
         dyx: {
-          dark: '#0f172a',
-          primary: '#2563eb',
-          secondary: '#64748b',
-          light: '#f8fafc'
+          page: 'rgb(var(--dyx-bg-page-rgb) / <alpha-value>)',
+          'page-soft': 'rgb(var(--dyx-bg-page-soft-rgb) / <alpha-value>)',
+          surface: 'rgb(var(--dyx-bg-surface-rgb) / <alpha-value>)',
+          'surface-muted': 'rgb(var(--dyx-bg-surface-muted-rgb) / <alpha-value>)',
+          text: 'rgb(var(--dyx-text-main-rgb) / <alpha-value>)',
+          muted: 'rgb(var(--dyx-text-muted-rgb) / <alpha-value>)',
+          meta: 'rgb(var(--dyx-text-meta-rgb) / <alpha-value>)',
+          accent: 'rgb(var(--dyx-accent-rgb) / <alpha-value>)',
+          border: 'rgb(var(--dyx-border-subtle-rgb) / <alpha-value>)'
         }
       },
       boxShadow: {
-        'dyx-soft': '0 24px 60px rgba(15, 23, 42, 0.12)'
+        'dyx-soft': 'var(--dyx-shadow-soft)',
+        'dyx-elevated': 'var(--dyx-shadow-elevated)',
+        'dyx-window': 'var(--dyx-shadow-window)'
       },
       borderRadius: {
-        'dyx-card': '1.5rem'
+        'dyx-card': 'var(--dyx-radius-card)',
+        'dyx-window': 'var(--dyx-radius-window)',
+        'dyx-pill': '999px'
       }
     }
   },

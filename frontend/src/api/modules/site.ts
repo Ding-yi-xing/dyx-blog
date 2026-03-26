@@ -1,5 +1,43 @@
 import http from '@/api/http';
 
+export type HeroBlockType = 'eyebrow' | 'title' | 'subtitle' | 'tags' | 'image';
+export type HeroBlockColumn = 'left' | 'right';
+
+export interface ContactMethodData {
+  type?: string;
+  label?: string;
+  value?: string;
+}
+
+export interface HeroBaseBlock {
+  id: string;
+  type: HeroBlockType;
+  column: HeroBlockColumn;
+}
+
+export interface HeroTextBlock extends HeroBaseBlock {
+  type: 'eyebrow' | 'title' | 'subtitle';
+  text: string;
+}
+
+export interface HeroTagsBlock extends HeroBaseBlock {
+  type: 'tags';
+  items: string[];
+}
+
+export interface HeroImageBlock extends HeroBaseBlock {
+  type: 'image';
+  imageUrl?: string;
+  alt?: string;
+}
+
+export type HeroBlock = HeroTextBlock | HeroTagsBlock | HeroImageBlock;
+
+export interface HeroConfigData {
+  version: number;
+  blocks: HeroBlock[];
+}
+
 /**
  * 个人资料数据结构。
  */
@@ -8,6 +46,7 @@ export interface ProfileData {
   siteTitle?: string;
   heroTitle?: string;
   heroSubtitle?: string;
+  heroConfig?: string;
   aboutContent?: string;
   educationExperience?: string;
   workExperience?: string;
@@ -16,6 +55,8 @@ export interface ProfileData {
   wechat?: string;
   githubUrl?: string;
   avatarUrl?: string;
+  resumePdfUrl?: string;
+  contactMethods?: string;
 }
 
 /**
@@ -31,6 +72,7 @@ export interface PostData {
   tags?: string;
   published?: number;
   updatedAt?: string;
+  viewCount?: number;
 }
 
 /**
@@ -65,6 +107,23 @@ export interface ProjectData {
 }
 
 /**
+ * 个人作品数据结构。
+ */
+export interface WorkData {
+  id: number;
+  title: string;
+  summary?: string;
+  coverImage?: string;
+  imageUrls?: string;
+  videoUrl?: string;
+  videoPoster?: string;
+  workLink?: string;
+  sortOrder?: number;
+  published?: number;
+  updatedAt?: string;
+}
+
+/**
  * 荣誉数据结构。
  */
 export interface HonorData {
@@ -74,21 +133,8 @@ export interface HonorData {
   description?: string;
   coverImage?: string;
   imageUrls?: string;
+  attachmentUrl?: string;
   awardAt?: string;
-  sortOrder?: number;
-  published?: number;
-  updatedAt?: string;
-}
-
-/**
- * 照片数据结构。
- */
-export interface PhotoData {
-  id: number;
-  title: string;
-  imageUrl?: string;
-  description?: string;
-  shotAt?: string;
   sortOrder?: number;
   published?: number;
   updatedAt?: string;
@@ -103,6 +149,81 @@ export interface HomeData {
   latestMoments?: MomentData[];
   featuredProjects?: ProjectData[];
   latestHonors?: HonorData[];
+}
+
+export function createDefaultHeroConfig(profile?: Pick<ProfileData, 'siteTitle' | 'heroTitle' | 'heroSubtitle' | 'avatarUrl'>): HeroConfigData {
+  return {
+    version: 1,
+    blocks: [
+      {
+        id: 'eyebrow-default',
+        type: 'eyebrow',
+        column: 'left',
+        text: profile?.siteTitle || 'HELLO THERE!'
+      },
+      {
+        id: 'title-default',
+        type: 'title',
+        column: 'left',
+        text: profile?.heroTitle || '写代码的人，也写点文字。'
+      },
+      {
+        id: 'subtitle-default',
+        type: 'subtitle',
+        column: 'left',
+        text:
+          profile?.heroSubtitle ||
+          '这里有后端开发、安全研究、折腾小工具的记录，也有一些不那么严肃的碎碎念。这个博客更像是一个公开的笔记本，欢迎随便翻翻。'
+      },
+      {
+        id: 'tags-default',
+        type: 'tags',
+        column: 'left',
+        items: ['后端 · Java', '安全 / 基础设施', '随笔与长文']
+      },
+      {
+        id: 'image-default',
+        type: 'image',
+        column: 'right',
+        imageUrl: profile?.avatarUrl,
+        alt: 'avatar'
+      }
+    ]
+  };
+}
+
+export function parseHeroConfig(profile?: Pick<ProfileData, 'heroConfig' | 'siteTitle' | 'heroTitle' | 'heroSubtitle' | 'avatarUrl'>): HeroConfigData {
+  const fallback = createDefaultHeroConfig(profile);
+  if (!profile?.heroConfig) {
+    return fallback;
+  }
+  try {
+    const parsed = JSON.parse(profile.heroConfig) as Partial<HeroConfigData>;
+    if (!parsed || !Array.isArray(parsed.blocks)) {
+      return fallback;
+    }
+    return {
+      version: typeof parsed.version === 'number' ? parsed.version : 1,
+      blocks: parsed.blocks as HeroBlock[]
+    };
+  } catch {
+    return fallback;
+  }
+}
+
+export function parseContactMethods(value?: string | ContactMethodData[] | null): ContactMethodData[] {
+  if (Array.isArray(value)) {
+    return value.filter((item) => item?.value);
+  }
+  if (!value) {
+    return [];
+  }
+  try {
+    const parsed = JSON.parse(value) as ContactMethodData[];
+    return Array.isArray(parsed) ? parsed.filter((item) => item?.value) : [];
+  } catch {
+    return [];
+  }
 }
 
 /**
@@ -126,11 +247,22 @@ export function getMoments() {
   return http.get('/site/moments');
 }
 
+export function getMomentDetail(id: string | number) {
+  return http.get(`/site/moments/${id}`);
+}
+
 /**
  * 获取项目经历列表。
  */
 export function getProjects() {
   return http.get('/site/projects');
+}
+
+/**
+ * 获取个人作品列表。
+ */
+export function getWorks() {
+  return http.get('/site/works');
 }
 
 /**
@@ -141,10 +273,10 @@ export function getHonors() {
 }
 
 /**
- * 获取照片列表。
+ * 记录页面访问。
  */
-export function getPhotos() {
-  return http.get('/site/photos');
+export function recordSiteVisit(pageKey: string) {
+  return http.post(`/site/visit/${pageKey}`);
 }
 
 /**

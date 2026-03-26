@@ -3,7 +3,7 @@
     <div class="mb-6 flex items-center justify-between gap-4">
       <div>
         <h2 class="text-xl font-semibold text-slate-900">荣誉管理</h2>
-        <p class="mt-2 text-sm text-slate-500">维护荣誉时间、授予机构、说明与配图。</p>
+        <p class="mt-2 text-sm text-slate-500">维护荣誉时间、授予机构、说明、配图与证书附件。</p>
       </div>
       <el-button type="primary" @click="openCreateDialog">新建荣誉</el-button>
     </div>
@@ -13,6 +13,7 @@
       <el-table-column prop="issuer" label="授予机构" min-width="180" />
       <el-table-column prop="awardAt" label="获得时间" width="180" />
       <el-table-column prop="imageCount" label="配图数" width="100" />
+      <el-table-column prop="attachmentText" label="附件" width="110" />
       <el-table-column prop="statusText" label="状态" width="120" />
       <el-table-column prop="updatedAt" label="更新时间" width="180" />
       <el-table-column label="操作" width="180" fixed="right">
@@ -53,6 +54,9 @@
             empty-text="暂未选择荣誉图片"
           />
         </el-form-item>
+        <el-form-item label="证书附件 / PDF">
+          <AdminMediaPicker v-model="form.attachmentUrl" button-text="选择附件文件" empty-text="暂未选择荣誉附件" />
+        </el-form-item>
         <el-form-item label="荣誉说明">
           <el-input v-model="form.description" type="textarea" :rows="5" placeholder="请输入荣誉说明" />
         </el-form-item>
@@ -82,7 +86,7 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import AdminMediaPicker from '@/views/admin/AdminMediaPicker.vue';
 import { deleteAdminHonor, getAdminHonors, saveAdminHonor } from '@/api/modules/admin';
 import type { HonorData } from '@/api/modules/site';
-import { parseImageUrls, stringifyImageUrls } from '@/utils/media';
+import { isImageUrl, parseImageUrls, stringifyImageUrls } from '@/utils/media';
 
 const rawList = ref<HonorData[]>([]);
 const dialogVisible = ref(false);
@@ -96,6 +100,7 @@ const form = reactive<Partial<HonorData>>({
   description: '',
   coverImage: '',
   imageUrls: '',
+  attachmentUrl: '',
   awardAt: '',
   sortOrder: 0,
   published: 1
@@ -104,11 +109,16 @@ const form = reactive<Partial<HonorData>>({
 const honors = computed(() =>
   rawList.value.map((item) => ({
     ...item,
-    imageCount: parseImageUrls(item.imageUrls).length,
+    imageCount: resolveImageCount(item),
+    attachmentText: item.attachmentUrl ? '已配置' : '无',
     statusText: item.published === 1 ? '已发布' : '草稿',
     raw: item
   }))
 );
+
+function resolveImageCount(item: HonorData): number {
+  return new Set([item.coverImage, ...parseImageUrls(item.imageUrls)].filter((url): url is string => !!url && isImageUrl(url))).size;
+}
 
 function resetForm(): void {
   Object.assign(form, {
@@ -118,6 +128,7 @@ function resetForm(): void {
     description: '',
     coverImage: '',
     imageUrls: '',
+    attachmentUrl: '',
     awardAt: '',
     sortOrder: 0,
     published: 1
@@ -138,7 +149,7 @@ function openCreateDialog(): void {
 function openEditDialog(item: HonorData): void {
   resetForm();
   Object.assign(form, item);
-  selectedImageUrls.value = parseImageUrls(item.imageUrls);
+  selectedImageUrls.value = parseImageUrls(item.imageUrls).filter((url) => isImageUrl(url));
   dialogVisible.value = true;
 }
 

@@ -26,6 +26,12 @@ http.interceptors.request.use((config) => {
  * 响应拦截器。
  * 统一返回后端 data 结构，简化页面层调用。
  */
-http.interceptors.response.use((response) => response.data);
+http.interceptors.response.use((response) => {
+  const payload = response.data as { code?: number } | undefined;
+  if (payload && typeof payload === 'object' && typeof payload.code === 'number' && payload.code !== 200) {
+    return Promise.reject({ response: { ...response, data: payload } });
+  }
+  return response.data;
+});
 
 export default http;

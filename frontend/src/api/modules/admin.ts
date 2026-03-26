@@ -1,5 +1,5 @@
 import http from '@/api/http';
-import type { HonorData, MomentData, PhotoData, PostData, ProfileData, ProjectData } from '@/api/modules/site';
+import type { HonorData, MomentData, PostData, ProfileData, ProjectData, WorkData } from '@/api/modules/site';
 
 /**
  * 后台登录用户信息。
@@ -19,6 +19,37 @@ export interface AdminLoginData {
   user: AdminUserData;
 }
 
+export interface VisitTrendPoint {
+  date: string;
+  label: string;
+  visitCount: number;
+}
+
+export interface DeviceTypeStat {
+  deviceType: string;
+  label: string;
+  visitCount: number;
+}
+
+export interface PageVisitStat {
+  pageKey: string;
+  label: string;
+  visitCount: number;
+  lastVisitAt?: string;
+}
+
+export interface RecentVisitRecord {
+  id: number;
+  pageKey: string;
+  pageLabel: string;
+  ipAddress: string;
+  userAgent: string;
+  deviceType: string;
+  deviceTypeLabel: string;
+  deviceName: string;
+  createdAt?: string;
+}
+
 /**
  * 后台仪表盘摘要数据。
  */
@@ -26,8 +57,45 @@ export interface DashboardSummaryData {
   postCount?: number;
   momentCount?: number;
   honorCount?: number;
-  photoCount?: number;
   userCount?: number;
+  totalPostViews?: number;
+  totalSiteVisits?: number;
+  dailySiteVisits?: VisitTrendPoint[];
+  deviceTypeDistribution?: DeviceTypeStat[];
+  topVisitedPages?: PageVisitStat[];
+}
+
+export interface AdminVisitLogQuery {
+  startTime?: string;
+  endTime?: string;
+  pageKey?: string;
+  deviceType?: string;
+  ipAddress?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+/**
+ * 调用后台访问日志列表接口。
+ */
+export function getAdminVisitLogs(params?: AdminVisitLogQuery) {
+  return http.get('/admin/visit-logs', { params });
+}
+
+/**
+ * 调用后台访问日志删除接口。
+ * @param id 访问日志主键。
+ */
+export function deleteAdminVisitLog(id: number) {
+  return http.delete(`/admin/visit-logs/${id}`);
+}
+
+/**
+ * 调用后台访问日志批量删除接口。
+ * @param ids 访问日志主键列表。
+ */
+export function deleteAdminVisitLogs(ids: number[]) {
+  return http.post('/admin/visit-logs/batch-delete', ids);
 }
 
 /**
@@ -47,9 +115,10 @@ export interface MediaData {
  * 后台用户数据。
  */
 export interface AdminListUserData {
-  id: number;
+  id?: number;
   username: string;
   displayName?: string;
+  password?: string;
   role?: string;
   enabled?: number;
   createdAt?: string;
@@ -142,6 +211,32 @@ export function deleteAdminProject(id: number) {
 }
 
 /**
+ * 调用后台作品列表接口。
+ */
+export function getAdminWorks() {
+  return http.get('/admin/works');
+}
+
+/**
+ * 调用后台作品保存接口。
+ * @param payload 作品表单数据。
+ */
+export function saveAdminWork(payload: Partial<WorkData>) {
+  if (payload.id) {
+    return http.put(`/admin/works/${payload.id}`, payload);
+  }
+  return http.post('/admin/works', payload);
+}
+
+/**
+ * 调用后台作品删除接口。
+ * @param id 作品主键。
+ */
+export function deleteAdminWork(id: number) {
+  return http.delete(`/admin/works/${id}`);
+}
+
+/**
  * 调用后台荣誉列表接口。
  */
 export function getAdminHonors() {
@@ -168,29 +263,18 @@ export function deleteAdminHonor(id: number) {
 }
 
 /**
- * 调用后台照片列表接口。
+ * 调用后台首页横幅查询接口。
  */
-export function getAdminPhotos() {
-  return http.get('/admin/photos');
+export function getAdminHeroProfile() {
+  return http.get('/admin/profile/hero');
 }
 
 /**
- * 调用后台照片保存接口。
- * @param payload 照片表单数据。
+ * 调用后台首页横幅更新接口。
+ * @param payload 首页横幅表单数据。
  */
-export function saveAdminPhoto(payload: Partial<PhotoData>) {
-  if (payload.id) {
-    return http.put(`/admin/photos/${payload.id}`, payload);
-  }
-  return http.post('/admin/photos', payload);
-}
-
-/**
- * 调用后台照片删除接口。
- * @param id 照片主键。
- */
-export function deleteAdminPhoto(id: number) {
-  return http.delete(`/admin/photos/${id}`);
+export function updateAdminHeroProfile(payload: ProfileData) {
+  return http.put('/admin/profile/hero', payload);
 }
 
 /**
@@ -216,10 +300,44 @@ export function getAdminMedia() {
 }
 
 /**
+ * 调用后台媒体删除接口。
+ * @param id 媒体主键。
+ */
+export function deleteAdminMedia(id: number) {
+  return http.delete(`/admin/media/${id}`);
+}
+
+/**
+ * 导入 uploads 目录下已存在文件。
+ */
+export function importExistingAdminMedia() {
+  return http.post('/admin/media/import-existing');
+}
+
+/**
  * 调用后台用户列表接口。
  */
 export function getAdminUsers() {
   return http.get('/admin/users');
+}
+
+/**
+ * 调用后台用户保存接口。
+ * @param payload 用户表单数据。
+ */
+export function saveAdminUser(payload: Partial<AdminListUserData>) {
+  if (payload.id) {
+    return http.put(`/admin/users/${payload.id}`, payload);
+  }
+  return http.post('/admin/users', payload);
+}
+
+/**
+ * 调用后台用户删除接口。
+ * @param id 用户主键。
+ */
+export function deleteAdminUser(id: number) {
+  return http.delete(`/admin/users/${id}`);
 }
 
 /**
