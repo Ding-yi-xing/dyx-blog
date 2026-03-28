@@ -34,6 +34,16 @@ export function isImageUrl(value?: string | null): boolean {
   return /\.(png|jpe?g|gif|webp|bmp|svg)(?:$|\?)/i.test(value);
 }
 
+export function isImageFile(file?: File | null): boolean {
+  if (!file) {
+    return false;
+  }
+  if (file.type.startsWith('image/')) {
+    return true;
+  }
+  return isImageUrl(file.name);
+}
+
 export function isVideoUrl(value?: string | null): boolean {
   if (!value) {
     return false;

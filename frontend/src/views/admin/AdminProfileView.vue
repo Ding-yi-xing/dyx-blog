@@ -11,7 +11,7 @@
               <span v-else class="text-xs text-slate-400">暂无头像</span>
             </div>
             <div class="flex flex-1 flex-col gap-3">
-              <AdminMediaPicker v-model="form.avatarUrl" button-text="选择头像" empty-text="暂未选择头像" />
+              <AdminMediaPicker :model-value="form.avatarUrl" button-text="选择头像" empty-text="暂未选择头像" @update:model-value="handleAvatarSelect" />
               <el-input v-model="form.avatarUrl" placeholder="可直接粘贴头像地址，或从媒体库选择" />
             </div>
           </div>
@@ -43,7 +43,7 @@
     <article class="rounded-[28px] bg-white p-6 shadow-sm">
       <h2 class="text-xl font-semibold text-slate-900">资料说明</h2>
       <p class="mt-4 text-sm leading-8 text-slate-600">
-        本页仅维护关于我、联系方式与头像。首页横幅内容请前往“首页横幅管理”单独调整。
+        本页仅维护关于我、联系方式与头像。首页首屏内容请前往“首页管理”单独调整。
       </p>
       <div class="mt-6 space-y-3 text-sm text-slate-600">
         <p v-if="contactMethods.length" v-for="(item, index) in contactMethods" :key="`${item.label || item.type}-${index}`">
@@ -52,17 +52,37 @@
         <p v-else>暂无联系方式</p>
       </div>
     </article>
+
+    <BusinessImageCropper
+      :visible="avatarCropperVisible"
+      :image-url="pendingAvatarUrl"
+      mode="avatar"
+      :source-name="pendingAvatarName"
+      @update:visible="handleAvatarCropperVisibleChange"
+      @confirm="handleAvatarCropConfirm"
+    />
   </section>
 </template>
 
 <script setup lang="ts">
 import { ElMessage } from 'element-plus';
 import { onMounted, reactive, ref } from 'vue';
+import BusinessImageCropper from '@/components/admin/BusinessImageCropper.vue';
 import AdminMediaPicker from '@/views/admin/AdminMediaPicker.vue';
-import { getAdminProfile, updateAdminProfile } from '@/api/modules/admin';
+import { getAdminProfile, updateAdminProfile, uploadAdminMedia } from '@/api/modules/admin';
 import { resolveProfileContactMethods, stringifyContactMethods, type ContactMethodData, type ProfileData } from '@/api/modules/site';
+import { extractFileName } from '@/utils/media';
+
+interface CropConfirmPayload {
+  edited: boolean;
+  file?: File;
+  originalUrl?: string;
+}
 
 const saving = ref(false);
+const avatarCropperVisible = ref(false);
+const pendingAvatarUrl = ref('');
+const pendingAvatarName = ref('');
 const contactMethods = ref<ContactMethodData[]>([]);
 const form = reactive<ProfileData>({
   id: 1,
@@ -103,6 +123,48 @@ function findLegacyContactValue(types: string[]): string {
     const normalized = `${item.type || ''} ${item.label || ''}`.toLowerCase();
     return types.some((type) => normalized.includes(type));
   })?.value?.trim() || '';
+}
+
+function handleAvatarSelect(value: string | string[]): void {
+  const nextUrl = typeof value === 'string' ? value.trim() : value[0]?.trim() || '';
+  if (!nextUrl) {
+    form.avatarUrl = '';
+    return;
+  }
+  if (nextUrl === form.avatarUrl) {
+    form.avatarUrl = nextUrl;
+    return;
+  }
+  pendingAvatarUrl.value = nextUrl;
+  pendingAvatarName.value = extractFileName(nextUrl);
+  avatarCropperVisible.value = true;
+}
+
+function handleAvatarCropperVisibleChange(value: boolean): void {
+  avatarCropperVisible.value = value;
+  if (!value) {
+    pendingAvatarUrl.value = '';
+    pendingAvatarName.value = '';
+  }
+}
+
+async function handleAvatarCropConfirm(payload: CropConfirmPayload): Promise<void> {
+  if (!payload.edited) {
+    form.avatarUrl = payload.originalUrl ?? pendingAvatarUrl.value ?? form.avatarUrl;
+    ElMessage.success('头像已更新');
+    return;
+  }
+  if (!payload.file) {
+    ElMessage.warning('未获取到裁剪后的头像文件');
+    return;
+  }
+  try {
+    const response = await uploadAdminMedia(payload.file);
+    form.avatarUrl = response.data?.fileUrl ?? form.avatarUrl;
+    ElMessage.success('头像裁剪并上传成功');
+  } catch (error) {
+    ElMessage.error('头像上传失败');
+  }
 }
 
 async function loadProfile(): Promise<void> {

@@ -57,6 +57,7 @@ export interface ProfileData {
   githubUrl?: string;
   avatarUrl?: string;
   resumePdfUrl?: string;
+  guestbookIntro?: string;
   contactMethods?: string;
 }
 
@@ -141,6 +142,31 @@ export interface HonorData {
   updatedAt?: string;
 }
 
+export interface FootprintData {
+  id?: number;
+  cityName: string;
+  countryName?: string;
+  regionName?: string;
+  positionX?: number;
+  positionY?: number;
+  visitedAt?: string;
+  description?: string;
+  importance?: number;
+  sortOrder?: number;
+  published?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface HomeSystemConfigData {
+  footprintEyebrow?: string;
+  footprintTitle?: string;
+  footprintSubtitle?: string;
+  footprintDescription?: string;
+  copyrightText?: string;
+  techSupportText?: string;
+}
+
 /**
  * 首页聚合数据结构。
  */
@@ -150,6 +176,22 @@ export interface HomeData {
   latestMoments?: MomentData[];
   featuredProjects?: ProjectData[];
   latestHonors?: HonorData[];
+  footprints?: FootprintData[];
+  systemConfig?: HomeSystemConfigData;
+}
+
+export interface GuestbookMessageData {
+  id?: number;
+  content?: string;
+  published?: number;
+  ipAddress?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface GuestbookData {
+  guestbookIntro?: string;
+  messages?: GuestbookMessageData[];
 }
 
 export function createDefaultHeroConfig(profile?: Pick<ProfileData, 'siteTitle' | 'heroTitle' | 'heroSubtitle' | 'avatarUrl'>): HeroConfigData {
@@ -313,6 +355,20 @@ export function getProfile() {
 }
 
 /**
+ * 获取留言页数据。
+ */
+export function getGuestbookData() {
+  return http.get('/site/guestbook');
+}
+
+/**
+ * 提交留言。
+ */
+export function createGuestbookMessage(payload: Partial<GuestbookMessageData>) {
+  return http.post('/site/guestbook/messages', payload);
+}
+
+/**
  * 获取动态列表。
  */
 export function getMoments() {
@@ -342,6 +398,13 @@ export function getWorks() {
  */
 export function getHonors() {
   return http.get('/site/honors');
+}
+
+/**
+ * 获取已发布足迹列表。
+ */
+export function getFootprints() {
+  return http.get('/site/footprints');
 }
 
 /**

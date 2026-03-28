@@ -227,6 +227,16 @@ function clearSelection(): void {
   emitValue([]);
 }
 
+function resolveErrorMessage(error: unknown, fallback: string): string {
+  if (typeof error === 'object' && error && 'response' in error) {
+    const response = (error as { response?: { data?: { message?: string } } }).response;
+    if (response?.data?.message) {
+      return response.data.message;
+    }
+  }
+  return fallback;
+}
+
 async function handleUpload(options: UploadRequestOptions): Promise<void> {
   uploading.value = true;
   try {
@@ -238,7 +248,7 @@ async function handleUpload(options: UploadRequestOptions): Promise<void> {
     }
     ElMessage.success('文件上传成功');
   } catch (error) {
-    ElMessage.error('文件上传失败');
+    ElMessage.error(resolveErrorMessage(error, '文件上传失败'));
   } finally {
     uploading.value = false;
   }

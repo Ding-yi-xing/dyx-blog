@@ -5,10 +5,18 @@
         <div>
           <div class="text-lg font-semibold">dyx-blog Admin</div>
         </div>
-        <nav class="mt-8 flex flex-1 flex-col gap-2 text-sm">
-          <RouterLink v-for="item in adminNavItems" :key="item.path" :to="item.path" class="rounded-xl px-4 py-3 transition hover:bg-slate-800">
-            {{ item.label }}
-          </RouterLink>
+        <nav class="mt-8 flex flex-1 flex-col gap-5 text-sm">
+          <div v-for="group in adminNavGroups" :key="group.label" class="space-y-2">
+            <p class="px-4 text-xs uppercase tracking-[0.22em] text-slate-500">{{ group.label }}</p>
+            <RouterLink
+              v-for="item in group.items"
+              :key="item.path"
+              :to="item.path"
+              class="block rounded-xl px-4 py-3 transition hover:bg-slate-800"
+            >
+              {{ item.label }}
+            </RouterLink>
+          </div>
         </nav>
       </aside>
 
@@ -43,16 +51,19 @@
             <div class="text-lg font-semibold">dyx-blog Admin</div>
             <button type="button" class="rounded-full border border-white/10 px-3 py-1 text-sm" @click="mobileNavOpen = false">关闭</button>
           </div>
-          <nav class="mt-8 flex flex-col gap-2 text-sm">
-            <RouterLink
-              v-for="item in adminNavItems"
-              :key="item.path"
-              :to="item.path"
-              class="rounded-xl px-4 py-3 transition hover:bg-slate-800"
-              @click="mobileNavOpen = false"
-            >
-              {{ item.label }}
-            </RouterLink>
+          <nav class="mt-8 flex flex-col gap-5 text-sm">
+            <div v-for="group in adminNavGroups" :key="group.label" class="space-y-2">
+              <p class="px-4 text-xs uppercase tracking-[0.22em] text-slate-500">{{ group.label }}</p>
+              <RouterLink
+                v-for="item in group.items"
+                :key="item.path"
+                :to="item.path"
+                class="block rounded-xl px-4 py-3 transition hover:bg-slate-800"
+                @click="mobileNavOpen = false"
+              >
+                {{ item.label }}
+              </RouterLink>
+            </div>
           </nav>
         </aside>
       </div>
@@ -69,18 +80,47 @@ const router = useRouter();
 const authStore = useAuthStore();
 const mobileNavOpen = ref(false);
 
-const adminNavItems = [
-  { path: '/admin/dashboard', label: '仪表盘' },
-  { path: '/admin/visit-logs', label: '访问日志' },
-  { path: '/admin/posts', label: '博客管理' },
-  { path: '/admin/moments', label: '动态管理' },
-  { path: '/admin/honors', label: '荣誉管理' },
-  { path: '/admin/hero', label: '首页横幅管理' },
-  { path: '/admin/about', label: '关于我管理' },
-  { path: '/admin/resume', label: '简历管理' },
-  { path: '/admin/works', label: '作品管理' },
-  { path: '/admin/media', label: '媒体资源' },
-  { path: '/admin/users', label: '用户管理' }
+const adminNavGroups = [
+  {
+    label: '概览',
+    items: [
+      { path: '/admin/dashboard', label: '仪表盘' },
+      { path: '/admin/visit-logs', label: '访问日志' }
+    ]
+  },
+  {
+    label: '首页管理',
+    items: [
+      { path: '/admin/home/hero', label: '首屏管理' },
+      { path: '/admin/home/footprints', label: '足迹管理' },
+      { path: '/admin/home/activity', label: '更新节奏' }
+    ]
+  },
+  {
+    label: '内容管理',
+    items: [
+      { path: '/admin/guestbook', label: '留言管理' },
+      { path: '/admin/posts', label: '博客管理' },
+      { path: '/admin/moments', label: '动态管理' },
+      { path: '/admin/honors', label: '荣誉管理' },
+      { path: '/admin/works', label: '作品管理' }
+    ]
+  },
+  {
+    label: '个人资料',
+    items: [
+      { path: '/admin/about', label: '关于我管理' },
+      { path: '/admin/resume', label: '简历管理' }
+    ]
+  },
+  {
+    label: '系统',
+    items: [
+      { path: '/admin/media', label: '媒体资源' },
+      { path: '/admin/system-config', label: '系统配置' },
+      { path: '/admin/users', label: '用户管理' }
+    ]
+  }
 ];
 
 function handleLogout(): void {

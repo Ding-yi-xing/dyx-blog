@@ -1,6 +1,6 @@
 <template>
   <div class="dyx-page-root" :class="[pageBgClass, layoutClass]">
-    <DyxTopNav :theme="theme" :toggle-theme="toggleTheme" />
+    <DyxTopNav :theme="theme" :toggle-theme="toggleTheme" :visible="topNavVisible" />
 
     <main :class="mainClass">
       <router-view />
@@ -9,7 +9,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import DyxTopNav from '@/components/web/DyxTopNav.vue';
 
@@ -19,6 +19,19 @@ const THEME_STORAGE_KEY = 'dyx-theme';
 
 const route = useRoute();
 const theme = ref<ThemeMode>('dark');
+const topNavVisible = ref(true);
+
+function setTopNavVisible(visible: boolean): void {
+  topNavVisible.value = visible;
+}
+
+function setTheme(nextTheme: ThemeMode): void {
+  theme.value = nextTheme;
+}
+
+provide('dyx-set-top-nav-visible', setTopNavVisible);
+provide('dyx-theme', theme);
+provide('dyx-set-theme', setTheme);
 
 const pageBgClass = computed(() =>
   typeof route.meta.pageBgClass === 'string' ? route.meta.pageBgClass : 'dyx-page-bg-default'
@@ -32,7 +45,7 @@ const layoutClass = computed(() =>
 
 const mainClass = computed(() =>
   isHomeRoute.value
-    ? 'relative z-10 -mt-[82px] h-screen overflow-hidden sm:-mt-[94px]'
+    ? 'absolute inset-0 z-10 h-full overflow-hidden'
     : 'relative z-10 pb-16 pt-4 sm:pb-20 sm:pt-6'
 );
 
@@ -116,7 +129,18 @@ onMounted(() => {
   applyAutoTheme();
 });
 
+watch(
+  isHomeRoute,
+  (value) => {
+    if (!value) {
+      topNavVisible.value = true;
+    }
+  },
+  { immediate: true }
+);
+
 onBeforeUnmount(() => {
   clearScheduledThemeTimer();
+  topNavVisible.value = true;
 });
 </script>

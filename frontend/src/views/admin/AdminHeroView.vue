@@ -3,17 +3,17 @@
     <div class="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
       <article class="space-y-6">
         <div>
-          <h2 class="text-xl font-semibold text-slate-900">首页横幅管理</h2>
+          <h2 class="text-xl font-semibold text-slate-900">首页管理 / 首屏</h2>
           <p class="mt-2 text-sm leading-6 text-slate-500">
-            拖拽调整首页横幅文案顺序，右侧图片区和背景图都可直接从媒体库替换。
+            拖拽调整首页首屏文案顺序，右侧图片区和背景图都可直接从媒体库替换。
           </p>
         </div>
 
         <section class="rounded-[24px] border border-slate-200 bg-slate-50 p-5">
           <div class="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h3 class="text-lg font-semibold text-slate-900">横幅内容编排</h3>
-              <p class="text-sm leading-6 text-slate-500">拖动组件卡片即可调整首页横幅左侧文字顺序，视觉素材区域单独维护。</p>
+              <h3 class="text-lg font-semibold text-slate-900">首屏内容编排</h3>
+              <p class="text-sm leading-6 text-slate-500">拖动组件卡片即可调整首页首屏左侧文字顺序，视觉素材区域单独维护。</p>
             </div>
           </div>
 
@@ -97,7 +97,7 @@
                     :model-value="imageBlock.backgroundImageUrl"
                     button-text="选择背景图"
                     empty-text="暂未选择背景图"
-                    @update:model-value="updateBackgroundImageUrl"
+                    @update:model-value="handleBackgroundSelect"
                   />
                 </div>
 
@@ -116,7 +116,7 @@
                     :model-value="imageBlock.imageUrl"
                     button-text="选择右侧人物图"
                     empty-text="暂未选择右侧人物图"
-                    @update:model-value="updateImageBlockUrl"
+                    @update:model-value="handlePortraitSelect"
                   />
                   <el-input v-model="imageBlock.alt" placeholder="图片说明（可选）" />
                 </div>
@@ -179,14 +179,33 @@
         </div>
       </article>
     </div>
+
+    <BusinessImageCropper
+      :visible="backgroundCropperVisible"
+      :image-url="pendingBackgroundUrl"
+      mode="hero-background"
+      :source-name="pendingBackgroundName"
+      @update:visible="handleBackgroundCropperVisibleChange"
+      @confirm="handleBackgroundCropConfirm"
+    />
+
+    <BusinessImageCropper
+      :visible="portraitCropperVisible"
+      :image-url="pendingPortraitUrl"
+      mode="hero-portrait"
+      :source-name="pendingPortraitName"
+      @update:visible="handlePortraitCropperVisibleChange"
+      @confirm="handlePortraitCropConfirm"
+    />
   </section>
 </template>
 
 <script setup lang="ts">
 import { ElMessage } from 'element-plus';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
+import BusinessImageCropper from '@/components/admin/BusinessImageCropper.vue';
 import AdminMediaPicker from '@/views/admin/AdminMediaPicker.vue';
-import { getAdminHeroProfile, updateAdminHeroProfile } from '@/api/modules/admin';
+import { getAdminHeroProfile, updateAdminHeroProfile, uploadAdminMedia } from '@/api/modules/admin';
 import {
   createDefaultHeroConfig,
   parseHeroConfig,
@@ -196,6 +215,13 @@ import {
   type HeroTextBlock,
   type ProfileData
 } from '@/api/modules/site';
+import { extractFileName } from '@/utils/media';
+
+interface CropConfirmPayload {
+  edited: boolean;
+  file?: File;
+  originalUrl?: string;
+}
 
 const contentBlockTypes = ['eyebrow', 'title', 'subtitle', 'tags'] as const;
 const blockLabelMap: Record<HeroBlock['type'], string> = {
@@ -214,6 +240,12 @@ const blockPlaceholderMap: Record<'eyebrow' | 'title' | 'subtitle', string> = {
 const saving = ref(false);
 const draggingBlockId = ref<string | null>(null);
 const heroBlocks = ref<HeroBlock[]>([]);
+const backgroundCropperVisible = ref(false);
+const portraitCropperVisible = ref(false);
+const pendingBackgroundUrl = ref('');
+const pendingBackgroundName = ref('');
+const pendingPortraitUrl = ref('');
+const pendingPortraitName = ref('');
 const form = reactive<ProfileData>({
   id: 1,
   siteTitle: '',
@@ -385,18 +417,100 @@ function updateTagItems(block: HeroTagsBlock, value: string): void {
     .filter(Boolean);
 }
 
-function updateImageBlockUrl(value: string | string[] | undefined): void {
+function handleBackgroundSelect(value: string | string[] | undefined): void {
+  const nextUrl = typeof value === 'string' ? value.trim() : value?.[0]?.trim() || '';
   if (!imageBlock.value) {
     return;
   }
-  imageBlock.value.imageUrl = typeof value === 'string' ? value : '';
+  if (!nextUrl) {
+    imageBlock.value.backgroundImageUrl = '';
+    return;
+  }
+  if (nextUrl === imageBlock.value.backgroundImageUrl) {
+    imageBlock.value.backgroundImageUrl = nextUrl;
+    return;
+  }
+  pendingBackgroundUrl.value = nextUrl;
+  pendingBackgroundName.value = extractFileName(nextUrl);
+  backgroundCropperVisible.value = true;
 }
 
-function updateBackgroundImageUrl(value: string | string[] | undefined): void {
+function handlePortraitSelect(value: string | string[] | undefined): void {
+  const nextUrl = typeof value === 'string' ? value.trim() : value?.[0]?.trim() || '';
   if (!imageBlock.value) {
     return;
   }
-  imageBlock.value.backgroundImageUrl = typeof value === 'string' ? value : '';
+  if (!nextUrl) {
+    imageBlock.value.imageUrl = '';
+    return;
+  }
+  if (nextUrl === imageBlock.value.imageUrl) {
+    imageBlock.value.imageUrl = nextUrl;
+    return;
+  }
+  pendingPortraitUrl.value = nextUrl;
+  pendingPortraitName.value = extractFileName(nextUrl);
+  portraitCropperVisible.value = true;
+}
+
+function handleBackgroundCropperVisibleChange(value: boolean): void {
+  backgroundCropperVisible.value = value;
+  if (!value) {
+    pendingBackgroundUrl.value = '';
+    pendingBackgroundName.value = '';
+  }
+}
+
+function handlePortraitCropperVisibleChange(value: boolean): void {
+  portraitCropperVisible.value = value;
+  if (!value) {
+    pendingPortraitUrl.value = '';
+    pendingPortraitName.value = '';
+  }
+}
+
+async function handleBackgroundCropConfirm(payload: CropConfirmPayload): Promise<void> {
+  if (!imageBlock.value) {
+    return;
+  }
+  if (!payload.edited) {
+    imageBlock.value.backgroundImageUrl = payload.originalUrl ?? pendingBackgroundUrl.value ?? imageBlock.value.backgroundImageUrl;
+    ElMessage.success('横幅背景图已更新');
+    return;
+  }
+  if (!payload.file) {
+    ElMessage.warning('未获取到裁剪后的背景图文件');
+    return;
+  }
+  try {
+    const response = await uploadAdminMedia(payload.file);
+    imageBlock.value.backgroundImageUrl = response.data?.fileUrl ?? imageBlock.value.backgroundImageUrl;
+    ElMessage.success('横幅背景图裁剪并上传成功');
+  } catch (error) {
+    ElMessage.error('横幅背景图上传失败');
+  }
+}
+
+async function handlePortraitCropConfirm(payload: CropConfirmPayload): Promise<void> {
+  if (!imageBlock.value) {
+    return;
+  }
+  if (!payload.edited) {
+    imageBlock.value.imageUrl = payload.originalUrl ?? pendingPortraitUrl.value ?? imageBlock.value.imageUrl;
+    ElMessage.success('横幅人物图已更新');
+    return;
+  }
+  if (!payload.file) {
+    ElMessage.warning('未获取到裁剪后的人物图文件');
+    return;
+  }
+  try {
+    const response = await uploadAdminMedia(payload.file);
+    imageBlock.value.imageUrl = response.data?.fileUrl ?? imageBlock.value.imageUrl;
+    ElMessage.success('横幅人物图裁剪并上传成功');
+  } catch (error) {
+    ElMessage.error('横幅人物图上传失败');
+  }
 }
 
 function moveBlock(blockId: string, direction: number): void {

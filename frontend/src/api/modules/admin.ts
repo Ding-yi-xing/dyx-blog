@@ -1,5 +1,15 @@
 import http from '@/api/http';
-import type { HonorData, MomentData, PostData, ProfileData, ProjectData, WorkData } from '@/api/modules/site';
+import type {
+  FootprintData,
+  GuestbookData,
+  GuestbookMessageData,
+  HonorData,
+  MomentData,
+  PostData,
+  ProfileData,
+  ProjectData,
+  WorkData
+} from '@/api/modules/site';
 
 /**
  * 后台登录用户信息。
@@ -50,6 +60,8 @@ export interface RecentVisitRecord {
   createdAt?: string;
 }
 
+export type AdminGuestbookData = GuestbookData;
+
 /**
  * 后台仪表盘摘要数据。
  */
@@ -75,6 +87,23 @@ export interface AdminVisitLogQuery {
   pageSize?: number;
 }
 
+export interface SystemConfigData {
+  id?: number;
+  storageType?: 'local' | 'oss' | string;
+  ossEndpoint?: string;
+  ossRegion?: string;
+  ossBucketName?: string;
+  ossPublicUrlPrefix?: string;
+  ossBaseDir?: string;
+  footprintEyebrow?: string;
+  footprintTitle?: string;
+  footprintSubtitle?: string;
+  footprintDescription?: string;
+  copyrightText?: string;
+  techSupportText?: string;
+  updatedAt?: string;
+}
+
 /**
  * 调用后台访问日志列表接口。
  */
@@ -98,17 +127,37 @@ export function deleteAdminVisitLogs(ids: number[]) {
   return http.post('/admin/visit-logs/batch-delete', ids);
 }
 
+export function getAdminGuestbook() {
+  return http.get('/admin/guestbook');
+}
+
+export function updateAdminGuestbookIntro(guestbookIntro: string) {
+  return http.put('/admin/guestbook/intro', { guestbookIntro });
+}
+
+export function updateAdminGuestbookMessage(id: number, payload: Partial<GuestbookMessageData>) {
+  return http.put(`/admin/guestbook/messages/${id}`, payload);
+}
+
+export function deleteAdminGuestbookMessage(id: number) {
+  return http.delete(`/admin/guestbook/messages/${id}`);
+}
+
 /**
  * 媒体资源数据。
  */
 export interface MediaData {
-  id: number;
+  id: string;
   originalName?: string;
   fileName?: string;
   fileUrl?: string;
   mediaType?: string;
   fileSize?: number;
   createdAt?: string;
+}
+
+export function getAdminMediaContentUrl(fileUrl: string) {
+  return `/api/admin/media/content?fileUrl=${encodeURIComponent(fileUrl)}`;
 }
 
 /**
@@ -263,6 +312,32 @@ export function deleteAdminHonor(id: number) {
 }
 
 /**
+ * 调用后台足迹列表接口。
+ */
+export function getAdminFootprints() {
+  return http.get('/admin/footprints');
+}
+
+/**
+ * 调用后台足迹保存接口。
+ * @param payload 足迹表单数据。
+ */
+export function saveAdminFootprint(payload: Partial<FootprintData>) {
+  if (payload.id) {
+    return http.put(`/admin/footprints/${payload.id}`, payload);
+  }
+  return http.post('/admin/footprints', payload);
+}
+
+/**
+ * 调用后台足迹删除接口。
+ * @param id 足迹主键。
+ */
+export function deleteAdminFootprint(id: number) {
+  return http.delete(`/admin/footprints/${id}`);
+}
+
+/**
  * 调用后台首页横幅查询接口。
  */
 export function getAdminHeroProfile() {
@@ -293,6 +368,21 @@ export function updateAdminProfile(payload: ProfileData) {
 }
 
 /**
+ * 调用后台系统配置查询接口。
+ */
+export function getAdminSystemConfig() {
+  return http.get('/admin/system-config');
+}
+
+/**
+ * 调用后台系统配置更新接口。
+ * @param payload 系统配置表单数据。
+ */
+export function updateAdminSystemConfig(payload: SystemConfigData) {
+  return http.put('/admin/system-config', payload);
+}
+
+/**
  * 调用后台媒体列表接口。
  */
 export function getAdminMedia() {
@@ -303,7 +393,7 @@ export function getAdminMedia() {
  * 调用后台媒体删除接口。
  * @param id 媒体主键。
  */
-export function deleteAdminMedia(id: number) {
+export function deleteAdminMedia(id: string | number) {
   return http.delete(`/admin/media/${id}`);
 }
 

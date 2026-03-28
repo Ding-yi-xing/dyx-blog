@@ -22,16 +22,6 @@
             >
               查看简历
             </RouterLink>
-            <a
-              v-if="profile.resumePdfUrl"
-              :href="profile.resumePdfUrl"
-              download
-              target="_blank"
-              rel="noreferrer"
-              class="dyx-ghost-pill inline-flex"
-            >
-              下载 PDF 简历
-            </a>
           </div>
         </div>
 

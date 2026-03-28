@@ -1,6 +1,7 @@
 <template>
   <header
-    class="sticky top-0 z-40 w-full bg-transparent px-0"
+    class="fixed inset-x-0 top-0 z-50 w-full bg-transparent px-0 transition duration-300"
+    :class="props.visible === false ? 'dyx-topbar-hidden' : 'dyx-topbar-visible'"
     style="background-color: transparent !important"
   >
     <div class="w-full px-3 sm:px-4 lg:px-5">
@@ -136,6 +137,7 @@ import { useRoute, useRouter } from "vue-router";
 const props = defineProps<{
   theme: "light" | "dark";
   toggleTheme: () => void;
+  visible?: boolean;
 }>();
 
 const route = useRoute();
@@ -145,6 +147,7 @@ const mobileNavOpen = ref(false);
 const dyxNavItems = [
   { path: "/blog", label: "博客" },
   { path: "/moments", label: "动态" },
+  { path: "/guestbook", label: "留言" },
   { path: "/about", label: "关于我" },
   { path: "/resume", label: "简历" },
 ];
@@ -184,5 +187,17 @@ function handleToggleTheme(): void {
 .mobile-drawer-enter-from,
 .mobile-drawer-leave-to {
   opacity: 0;
+}
+
+.dyx-topbar-visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.dyx-topbar-hidden {
+  opacity: 0;
+  transform: translateY(-16px);
+  pointer-events: none;
 }
 </style>

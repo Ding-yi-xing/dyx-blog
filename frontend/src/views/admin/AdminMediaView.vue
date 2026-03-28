@@ -5,7 +5,7 @@
       <div class="flex flex-wrap gap-3">
         <el-button :loading="importing" plain @click="handleImportExisting">导入 uploads 文件</el-button>
         <el-upload :show-file-list="false" :http-request="handleUpload">
-          <el-button type="primary">选择文件</el-button>
+          <el-button type="primary" :loading="uploading">选择文件</el-button>
         </el-upload>
       </div>
     </div>
@@ -83,6 +83,7 @@ import type { MediaData } from '@/api/modules/admin';
 import { extractFileName, isImageUrl, isPdfUrl } from '@/utils/media';
 
 const importing = ref(false);
+const uploading = ref(false);
 const mediaRawList = ref<MediaData[]>([]);
 
 const mediaList = computed(() =>
@@ -126,12 +127,18 @@ async function handleImportExisting(): Promise<void> {
 }
 
 async function handleUpload(options: UploadRequestOptions): Promise<void> {
+  if (uploading.value) {
+    return;
+  }
+  uploading.value = true;
   try {
     await uploadAdminMedia(options.file as File);
     ElMessage.success('上传成功');
     await loadMediaList();
   } catch (error) {
-    ElMessage.error('上传失败');
+    ElMessage.error(resolveErrorMessage(error, '上传失败'));
+  } finally {
+    uploading.value = false;
   }
 }
 

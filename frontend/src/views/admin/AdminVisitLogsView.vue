@@ -123,6 +123,7 @@ const pageOptions = [
   { label: '首页', value: 'home' },
   { label: '关于我', value: 'profile' },
   { label: '简历', value: 'resume' },
+  { label: '留言', value: 'guestbook' },
   { label: '动态', value: 'moments' },
   { label: '博客', value: 'blog' },
   { label: '博客详情', value: 'blog-detail' }
