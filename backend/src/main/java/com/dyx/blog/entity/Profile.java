@@ -29,5 +29,6 @@ public class Profile {
     private String contactMethods;
     private String avatarUrl;
     private String resumePdfUrl;
+    private String guestbookIntro;
     private LocalDateTime updatedAt;
 }

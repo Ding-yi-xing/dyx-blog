@@ -1,17 +1,21 @@
 package com.dyx.blog.controller.admin;
 
 import com.dyx.blog.common.response.Result;
+import com.dyx.blog.entity.Footprint;
+import com.dyx.blog.entity.GuestbookMessage;
 import com.dyx.blog.entity.Honor;
 import com.dyx.blog.entity.Moment;
 import com.dyx.blog.entity.Post;
 import com.dyx.blog.entity.Profile;
 import com.dyx.blog.entity.Project;
+import com.dyx.blog.entity.SystemConfig;
 import com.dyx.blog.entity.User;
 import com.dyx.blog.entity.Work;
 import com.dyx.blog.service.AdminService;
 import com.dyx.blog.service.MediaService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -88,6 +92,51 @@ public class AdminController {
     @PostMapping("/visit-logs/batch-delete")
     public Result<Void> deleteVisitLogs(@RequestBody List<Long> ids) {
         dyxAdminService.deleteVisitLogs(ids);
+        return Result.success();
+    }
+
+    /**
+     * 获取留言管理数据。
+     *
+     * @return 留言管理结果。
+     */
+    @GetMapping("/guestbook")
+    public Result<Map<String, Object>> getGuestbookAdminData() {
+        return Result.success(dyxAdminService.getGuestbookAdminData());
+    }
+
+    /**
+     * 更新留言页介绍。
+     *
+     * @param payload 包含介绍文案的请求体。
+     * @return 保存结果。
+     */
+    @PutMapping("/guestbook/intro")
+    public Result<Profile> updateGuestbookIntro(@RequestBody Map<String, String> payload) {
+        return Result.success(dyxAdminService.saveGuestbookIntro(payload == null ? null : payload.get("guestbookIntro")));
+    }
+
+    /**
+     * 更新留言。
+     *
+     * @param id 留言主键。
+     * @param message 留言对象。
+     * @return 保存结果。
+     */
+    @PutMapping("/guestbook/messages/{id}")
+    public Result<GuestbookMessage> updateGuestbookMessage(@PathVariable Long id, @RequestBody GuestbookMessage message) {
+        return Result.success(dyxAdminService.updateGuestbookMessage(id, message));
+    }
+
+    /**
+     * 删除留言。
+     *
+     * @param id 留言主键。
+     * @return 删除结果。
+     */
+    @DeleteMapping("/guestbook/messages/{id}")
+    public Result<Void> deleteGuestbookMessage(@PathVariable Long id) {
+        dyxAdminService.deleteGuestbookMessage(id);
         return Result.success();
     }
 
@@ -322,6 +371,52 @@ public class AdminController {
     }
 
     /**
+     * 获取首页足迹列表。
+     *
+     * @return 足迹结果列表。
+     */
+    @GetMapping("/footprints")
+    public Result<List<Footprint>> listFootprints() {
+        return Result.success(dyxAdminService.listFootprints());
+    }
+
+    /**
+     * 新增首页足迹。
+     *
+     * @param footprint 足迹对象。
+     * @return 保存结果。
+     */
+    @PostMapping("/footprints")
+    public Result<Footprint> createFootprint(@RequestBody Footprint footprint) {
+        return Result.success(dyxAdminService.saveFootprint(footprint));
+    }
+
+    /**
+     * 更新首页足迹。
+     *
+     * @param id 足迹主键。
+     * @param footprint 足迹对象。
+     * @return 保存结果。
+     */
+    @PutMapping("/footprints/{id}")
+    public Result<Footprint> updateFootprint(@PathVariable Long id, @RequestBody Footprint footprint) {
+        footprint.setId(id);
+        return Result.success(dyxAdminService.saveFootprint(footprint));
+    }
+
+    /**
+     * 删除首页足迹。
+     *
+     * @param id 足迹主键。
+     * @return 删除结果。
+     */
+    @DeleteMapping("/footprints/{id}")
+    public Result<Void> deleteFootprint(@PathVariable Long id) {
+        dyxAdminService.deleteFootprint(id);
+        return Result.success();
+    }
+
+    /**
      * 获取首页横幅配置。
      *
      * @return 首页横幅结果。
@@ -361,6 +456,27 @@ public class AdminController {
     @PutMapping("/profile")
     public Result<Profile> updateProfile(@RequestBody Profile profile) {
         return Result.success(dyxAdminService.saveProfile(profile));
+    }
+
+    /**
+     * 获取系统配置。
+     *
+     * @return 系统配置结果。
+     */
+    @GetMapping("/system-config")
+    public Result<SystemConfig> getSystemConfig() {
+        return Result.success(dyxAdminService.getSystemConfig());
+    }
+
+    /**
+     * 更新系统配置。
+     *
+     * @param systemConfig 系统配置对象。
+     * @return 保存结果。
+     */
+    @PutMapping("/system-config")
+    public Result<SystemConfig> updateSystemConfig(@RequestBody SystemConfig systemConfig) {
+        return Result.success(dyxAdminService.saveSystemConfig(systemConfig));
     }
 
     /**
@@ -417,6 +533,17 @@ public class AdminController {
     @GetMapping("/media")
     public Result<?> listMedia() {
         return Result.success(dyxMediaService.listAll());
+    }
+
+    /**
+     * 代理读取媒体文件，供同源裁剪场景使用。
+     *
+     * @param fileUrl 媒体地址。
+     * @return 媒体文件响应。
+     */
+    @GetMapping("/media/content")
+    public ResponseEntity<byte[]> proxyMedia(@RequestParam String fileUrl) {
+        return dyxMediaService.proxyMedia(fileUrl);
     }
 
     /**

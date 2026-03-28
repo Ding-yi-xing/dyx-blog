@@ -1,6 +1,7 @@
 package com.dyx.blog.service;
 
 import com.dyx.blog.entity.Media;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -31,6 +32,14 @@ public interface MediaService {
      * @return 媒体资源列表。
      */
     List<Media> listAll();
+
+    /**
+     * 以同源方式读取媒体资源，供前端裁剪等场景使用。
+     *
+     * @param fileUrl 媒体地址。
+     * @return 媒体文件响应。
+     */
+    ResponseEntity<byte[]> proxyMedia(String fileUrl);
 
     /**
      * 删除未被引用的媒体资源。

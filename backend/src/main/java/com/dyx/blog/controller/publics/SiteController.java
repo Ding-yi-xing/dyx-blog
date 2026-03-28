@@ -1,6 +1,8 @@
 package com.dyx.blog.controller.publics;
 
 import com.dyx.blog.common.response.Result;
+import com.dyx.blog.entity.Footprint;
+import com.dyx.blog.entity.GuestbookMessage;
 import com.dyx.blog.entity.Honor;
 import com.dyx.blog.entity.Moment;
 import com.dyx.blog.entity.Post;
@@ -13,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -48,6 +51,28 @@ public class SiteController {
     @GetMapping("/site/profile")
     public Result<Profile> getProfile() {
         return Result.success(dyxSiteService.getProfile());
+    }
+
+    /**
+     * 获取留言页数据。
+     *
+     * @return 留言页结果。
+     */
+    @GetMapping("/site/guestbook")
+    public Result<Map<String, Object>> getGuestbookData() {
+        return Result.success(dyxSiteService.getGuestbookData());
+    }
+
+    /**
+     * 提交留言。
+     *
+     * @param message 留言对象。
+     * @param request 当前请求。
+     * @return 保存结果。
+     */
+    @PostMapping("/site/guestbook/messages")
+    public Result<GuestbookMessage> createGuestbookMessage(@RequestBody GuestbookMessage message, HttpServletRequest request) {
+        return Result.success(dyxSiteService.saveGuestbookMessage(message, request));
     }
 
     /**
@@ -99,6 +124,16 @@ public class SiteController {
     @GetMapping("/site/honors")
     public Result<List<Honor>> listHonors() {
         return Result.success(dyxSiteService.listHonors());
+    }
+
+    /**
+     * 获取已发布足迹列表。
+     *
+     * @return 足迹结果列表。
+     */
+    @GetMapping("/site/footprints")
+    public Result<List<Footprint>> listFootprints() {
+        return Result.success(dyxSiteService.listFootprints());
     }
 
     /**

@@ -1,5 +1,7 @@
 package com.dyx.blog.service;
 
+import com.dyx.blog.entity.Footprint;
+import com.dyx.blog.entity.GuestbookMessage;
 import com.dyx.blog.entity.Honor;
 import com.dyx.blog.entity.Moment;
 import com.dyx.blog.entity.Post;
@@ -29,6 +31,22 @@ public interface SiteService {
      * @return 个人资料。
      */
     Profile getProfile();
+
+    /**
+     * 获取留言页数据。
+     *
+     * @return 留言页数据。
+     */
+    Map<String, Object> getGuestbookData();
+
+    /**
+     * 提交留言。
+     *
+     * @param message 留言内容。
+     * @param request 当前请求。
+     * @return 保存后的留言。
+     */
+    GuestbookMessage saveGuestbookMessage(GuestbookMessage message, HttpServletRequest request);
 
     /**
      * 获取已发布文章列表。
@@ -80,6 +98,13 @@ public interface SiteService {
      * @return 荣誉列表。
      */
     List<Honor> listHonors();
+
+    /**
+     * 获取已发布首页足迹列表。
+     *
+     * @return 足迹列表。
+     */
+    List<Footprint> listFootprints();
 
     /**
      * 记录公开页面访问。

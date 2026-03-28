@@ -99,7 +99,19 @@ CREATE TABLE IF NOT EXISTS dyx_profile (
     contact_methods LONGTEXT,
     avatar_url VARCHAR(255),
     resume_pdf_url VARCHAR(255),
+    guestbook_intro TEXT,
     updated_at DATETIME NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS dyx_guestbook_message (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    content TEXT NOT NULL,
+    published TINYINT NOT NULL DEFAULT 0,
+    ip_address VARCHAR(45) NOT NULL,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    INDEX idx_guestbook_message_published (published),
+    INDEX idx_guestbook_message_created_at (created_at)
 );
 
 CREATE TABLE IF NOT EXISTS dyx_media (
@@ -125,6 +137,42 @@ CREATE TABLE IF NOT EXISTS dyx_site_visit_log (
     INDEX idx_site_visit_log_device_type (device_type)
 );
 
+CREATE TABLE IF NOT EXISTS dyx_footprint (
+    id BIGINT PRIMARY KEY,
+    city_name VARCHAR(100) NOT NULL,
+    country_name VARCHAR(100),
+    region_name VARCHAR(100),
+    position_x DECIMAL(5,2) NOT NULL DEFAULT 0,
+    position_y DECIMAL(5,2) NOT NULL DEFAULT 0,
+    visited_at DATETIME,
+    description TEXT,
+    importance INT NOT NULL DEFAULT 1,
+    sort_order INT NOT NULL DEFAULT 0,
+    published TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    INDEX idx_footprint_published (published),
+    INDEX idx_footprint_sort_order (sort_order),
+    INDEX idx_footprint_visited_at (visited_at)
+);
+
+CREATE TABLE IF NOT EXISTS dyx_system_config (
+    id BIGINT PRIMARY KEY,
+    storage_type VARCHAR(32) NOT NULL DEFAULT 'local',
+    oss_endpoint VARCHAR(255),
+    oss_region VARCHAR(100),
+    oss_bucket_name VARCHAR(255),
+    oss_public_url_prefix VARCHAR(255),
+    oss_base_dir VARCHAR(255),
+    footprint_eyebrow VARCHAR(120),
+    footprint_title VARCHAR(200),
+    footprint_subtitle VARCHAR(255),
+    footprint_description VARCHAR(500),
+    copyright_text VARCHAR(255),
+    tech_support_text VARCHAR(255),
+    updated_at DATETIME NOT NULL
+);
+
 INSERT INTO dyx_media (id, original_name, file_name, file_url, media_type, file_size, created_at)
 VALUES
     (601, '42263dcc-1292-434c-8aa8-878f5b8ba6bc.jpg', '42263dcc-1292-434c-8aa8-878f5b8ba6bc.jpg', '/media/42263dcc-1292-434c-8aa8-878f5b8ba6bc.jpg', 'image/jpeg', 0, NOW()),
@@ -142,6 +190,23 @@ ON DUPLICATE KEY UPDATE
     media_type = VALUES(media_type),
     file_size = VALUES(file_size);
 
+INSERT INTO dyx_system_config (id, storage_type, oss_endpoint, oss_region, oss_bucket_name, oss_public_url_prefix, oss_base_dir, footprint_eyebrow, footprint_title, footprint_subtitle, footprint_description, copyright_text, tech_support_text, updated_at)
+VALUES (1, 'local', NULL, NULL, NULL, NULL, NULL, 'Footprints', '我去过的地方', '从沿海到高原，慢慢点亮地图上的每一站。', '这些城市和区域构成了最近几年的出发方向，也让首页第二屏变成一张正在持续扩展的旅行轨迹。', '© 2026 DYX. All rights reserved.', '技术支持 · Vue 3 + Spring Boot 3', NOW())
+ON DUPLICATE KEY UPDATE
+    storage_type = VALUES(storage_type),
+    oss_endpoint = VALUES(oss_endpoint),
+    oss_region = VALUES(oss_region),
+    oss_bucket_name = VALUES(oss_bucket_name),
+    oss_public_url_prefix = VALUES(oss_public_url_prefix),
+    oss_base_dir = VALUES(oss_base_dir),
+    footprint_eyebrow = VALUES(footprint_eyebrow),
+    footprint_title = VALUES(footprint_title),
+    footprint_subtitle = VALUES(footprint_subtitle),
+    footprint_description = VALUES(footprint_description),
+    copyright_text = VALUES(copyright_text),
+    tech_support_text = VALUES(tech_support_text),
+    updated_at = NOW();
+
 INSERT INTO dyx_user (id, username, password, display_name, role, enabled, created_at, updated_at)
 VALUES (1, 'admin', 'admin123456', 'DYX 管理员', 'ADMIN', 1, NOW(), NOW())
 ON DUPLICATE KEY UPDATE
@@ -150,7 +215,7 @@ ON DUPLICATE KEY UPDATE
     enabled = VALUES(enabled),
     updated_at = NOW();
 
-INSERT INTO dyx_profile (id, site_title, hero_title, hero_subtitle, hero_config, about_content, education_experience, work_experience, email, phone, wechat, github_url, contact_methods, avatar_url, resume_pdf_url, updated_at)
+INSERT INTO dyx_profile (id, site_title, hero_title, hero_subtitle, hero_config, about_content, education_experience, work_experience, email, phone, wechat, github_url, contact_methods, avatar_url, resume_pdf_url, guestbook_intro, updated_at)
 VALUES (
     1,
     'dyx-blog',
@@ -167,6 +232,7 @@ VALUES (
     '[{"type":"email","label":"邮箱","value":"example@example.com"},{"type":"phone","label":"电话","value":"13800000000"},{"type":"wechat","label":"微信","value":"dyx-wechat"},{"type":"github","label":"GitHub","value":"https://github.com/example"}]',
     '/media/42263dcc-1292-434c-8aa8-878f5b8ba6bc.jpg',
     '/media/直聘简历-未命名.pdf',
+    '这里会保留一些来自访客的短留言。你可以只写正文，并自行选择这条留言是否公开展示。',
     NOW()
 )
 ON DUPLICATE KEY UPDATE
@@ -184,6 +250,49 @@ ON DUPLICATE KEY UPDATE
     contact_methods = VALUES(contact_methods),
     avatar_url = VALUES(avatar_url),
     resume_pdf_url = VALUES(resume_pdf_url),
+    guestbook_intro = VALUES(guestbook_intro),
+    updated_at = NOW();
+
+INSERT INTO dyx_footprint (id, city_name, country_name, region_name, position_x, position_y, visited_at, description, importance, sort_order, published, created_at, updated_at)
+VALUES
+    (701, '厦门市', '中国', '福建省', 77.00, 75.00, '2025-03-01 00:00:00', '目前记录中的最南一站。', 5, 0, 1, NOW(), NOW()),
+    (702, '大连市', '中国', '辽宁省', 87.00, 24.00, '2024-03-27 00:00:00', '北方沿海城市足迹。', 5, 1, 1, NOW(), NOW()),
+    (703, '淮安市', '中国', '江苏省', 76.00, 46.00, '2024-03-27 00:00:00', '华东旅途中的一站。', 4, 2, 1, NOW(), NOW()),
+    (704, '舟山市', '中国', '浙江省', 84.00, 59.00, '2024-03-30 00:00:00', '海岛路线记录。', 4, 3, 1, NOW(), NOW()),
+    (705, '南京市', '中国', '江苏省', 74.00, 52.00, '2024-04-14 00:00:00', '城市漫游记录。', 4, 4, 1, NOW(), NOW()),
+    (706, '成都市', '中国', '四川省', 40.00, 60.00, '2024-10-29 00:00:00', '西南方向的重要城市足迹。', 5, 5, 1, NOW(), NOW()),
+    (707, '山南市', '中国', '西藏自治区', 22.00, 63.00, '2024-10-28 00:00:00', '高原路线中的一站。', 5, 6, 1, NOW(), NOW()),
+    (708, '拉萨市', '中国', '西藏自治区', 18.00, 66.00, '2024-10-23 00:00:00', '高原城市足迹。', 5, 7, 1, NOW(), NOW()),
+    (709, '咸阳市', '中国', '陕西省', 49.00, 48.00, '2024-10-22 00:00:00', '关中平原路线记录。', 4, 8, 1, NOW(), NOW()),
+    (710, '襄阳市', '中国', '湖北省', 58.00, 53.00, '2024-10-22 00:00:00', '中部城市足迹。', 4, 9, 1, NOW(), NOW()),
+    (711, '南昌市', '中国', '江西省', 67.00, 61.00, '2025-01-11 00:00:00', '近期到访的省会城市。', 5, 10, 1, NOW(), NOW()),
+    (712, '铜陵市', '中国', '安徽省', 71.00, 56.00, '2023-11-04 00:00:00', '皖南路线足迹。', 3, 11, 1, NOW(), NOW()),
+    (713, '上饶市', '中国', '江西省', 70.00, 63.00, '2023-11-04 00:00:00', '赣东北旅途记录。', 3, 12, 1, NOW(), NOW()),
+    (714, '上海市', '中国', '上海市', 80.00, 54.00, '2023-10-29 00:00:00', '华东沿海城市足迹。', 4, 13, 1, NOW(), NOW()),
+    (715, '宁波市', '中国', '浙江省', 82.00, 58.00, '2023-10-28 00:00:00', '东海沿岸路线中的一站。', 3, 14, 1, NOW(), NOW()),
+    (716, '温州市', '中国', '浙江省', 81.00, 63.00, '2023-07-29 00:00:00', '浙南沿海城市记录。', 4, 15, 1, NOW(), NOW()),
+    (717, '杭州市', '中国', '浙江省', 78.00, 58.00, '2023-01-06 00:00:00', '江南城市足迹。', 4, 16, 1, NOW(), NOW()),
+    (718, '泉州市', '中国', '福建省', 76.00, 72.00, '2022-10-21 00:00:00', '闽南路线中的一站。', 4, 17, 1, NOW(), NOW()),
+    (719, '宁德市', '中国', '福建省', 78.00, 68.00, '2020-09-03 00:00:00', '闽东沿海足迹。', 3, 18, 1, NOW(), NOW()),
+    (720, '南平市', '中国', '福建省', 72.00, 66.00, '2020-01-17 00:00:00', '闽北路线记录。', 3, 19, 1, NOW(), NOW()),
+    (721, '福州市', '中国', '福建省', 78.00, 70.00, '2019-09-11 00:00:00', '较早期的城市足迹。', 3, 20, 1, NOW(), NOW()),
+    (722, '芜湖市', '中国', '安徽省', 73.00, 54.00, '2023-11-06 00:00:00', '长江沿线城市记录。', 3, 21, 1, NOW(), NOW()),
+    (723, '济宁市', '中国', '山东省', 69.00, 42.00, '2023-11-04 00:00:00', '鲁西南城市足迹。', 3, 22, 1, NOW(), NOW()),
+    (724, '枣庄市', '中国', '山东省', 71.00, 41.00, '2023-11-04 00:00:00', '鲁南路线记录。', 3, 23, 1, NOW(), NOW()),
+    (725, '徐州市', '中国', '江苏省', 72.00, 44.00, '2023-11-04 00:00:00', '苏北路线中的一站。', 3, 24, 1, NOW(), NOW()),
+    (726, '宿州市', '中国', '安徽省', 71.00, 47.00, '2023-11-04 00:00:00', '皖北城市足迹。', 3, 25, 1, NOW(), NOW()),
+    (727, '南阳市', '中国', '河南省', 61.00, 52.00, '2023-10-27 00:00:00', '中原方向的城市记录。', 3, 26, 1, NOW(), NOW())
+ON DUPLICATE KEY UPDATE
+    city_name = VALUES(city_name),
+    country_name = VALUES(country_name),
+    region_name = VALUES(region_name),
+    position_x = VALUES(position_x),
+    position_y = VALUES(position_y),
+    visited_at = VALUES(visited_at),
+    description = VALUES(description),
+    importance = VALUES(importance),
+    sort_order = VALUES(sort_order),
+    published = VALUES(published),
     updated_at = NOW();
 
 INSERT INTO dyx_post (id, title, summary, content, cover_image, category, tags, published, view_count, created_at, updated_at)
@@ -456,9 +565,20 @@ VALUES
     ('resume', 0, NOW()),
     ('moments', 0, NOW()),
     ('blog', 0, NOW()),
-    ('blog-detail', 0, NOW())
+    ('blog-detail', 0, NOW()),
+    ('guestbook', 0, NOW())
 ON DUPLICATE KEY UPDATE
     updated_at = NOW();
+
+INSERT INTO dyx_guestbook_message (id, content, published, ip_address, created_at, updated_at)
+VALUES
+    (1, '很喜欢这个站点现在的排版和节奏，继续更新。', 1, '127.0.0.1', NOW(), NOW()),
+    (2, '页面很干净，留言功能加上之后互动感更强了。', 0, '127.0.0.1', NOW(), NOW())
+ON DUPLICATE KEY UPDATE
+    content = VALUES(content),
+    published = VALUES(published),
+    ip_address = VALUES(ip_address),
+    updated_at = VALUES(updated_at);
 
 INSERT INTO dyx_site_visit_log (page_key, ip_address, user_agent, device_type, device_name, created_at)
 VALUES

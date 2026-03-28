@@ -5,22 +5,29 @@ import com.dyx.blog.common.constant.SystemConstant;
 import com.dyx.blog.common.context.UserContext;
 import com.dyx.blog.common.exception.BusinessException;
 import com.dyx.blog.common.util.HeroConfigUtil;
+import com.dyx.blog.entity.Footprint;
+import com.dyx.blog.entity.GuestbookMessage;
 import com.dyx.blog.entity.Honor;
 import com.dyx.blog.entity.Moment;
 import com.dyx.blog.entity.Post;
 import com.dyx.blog.entity.Profile;
 import com.dyx.blog.entity.Project;
+import com.dyx.blog.entity.SystemConfig;
 import com.dyx.blog.entity.User;
 import com.dyx.blog.entity.Work;
+import com.dyx.blog.mapper.FootprintMapper;
+import com.dyx.blog.mapper.GuestbookMessageMapper;
 import com.dyx.blog.mapper.HonorMapper;
 import com.dyx.blog.mapper.MomentMapper;
 import com.dyx.blog.mapper.PostMapper;
 import com.dyx.blog.mapper.ProfileMapper;
 import com.dyx.blog.mapper.ProjectMapper;
 import com.dyx.blog.mapper.SiteVisitLogMapper;
+import com.dyx.blog.mapper.SystemConfigMapper;
 import com.dyx.blog.mapper.UserMapper;
 import com.dyx.blog.mapper.WorkMapper;
 import com.dyx.blog.service.AdminService;
+import com.dyx.blog.storage.OssMediaStorage;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -53,7 +60,10 @@ public class AdminServiceImpl implements AdminService {
     private final ProfileMapper dyxProfileMapper;
     private final UserMapper dyxUserMapper;
     private final HonorMapper dyxHonorMapper;
+    private final FootprintMapper dyxFootprintMapper;
+    private final GuestbookMessageMapper dyxGuestbookMessageMapper;
     private final SiteVisitLogMapper dyxSiteVisitLogMapper;
+    private final SystemConfigMapper dyxSystemConfigMapper;
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
 
@@ -117,6 +127,79 @@ public class AdminServiceImpl implements AdminService {
             throw new BusinessException("请选择需要删除的访问日志");
         }
         dyxSiteVisitLogMapper.deleteBatchIds(ids);
+    }
+
+    /**
+     * 获取留言管理数据。
+     *
+     * @return 留言管理数据。
+     */
+    @Override
+    public Map<String, Object> getGuestbookAdminData() {
+        ensureGuestbookMessageTable();
+        Profile profile = getProfile();
+        Map<String, Object> result = new HashMap<>();
+        result.put("guestbookIntro", profile.getGuestbookIntro());
+        result.put("messages", dyxGuestbookMessageMapper.selectList(new LambdaQueryWrapper<GuestbookMessage>()
+                .orderByDesc(GuestbookMessage::getCreatedAt)
+                .orderByDesc(GuestbookMessage::getId)));
+        return result;
+    }
+
+    /**
+     * 更新留言页介绍。
+     *
+     * @param guestbookIntro 介绍文案。
+     * @return 保存后的个人资料。
+     */
+    @Override
+    public Profile saveGuestbookIntro(String guestbookIntro) {
+        Profile profile = getProfile();
+        profile.setGuestbookIntro(guestbookIntro == null ? null : guestbookIntro.trim());
+        return saveProfile(profile);
+    }
+
+    /**
+     * 更新留言。
+     *
+     * @param id 留言主键。
+     * @param message 留言内容。
+     * @return 保存后的留言。
+     */
+    @Override
+    public GuestbookMessage updateGuestbookMessage(Long id, GuestbookMessage message) {
+        ensureGuestbookMessageTable();
+        GuestbookMessage existingMessage = dyxGuestbookMessageMapper.selectById(id);
+        if (existingMessage == null) {
+            throw new BusinessException("留言不存在");
+        }
+        if (message != null && message.getContent() != null) {
+            String content = message.getContent().trim();
+            if (content.isEmpty()) {
+                throw new BusinessException("留言内容不能为空");
+            }
+            if (content.length() > 2000) {
+                throw new BusinessException("留言内容不能超过 2000 个字符");
+            }
+            existingMessage.setContent(content);
+        }
+        if (message != null && message.getPublished() != null) {
+            existingMessage.setPublished(message.getPublished() == 1 ? 1 : 0);
+        }
+        existingMessage.setUpdatedAt(LocalDateTime.now());
+        dyxGuestbookMessageMapper.updateById(existingMessage);
+        return existingMessage;
+    }
+
+    /**
+     * 删除留言。
+     *
+     * @param id 留言主键。
+     */
+    @Override
+    public void deleteGuestbookMessage(Long id) {
+        ensureGuestbookMessageTable();
+        dyxGuestbookMessageMapper.deleteById(id);
     }
 
     /**
@@ -323,6 +406,65 @@ public class AdminServiceImpl implements AdminService {
         dyxHonorMapper.deleteById(id);
     }
 
+    /**
+     * 查询全部首页足迹。
+     *
+     * @return 足迹列表。
+     */
+    @Override
+    public List<Footprint> listFootprints() {
+        ensureFootprintTable();
+        return dyxFootprintMapper.selectList(new LambdaQueryWrapper<Footprint>()
+                .orderByDesc(Footprint::getImportance)
+                .orderByAsc(Footprint::getSortOrder)
+                .orderByDesc(Footprint::getVisitedAt)
+                .orderByDesc(Footprint::getUpdatedAt));
+    }
+
+    /**
+     * 保存首页足迹。
+     *
+     * @param footprint 足迹对象。
+     * @return 保存后的足迹。
+     */
+    @Override
+    public Footprint saveFootprint(Footprint footprint) {
+        ensureFootprintTable();
+        validateFootprint(footprint);
+        LocalDateTime now = LocalDateTime.now();
+        footprint.setUpdatedAt(now);
+        if (footprint.getId() == null) {
+            footprint.setCreatedAt(now);
+            dyxFootprintMapper.insert(footprint);
+        } else {
+            Footprint existingFootprint = dyxFootprintMapper.selectById(footprint.getId());
+            if (existingFootprint == null) {
+                throw new BusinessException("足迹记录不存在");
+            }
+            if (footprint.getCreatedAt() == null) {
+                footprint.setCreatedAt(existingFootprint.getCreatedAt());
+            }
+            dyxFootprintMapper.updateById(footprint);
+        }
+        return footprint;
+    }
+
+    /**
+     * 删除首页足迹。
+     *
+     * @param id 足迹主键。
+     */
+    @Override
+    public void deleteFootprint(Long id) {
+        ensureFootprintTable();
+        dyxFootprintMapper.deleteById(id);
+    }
+
+    /**
+     * 获取首页横幅配置。
+     *
+     * @return 首页横幅相关资料。
+     */
     @Override
     public Profile getHeroProfile() {
         return getProfile();
@@ -352,6 +494,7 @@ public class AdminServiceImpl implements AdminService {
     @Override
     public Profile getProfile() {
         ensureProfileContactMethodsColumn();
+        ensureProfileGuestbookIntroColumn();
         Profile profile = dyxProfileMapper.selectById(1L);
         if (profile == null) {
             profile = new Profile();
@@ -371,6 +514,7 @@ public class AdminServiceImpl implements AdminService {
     @Override
     public Profile saveProfile(Profile profile) {
         ensureProfileContactMethodsColumn();
+        ensureProfileGuestbookIntroColumn();
         HeroConfigUtil.ensureHeroConfig(profile, objectMapper);
         HeroConfigUtil.syncLegacyFields(profile, objectMapper);
         profile.setUpdatedAt(LocalDateTime.now());
@@ -383,6 +527,61 @@ public class AdminServiceImpl implements AdminService {
             dyxProfileMapper.updateById(profile);
         }
         return profile;
+    }
+
+    /**
+     * 获取系统配置。
+     *
+     * @return 系统配置对象。
+     */
+    @Override
+    public SystemConfig getSystemConfig() {
+        ensureSystemConfigTable();
+        SystemConfig systemConfig = dyxSystemConfigMapper.selectById(1L);
+        if (systemConfig == null) {
+            systemConfig = new SystemConfig();
+            systemConfig.setId(1L);
+            systemConfig.setStorageType("local");
+            systemConfig.setUpdatedAt(LocalDateTime.now());
+        }
+        return systemConfig;
+    }
+
+    /**
+     * 保存系统配置。
+     *
+     * @param systemConfig 系统配置对象。
+     * @return 保存后的系统配置。
+     */
+    @Override
+    public SystemConfig saveSystemConfig(SystemConfig systemConfig) {
+        ensureSystemConfigTable();
+        if (systemConfig == null) {
+            throw new BusinessException("系统配置不能为空");
+        }
+        SystemConfig existingConfig = dyxSystemConfigMapper.selectById(1L);
+        SystemConfig targetConfig = existingConfig == null ? new SystemConfig() : existingConfig;
+        targetConfig.setId(1L);
+        targetConfig.setStorageType(normalizeStorageType(systemConfig.getStorageType()));
+        targetConfig.setOssEndpoint(normalizeNullableValue(systemConfig.getOssEndpoint()));
+        targetConfig.setOssRegion(normalizeNullableValue(systemConfig.getOssRegion()));
+        targetConfig.setOssBucketName(normalizeNullableValue(systemConfig.getOssBucketName()));
+        targetConfig.setOssPublicUrlPrefix(normalizeNullableValue(systemConfig.getOssPublicUrlPrefix()));
+        targetConfig.setOssBaseDir(normalizeNullableValue(systemConfig.getOssBaseDir()));
+        targetConfig.setFootprintEyebrow(normalizeNullableValue(systemConfig.getFootprintEyebrow()));
+        targetConfig.setFootprintTitle(normalizeNullableValue(systemConfig.getFootprintTitle()));
+        targetConfig.setFootprintSubtitle(normalizeNullableValue(systemConfig.getFootprintSubtitle()));
+        targetConfig.setFootprintDescription(normalizeNullableValue(systemConfig.getFootprintDescription()));
+        targetConfig.setCopyrightText(normalizeNullableValue(systemConfig.getCopyrightText()));
+        targetConfig.setTechSupportText(normalizeNullableValue(systemConfig.getTechSupportText()));
+        validateSystemConfig(targetConfig);
+        targetConfig.setUpdatedAt(LocalDateTime.now());
+        if (existingConfig == null) {
+            dyxSystemConfigMapper.insert(targetConfig);
+        } else {
+            dyxSystemConfigMapper.updateById(targetConfig);
+        }
+        return targetConfig;
     }
 
     /**
@@ -583,7 +782,6 @@ public class AdminServiceImpl implements AdminService {
         return result;
     }
 
-
     private String mapPageKeyLabel(String pageKey) {
         return switch (pageKey) {
             case "home" -> "首页";
@@ -593,6 +791,7 @@ public class AdminServiceImpl implements AdminService {
             case "moment-detail" -> "动态详情";
             case "blog" -> "博客";
             case "blog-detail" -> "博客详情";
+            case "guestbook" -> "留言";
             default -> pageKey;
         };
     }
@@ -605,6 +804,26 @@ public class AdminServiceImpl implements AdminService {
             case "BOT" -> "爬虫 / Bot";
             default -> "未知设备";
         };
+    }
+
+    private void ensureFootprintTable() {
+        jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS dyx_footprint ("
+                + "id BIGINT PRIMARY KEY, "
+                + "city_name VARCHAR(100) NOT NULL, "
+                + "country_name VARCHAR(100), "
+                + "region_name VARCHAR(100), "
+                + "position_x DECIMAL(5,2) NOT NULL DEFAULT 0, "
+                + "position_y DECIMAL(5,2) NOT NULL DEFAULT 0, "
+                + "visited_at DATETIME, "
+                + "description TEXT, "
+                + "importance INT NOT NULL DEFAULT 1, "
+                + "sort_order INT NOT NULL DEFAULT 0, "
+                + "published TINYINT NOT NULL DEFAULT 0, "
+                + "created_at DATETIME NOT NULL, "
+                + "updated_at DATETIME NOT NULL, "
+                + "INDEX idx_footprint_published (published), "
+                + "INDEX idx_footprint_sort_order (sort_order), "
+                + "INDEX idx_footprint_visited_at (visited_at))");
     }
 
     private void ensureVisitStatTable() {
@@ -648,6 +867,35 @@ public class AdminServiceImpl implements AdminService {
         }
     }
 
+    private void ensureProfileGuestbookIntroColumn() {
+        Integer tableExists = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'dyx_profile'",
+                Integer.class
+        );
+        if (tableExists == null || tableExists == 0) {
+            return;
+        }
+        Integer columnExists = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'dyx_profile' AND COLUMN_NAME = 'guestbook_intro'",
+                Integer.class
+        );
+        if (columnExists == null || columnExists == 0) {
+            jdbcTemplate.execute("ALTER TABLE dyx_profile ADD COLUMN guestbook_intro TEXT NULL AFTER resume_pdf_url");
+        }
+    }
+
+    private void ensureGuestbookMessageTable() {
+        jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS dyx_guestbook_message ("
+                + "id BIGINT PRIMARY KEY AUTO_INCREMENT, "
+                + "content TEXT NOT NULL, "
+                + "published TINYINT NOT NULL DEFAULT 0, "
+                + "ip_address VARCHAR(45) NOT NULL, "
+                + "created_at DATETIME NOT NULL, "
+                + "updated_at DATETIME NOT NULL, "
+                + "INDEX idx_guestbook_message_published (published), "
+                + "INDEX idx_guestbook_message_created_at (created_at))");
+    }
+
     private void ensureVisitLogTable() {
         jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS dyx_site_visit_log ("
                 + "id BIGINT PRIMARY KEY AUTO_INCREMENT, "
@@ -678,6 +926,105 @@ public class AdminServiceImpl implements AdminService {
         if (columnExists == null || columnExists == 0) {
             jdbcTemplate.execute("ALTER TABLE dyx_site_visit_log ADD COLUMN device_name VARCHAR(128) AFTER device_type");
         }
+    }
+
+    private void ensureSystemConfigTable() {
+        jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS dyx_system_config ("
+                + "id BIGINT PRIMARY KEY, "
+                + "storage_type VARCHAR(32) NOT NULL DEFAULT 'local', "
+                + "oss_endpoint VARCHAR(255), "
+                + "oss_region VARCHAR(100), "
+                + "oss_bucket_name VARCHAR(255), "
+                + "oss_public_url_prefix VARCHAR(255), "
+                + "oss_base_dir VARCHAR(255), "
+                + "footprint_eyebrow VARCHAR(120), "
+                + "footprint_title VARCHAR(200), "
+                + "footprint_subtitle VARCHAR(255), "
+                + "footprint_description VARCHAR(500), "
+                + "copyright_text VARCHAR(255), "
+                + "tech_support_text VARCHAR(255), "
+                + "updated_at DATETIME NOT NULL)");
+        ensureSystemConfigColumn("footprint_eyebrow", "ALTER TABLE dyx_system_config ADD COLUMN footprint_eyebrow VARCHAR(120) NULL AFTER oss_base_dir");
+        ensureSystemConfigColumn("footprint_title", "ALTER TABLE dyx_system_config ADD COLUMN footprint_title VARCHAR(200) NULL AFTER footprint_eyebrow");
+        ensureSystemConfigColumn("footprint_subtitle", "ALTER TABLE dyx_system_config ADD COLUMN footprint_subtitle VARCHAR(255) NULL AFTER footprint_title");
+        ensureSystemConfigColumn("footprint_description", "ALTER TABLE dyx_system_config ADD COLUMN footprint_description VARCHAR(500) NULL AFTER footprint_subtitle");
+        ensureSystemConfigColumn("copyright_text", "ALTER TABLE dyx_system_config ADD COLUMN copyright_text VARCHAR(255) NULL AFTER footprint_description");
+        ensureSystemConfigColumn("tech_support_text", "ALTER TABLE dyx_system_config ADD COLUMN tech_support_text VARCHAR(255) NULL AFTER copyright_text");
+    }
+
+    private void ensureSystemConfigColumn(String columnName, String alterSql) {
+        Integer columnExists = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'dyx_system_config' AND COLUMN_NAME = ?",
+                Integer.class,
+                columnName
+        );
+        if (columnExists == null || columnExists == 0) {
+            jdbcTemplate.execute(alterSql);
+        }
+    }
+
+    private void validateSystemConfig(SystemConfig systemConfig) {
+        if (!"local".equals(systemConfig.getStorageType()) && !"oss".equals(systemConfig.getStorageType())) {
+            throw new BusinessException("存储方式仅支持 local 或 oss");
+        }
+        if (!"oss".equals(systemConfig.getStorageType())) {
+            return;
+        }
+        if (isBlank(systemConfig.getOssEndpoint())) {
+            throw new BusinessException("请先配置 OSS Endpoint");
+        }
+        if (isBlank(systemConfig.getOssBucketName())) {
+            throw new BusinessException("请先配置 OSS Bucket");
+        }
+        if (!OssMediaStorage.hasConfiguredCredentials()) {
+            throw new BusinessException("OSS 凭证未配置，请先在服务端环境变量中设置 OSS_ACCESS_KEY_ID 和 OSS_ACCESS_KEY_SECRET");
+        }
+    }
+
+    private String normalizeStorageType(String storageType) {
+        return isBlank(storageType) ? "local" : storageType.trim().toLowerCase();
+    }
+
+    private String normalizeNullableValue(String value) {
+        if (value == null) {
+            return null;
+        }
+        String normalized = value.trim();
+        return normalized.isEmpty() ? null : normalized;
+    }
+
+    private void validateFootprint(Footprint footprint) {
+        if (footprint == null) {
+            throw new BusinessException("足迹数据不能为空");
+        }
+        if (isBlank(footprint.getCityName())) {
+            throw new BusinessException("城市名称不能为空");
+        }
+        if (footprint.getPositionX() == null || footprint.getPositionX() < 0 || footprint.getPositionX() > 100) {
+            throw new BusinessException("横向坐标需在 0 到 100 之间");
+        }
+        if (footprint.getPositionY() == null || footprint.getPositionY() < 0 || footprint.getPositionY() > 100) {
+            throw new BusinessException("纵向坐标需在 0 到 100 之间");
+        }
+        if (footprint.getImportance() == null) {
+            footprint.setImportance(1);
+        }
+        if (footprint.getImportance() < 1 || footprint.getImportance() > 5) {
+            throw new BusinessException("高亮等级需在 1 到 5 之间");
+        }
+        if (footprint.getSortOrder() == null) {
+            footprint.setSortOrder(0);
+        }
+        if (footprint.getPublished() == null) {
+            footprint.setPublished(0);
+        }
+        if (footprint.getPublished() != 0 && footprint.getPublished() != 1) {
+            throw new BusinessException("发布状态仅支持 0 或 1");
+        }
+        footprint.setCityName(footprint.getCityName().trim());
+        footprint.setCountryName(normalizeNullableValue(footprint.getCountryName()));
+        footprint.setRegionName(normalizeNullableValue(footprint.getRegionName()));
+        footprint.setDescription(normalizeNullableValue(footprint.getDescription()));
     }
 
     private void validateUser(User user) {

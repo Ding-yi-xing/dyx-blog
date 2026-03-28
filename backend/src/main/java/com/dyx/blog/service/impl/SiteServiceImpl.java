@@ -3,17 +3,23 @@ package com.dyx.blog.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.dyx.blog.common.exception.BusinessException;
 import com.dyx.blog.common.util.HeroConfigUtil;
+import com.dyx.blog.entity.Footprint;
+import com.dyx.blog.entity.GuestbookMessage;
 import com.dyx.blog.entity.Honor;
 import com.dyx.blog.entity.Moment;
 import com.dyx.blog.entity.Post;
 import com.dyx.blog.entity.Profile;
 import com.dyx.blog.entity.Project;
+import com.dyx.blog.entity.SystemConfig;
 import com.dyx.blog.entity.Work;
+import com.dyx.blog.mapper.FootprintMapper;
+import com.dyx.blog.mapper.GuestbookMessageMapper;
 import com.dyx.blog.mapper.HonorMapper;
 import com.dyx.blog.mapper.MomentMapper;
 import com.dyx.blog.mapper.PostMapper;
 import com.dyx.blog.mapper.ProfileMapper;
 import com.dyx.blog.mapper.ProjectMapper;
+import com.dyx.blog.mapper.SystemConfigMapper;
 import com.dyx.blog.mapper.WorkMapper;
 import com.dyx.blog.service.SiteService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -23,6 +29,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -44,7 +51,10 @@ public class SiteServiceImpl implements SiteService {
     private final ProjectMapper dyxProjectMapper;
     private final WorkMapper dyxWorkMapper;
     private final ProfileMapper dyxProfileMapper;
+    private final SystemConfigMapper dyxSystemConfigMapper;
     private final HonorMapper dyxHonorMapper;
+    private final FootprintMapper dyxFootprintMapper;
+    private final GuestbookMessageMapper dyxGuestbookMessageMapper;
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
 
@@ -61,6 +71,8 @@ public class SiteServiceImpl implements SiteService {
         result.put("latestMoments", listMoments().stream().limit(3).toList());
         result.put("featuredProjects", listProjects().stream().limit(3).toList());
         result.put("latestHonors", listHonors().stream().limit(3).toList());
+        result.put("footprints", listFootprints());
+        result.put("systemConfig", getHomeSystemConfig());
         return result;
     }
 
@@ -72,6 +84,7 @@ public class SiteServiceImpl implements SiteService {
     @Override
     public Profile getProfile() {
         ensureProfileContactMethodsColumn();
+        ensureProfileGuestbookIntroColumn();
         Profile profile = dyxProfileMapper.selectById(1L);
         if (profile == null) {
             profile = new Profile();
@@ -80,6 +93,54 @@ public class SiteServiceImpl implements SiteService {
         HeroConfigUtil.ensureHeroConfig(profile, objectMapper);
         HeroConfigUtil.syncLegacyFields(profile, objectMapper);
         return profile;
+    }
+
+    /**
+     * 获取留言页数据。
+     *
+     * @return 留言页数据。
+     */
+    @Override
+    public Map<String, Object> getGuestbookData() {
+        ensureGuestbookMessageTable();
+        Profile profile = getProfile();
+        Map<String, Object> result = new HashMap<>();
+        result.put("guestbookIntro", profile.getGuestbookIntro());
+        result.put("messages", dyxGuestbookMessageMapper.selectList(new LambdaQueryWrapper<GuestbookMessage>()
+                .eq(GuestbookMessage::getPublished, 1)
+                .orderByDesc(GuestbookMessage::getCreatedAt)
+                .orderByDesc(GuestbookMessage::getId)));
+        return result;
+    }
+
+    /**
+     * 提交留言。
+     *
+     * @param message 留言内容。
+     * @param request 当前请求。
+     * @return 保存后的留言。
+     */
+    @Override
+    public GuestbookMessage saveGuestbookMessage(GuestbookMessage message, HttpServletRequest request) {
+        ensureGuestbookMessageTable();
+        if (message == null) {
+            throw new BusinessException("留言内容不能为空");
+        }
+        String content = message.getContent() == null ? "" : message.getContent().trim();
+        if (content.isEmpty()) {
+            throw new BusinessException("留言内容不能为空");
+        }
+        if (content.length() > 2000) {
+            throw new BusinessException("留言内容不能超过 2000 个字符");
+        }
+        GuestbookMessage nextMessage = new GuestbookMessage();
+        nextMessage.setContent(content);
+        nextMessage.setPublished(message.getPublished() != null && message.getPublished() == 1 ? 1 : 0);
+        nextMessage.setIpAddress(resolveClientIp(request));
+        nextMessage.setCreatedAt(LocalDateTime.now());
+        nextMessage.setUpdatedAt(nextMessage.getCreatedAt());
+        dyxGuestbookMessageMapper.insert(nextMessage);
+        return nextMessage;
     }
 
     /**
@@ -184,6 +245,35 @@ public class SiteServiceImpl implements SiteService {
     }
 
     /**
+     * 获取已发布首页足迹列表。
+     *
+     * @return 足迹列表。
+     */
+    @Override
+    public List<Footprint> listFootprints() {
+        ensureFootprintTable();
+        return dyxFootprintMapper.selectList(new LambdaQueryWrapper<Footprint>()
+                .eq(Footprint::getPublished, 1)
+                .orderByDesc(Footprint::getImportance)
+                .orderByAsc(Footprint::getSortOrder)
+                .orderByDesc(Footprint::getVisitedAt)
+                .orderByDesc(Footprint::getUpdatedAt));
+    }
+
+    private Map<String, Object> getHomeSystemConfig() {
+        ensureSystemConfigTable();
+        SystemConfig systemConfig = dyxSystemConfigMapper.selectById(1L);
+        Map<String, Object> result = new HashMap<>();
+        result.put("footprintEyebrow", systemConfig == null ? null : systemConfig.getFootprintEyebrow());
+        result.put("footprintTitle", systemConfig == null ? null : systemConfig.getFootprintTitle());
+        result.put("footprintSubtitle", systemConfig == null ? null : systemConfig.getFootprintSubtitle());
+        result.put("footprintDescription", systemConfig == null ? null : systemConfig.getFootprintDescription());
+        result.put("copyrightText", systemConfig == null ? null : systemConfig.getCopyrightText());
+        result.put("techSupportText", systemConfig == null ? null : systemConfig.getTechSupportText());
+        return result;
+    }
+
+    /**
      * 记录公开页面访问。
      *
      * @param pageKey 页面标识。
@@ -231,11 +321,11 @@ public class SiteServiceImpl implements SiteService {
         if (request == null) {
             return "unknown";
         }
-        String forwardedIp = normalizeClientIp(extractClientIp(request.getHeader("X-Forwarded-For")));
+        String forwardedIp = extractForwardedClientIp(request.getHeader("X-Forwarded-For"));
         if (!isBlank(forwardedIp)) {
             return truncate(forwardedIp, 45);
         }
-        String realIp = normalizeClientIp(extractClientIp(request.getHeader("X-Real-IP")));
+        String realIp = normalizeClientIp(request.getHeader("X-Real-IP"));
         if (!isBlank(realIp)) {
             return truncate(realIp, 45);
         }
@@ -243,25 +333,40 @@ public class SiteServiceImpl implements SiteService {
         return isBlank(remoteAddr) ? "unknown" : truncate(remoteAddr, 45);
     }
 
+    private String extractForwardedClientIp(String value) {
+        if (isBlank(value)) {
+            return null;
+        }
+        List<String> candidates = new ArrayList<>();
+        for (String item : value.split(",")) {
+            String candidate = normalizeClientIp(item);
+            if (!isBlank(candidate) && !"unknown".equalsIgnoreCase(candidate)) {
+                candidates.add(candidate);
+            }
+        }
+        return candidates.isEmpty() ? null : candidates.get(0);
+    }
+
     private String normalizeClientIp(String value) {
         if (isBlank(value)) {
             return null;
         }
         String normalized = value.trim();
+        if (normalized.startsWith("[") && normalized.endsWith("]")) {
+            normalized = normalized.substring(1, normalized.length() - 1).trim();
+        }
+        if ("unknown".equalsIgnoreCase(normalized)) {
+            return null;
+        }
+        if (normalized.startsWith("::ffff:")) {
+            normalized = normalized.substring(7);
+        }
         if ("::1".equals(normalized)
                 || "0:0:0:0:0:0:0:1".equals(normalized)
-                || "::ffff:127.0.0.1".equalsIgnoreCase(normalized)) {
+                || "127.0.0.1".equals(normalized)) {
             return "127.0.0.1";
         }
         return normalized;
-    }
-
-    private String extractClientIp(String value) {
-        if (isBlank(value)) {
-            return null;
-        }
-        String candidate = value.split(",")[0].trim();
-        return isBlank(candidate) || "unknown".equalsIgnoreCase(candidate) ? null : candidate;
     }
 
     private String resolveUserAgent(HttpServletRequest request) {
@@ -371,6 +476,50 @@ public class SiteServiceImpl implements SiteService {
         }
     }
 
+    private void ensureFootprintTable() {
+        jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS dyx_footprint ("
+                + "id BIGINT PRIMARY KEY, "
+                + "city_name VARCHAR(100) NOT NULL, "
+                + "country_name VARCHAR(100), "
+                + "region_name VARCHAR(100), "
+                + "position_x DECIMAL(5,2) NOT NULL DEFAULT 0, "
+                + "position_y DECIMAL(5,2) NOT NULL DEFAULT 0, "
+                + "visited_at DATETIME, "
+                + "description TEXT, "
+                + "importance INT NOT NULL DEFAULT 1, "
+                + "sort_order INT NOT NULL DEFAULT 0, "
+                + "published TINYINT NOT NULL DEFAULT 0, "
+                + "created_at DATETIME NOT NULL, "
+                + "updated_at DATETIME NOT NULL, "
+                + "INDEX idx_footprint_published (published), "
+                + "INDEX idx_footprint_sort_order (sort_order), "
+                + "INDEX idx_footprint_visited_at (visited_at))");
+    }
+
+    private void ensureSystemConfigTable() {
+        jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS dyx_system_config ("
+                + "id BIGINT PRIMARY KEY, "
+                + "storage_type VARCHAR(32) NOT NULL DEFAULT 'local', "
+                + "oss_endpoint VARCHAR(255), "
+                + "oss_region VARCHAR(100), "
+                + "oss_bucket_name VARCHAR(255), "
+                + "oss_public_url_prefix VARCHAR(255), "
+                + "oss_base_dir VARCHAR(255), "
+                + "footprint_eyebrow VARCHAR(120), "
+                + "footprint_title VARCHAR(200), "
+                + "footprint_subtitle VARCHAR(255), "
+                + "footprint_description VARCHAR(500), "
+                + "copyright_text VARCHAR(255), "
+                + "tech_support_text VARCHAR(255), "
+                + "updated_at DATETIME NOT NULL)");
+        ensureSystemConfigColumn("footprint_eyebrow", "ALTER TABLE dyx_system_config ADD COLUMN footprint_eyebrow VARCHAR(120) NULL AFTER oss_base_dir");
+        ensureSystemConfigColumn("footprint_title", "ALTER TABLE dyx_system_config ADD COLUMN footprint_title VARCHAR(200) NULL AFTER footprint_eyebrow");
+        ensureSystemConfigColumn("footprint_subtitle", "ALTER TABLE dyx_system_config ADD COLUMN footprint_subtitle VARCHAR(255) NULL AFTER footprint_title");
+        ensureSystemConfigColumn("footprint_description", "ALTER TABLE dyx_system_config ADD COLUMN footprint_description VARCHAR(500) NULL AFTER footprint_subtitle");
+        ensureSystemConfigColumn("copyright_text", "ALTER TABLE dyx_system_config ADD COLUMN copyright_text VARCHAR(255) NULL AFTER footprint_description");
+        ensureSystemConfigColumn("tech_support_text", "ALTER TABLE dyx_system_config ADD COLUMN tech_support_text VARCHAR(255) NULL AFTER copyright_text");
+    }
+
     private void ensureProfileContactMethodsColumn() {
         Integer tableExists = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'dyx_profile'",
@@ -386,6 +535,35 @@ public class SiteServiceImpl implements SiteService {
         if (columnExists == null || columnExists == 0) {
             jdbcTemplate.execute("ALTER TABLE dyx_profile ADD COLUMN contact_methods LONGTEXT NULL AFTER github_url");
         }
+    }
+
+    private void ensureProfileGuestbookIntroColumn() {
+        Integer tableExists = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'dyx_profile'",
+                Integer.class
+        );
+        if (tableExists == null || tableExists == 0) {
+            return;
+        }
+        Integer columnExists = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'dyx_profile' AND COLUMN_NAME = 'guestbook_intro'",
+                Integer.class
+        );
+        if (columnExists == null || columnExists == 0) {
+            jdbcTemplate.execute("ALTER TABLE dyx_profile ADD COLUMN guestbook_intro TEXT NULL AFTER resume_pdf_url");
+        }
+    }
+
+    private void ensureGuestbookMessageTable() {
+        jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS dyx_guestbook_message ("
+                + "id BIGINT PRIMARY KEY AUTO_INCREMENT, "
+                + "content TEXT NOT NULL, "
+                + "published TINYINT NOT NULL DEFAULT 0, "
+                + "ip_address VARCHAR(45) NOT NULL, "
+                + "created_at DATETIME NOT NULL, "
+                + "updated_at DATETIME NOT NULL, "
+                + "INDEX idx_guestbook_message_published (published), "
+                + "INDEX idx_guestbook_message_created_at (created_at))");
     }
 
     private void ensureVisitLogTable() {
@@ -417,6 +595,17 @@ public class SiteServiceImpl implements SiteService {
         );
         if (columnExists == null || columnExists == 0) {
             jdbcTemplate.execute("ALTER TABLE dyx_site_visit_log ADD COLUMN device_name VARCHAR(128) AFTER device_type");
+        }
+    }
+
+    private void ensureSystemConfigColumn(String columnName, String alterSql) {
+        Integer columnExists = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'dyx_system_config' AND COLUMN_NAME = ?",
+                Integer.class,
+                columnName
+        );
+        if (columnExists == null || columnExists == 0) {
+            jdbcTemplate.execute(alterSql);
         }
     }
 

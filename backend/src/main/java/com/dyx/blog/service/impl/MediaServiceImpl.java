@@ -9,6 +9,7 @@ import com.dyx.blog.entity.Moment;
 import com.dyx.blog.entity.Post;
 import com.dyx.blog.entity.Profile;
 import com.dyx.blog.entity.Project;
+import com.dyx.blog.entity.SystemConfig;
 import com.dyx.blog.entity.Work;
 import com.dyx.blog.mapper.HonorMapper;
 import com.dyx.blog.mapper.MediaMapper;
@@ -17,18 +18,28 @@ import com.dyx.blog.mapper.PostMapper;
 import com.dyx.blog.mapper.ProfileMapper;
 import com.dyx.blog.mapper.ProjectMapper;
 import com.dyx.blog.mapper.WorkMapper;
+import com.dyx.blog.service.AdminService;
 import com.dyx.blog.service.MediaService;
+import com.dyx.blog.storage.MediaStorage;
+import com.dyx.blog.storage.MediaStorageResult;
+import com.dyx.blog.storage.OssMediaStorage;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -54,6 +65,9 @@ public class MediaServiceImpl implements MediaService {
     private final MomentMapper dyxMomentMapper;
     private final HonorMapper dyxHonorMapper;
     private final FileProperties dyxFileProperties;
+    private final AdminService dyxAdminService;
+    private final List<MediaStorage> mediaStorages;
+    private final RestTemplate restTemplate = new RestTemplate();
 
     /**
      * 上传媒体文件。
@@ -66,26 +80,20 @@ public class MediaServiceImpl implements MediaService {
         if (file == null || file.isEmpty()) {
             throw new BusinessException("上传文件不能为空");
         }
-        try {
-            Path uploadDirectory = getUploadDirectory();
-            String originalFilename = file.getOriginalFilename();
-            String extension = StringUtils.getFilenameExtension(originalFilename);
-            String storedFileName = UUID.randomUUID() + (extension == null ? "" : "." + extension);
-            Path targetPath = uploadDirectory.resolve(storedFileName);
-            Files.copy(file.getInputStream(), targetPath, StandardCopyOption.REPLACE_EXISTING);
+        String originalFilename = file.getOriginalFilename();
+        String extension = StringUtils.getFilenameExtension(originalFilename);
+        String storedFileName = UUID.randomUUID() + (extension == null ? "" : "." + extension);
+        MediaStorageResult storageResult = resolveCurrentStorage().upload(file, storedFileName);
 
-            Media media = new Media();
-            media.setOriginalName(originalFilename);
-            media.setFileName(storedFileName);
-            media.setFileUrl(buildFileUrl(storedFileName));
-            media.setMediaType(file.getContentType());
-            media.setFileSize(file.getSize());
-            media.setCreatedAt(LocalDateTime.now());
-            dyxMediaMapper.insert(media);
-            return media;
-        } catch (IOException exception) {
-            throw new BusinessException("文件上传失败");
-        }
+        Media media = new Media();
+        media.setOriginalName(originalFilename);
+        media.setFileName(storageResult.fileName());
+        media.setFileUrl(storageResult.fileUrl());
+        media.setMediaType(file.getContentType());
+        media.setFileSize(file.getSize());
+        media.setCreatedAt(LocalDateTime.now());
+        dyxMediaMapper.insert(media);
+        return media;
     }
 
     /**
@@ -95,6 +103,9 @@ public class MediaServiceImpl implements MediaService {
      */
     @Override
     public int importExistingFiles() {
+        if (!"local".equals(resolveCurrentStorage().getStorageType())) {
+            throw new BusinessException("当前存储模式不支持导入本地 uploads 目录");
+        }
         try {
             Path uploadDirectory = getUploadDirectory();
             Set<String> existingFileNames = dyxMediaMapper.selectList(new LambdaQueryWrapper<Media>()
@@ -121,7 +132,7 @@ public class MediaServiceImpl implements MediaService {
                     Media media = new Media();
                     media.setOriginalName(fileName);
                     media.setFileName(fileName);
-                    media.setFileUrl(buildFileUrl(fileName));
+                    media.setFileUrl(buildLocalFileUrl(fileName));
                     media.setMediaType(Files.probeContentType(filePath));
                     media.setFileSize(Files.size(filePath));
                     media.setCreatedAt(LocalDateTime.now());
@@ -142,9 +153,28 @@ public class MediaServiceImpl implements MediaService {
      */
     @Override
     public List<Media> listAll() {
+        syncCurrentStorageMedia();
         return dyxMediaMapper.selectList(new LambdaQueryWrapper<Media>()
                 .orderByDesc(Media::getCreatedAt));
     }
+
+    @Override
+    public ResponseEntity<byte[]> proxyMedia(String fileUrl) {
+        if (!StringUtils.hasText(fileUrl)) {
+            throw new BusinessException("媒体资源链接无效");
+        }
+        Media media = dyxMediaMapper.selectOne(new LambdaQueryWrapper<Media>()
+                .eq(Media::getFileUrl, fileUrl)
+                .last("limit 1"));
+        if (media == null) {
+            throw new BusinessException("媒体资源不存在");
+        }
+        if (fileUrl.startsWith(normalizeAccessPrefix())) {
+            return proxyLocalMedia(media);
+        }
+        return proxyRemoteMedia(media);
+    }
+
 
     /**
      * 删除未被引用的媒体资源。
@@ -165,13 +195,76 @@ public class MediaServiceImpl implements MediaService {
         if (referenceModule != null) {
             throw new BusinessException("该媒体仍被" + referenceModule + "引用，请先解除引用后再删除");
         }
-        try {
-            Path filePath = resolveStoredFilePath(media);
-            Files.deleteIfExists(filePath);
-        } catch (IOException exception) {
-            throw new BusinessException("删除媒体文件失败");
-        }
+        resolveStorageForMedia(media).delete(media.getFileName(), media.getFileUrl());
         dyxMediaMapper.deleteById(id);
+    }
+
+    private ResponseEntity<byte[]> proxyLocalMedia(Media media) {
+        try {
+            Path path = resolveLocalFilePath(media);
+            if (!Files.exists(path) || !Files.isRegularFile(path)) {
+                throw new BusinessException("媒体文件不存在");
+            }
+            byte[] bytes = Files.readAllBytes(path);
+            String contentType = resolveMediaType(media, Files.probeContentType(path));
+            return buildMediaResponse(bytes, contentType, media.getOriginalName(), path.getFileName().toString());
+        } catch (IOException exception) {
+            throw new BusinessException("读取本地媒体文件失败");
+        }
+    }
+
+    private ResponseEntity<byte[]> proxyRemoteMedia(Media media) {
+        try {
+            ResponseEntity<ByteArrayResource> response = restTemplate.getForEntity(media.getFileUrl(), ByteArrayResource.class);
+            ByteArrayResource body = response.getBody();
+            if (!response.getStatusCode().is2xxSuccessful() || body == null) {
+                throw new BusinessException("读取远程媒体文件失败");
+            }
+            String contentType = resolveMediaType(media, response.getHeaders().getFirst(HttpHeaders.CONTENT_TYPE));
+            return buildMediaResponse(body.getByteArray(), contentType, media.getOriginalName(), media.getFileName());
+        } catch (RestClientException exception) {
+            throw new BusinessException("读取远程媒体文件失败");
+        }
+    }
+
+    private ResponseEntity<byte[]> buildMediaResponse(byte[] bytes, String contentType, String originalName, String fallbackName) {
+        String fileName = StringUtils.hasText(originalName) ? originalName : fallbackName;
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + sanitizeFileName(fileName) + "\"")
+                .contentType(MediaType.parseMediaType(contentType))
+                .contentLength(bytes.length)
+                .body(bytes);
+    }
+
+    private String resolveMediaType(Media media, String fallbackType) {
+        if (StringUtils.hasText(media.getMediaType())) {
+            return media.getMediaType();
+        }
+        if (StringUtils.hasText(fallbackType)) {
+            return fallbackType;
+        }
+        return MediaType.APPLICATION_OCTET_STREAM_VALUE;
+    }
+
+    private Path resolveLocalFilePath(Media media) throws IOException {
+        Path uploadDirectory = getUploadDirectory();
+        String normalizedPrefix = normalizeAccessPrefix();
+        String relativePath = StringUtils.hasText(media.getFileUrl()) && media.getFileUrl().startsWith(normalizedPrefix)
+                ? media.getFileUrl().substring(normalizedPrefix.length())
+                : media.getFileName();
+        if (!StringUtils.hasText(relativePath)) {
+            throw new BusinessException("媒体资源路径无效");
+        }
+        Path resolvedPath = uploadDirectory.resolve(relativePath).normalize();
+        if (!resolvedPath.startsWith(uploadDirectory)) {
+            throw new BusinessException("媒体资源路径无效");
+        }
+        return resolvedPath;
+    }
+
+    private String sanitizeFileName(String fileName) {
+        return fileName.replace("\r", "").replace("\n", "").replace("\"", "");
     }
 
     private Path getUploadDirectory() throws IOException {
@@ -180,19 +273,8 @@ public class MediaServiceImpl implements MediaService {
         return uploadDirectory;
     }
 
-    private String buildFileUrl(String fileName) {
-        return dyxFileProperties.getAccessPrefix() + fileName;
-    }
-
-    private Path resolveStoredFilePath(Media media) throws IOException {
-        Path uploadDirectory = getUploadDirectory();
-        if (StringUtils.hasText(media.getFileName())) {
-            return uploadDirectory.resolve(media.getFileName()).normalize();
-        }
-        String normalizedPrefix = normalizeAccessPrefix();
-        String fileUrl = media.getFileUrl();
-        String relativePath = fileUrl.startsWith(normalizedPrefix) ? fileUrl.substring(normalizedPrefix.length()) : fileUrl;
-        return uploadDirectory.resolve(relativePath).normalize();
+    private String buildLocalFileUrl(String fileName) {
+        return normalizeAccessPrefix() + fileName;
     }
 
     private void cleanupMissingMediaRecords() {
@@ -207,10 +289,41 @@ public class MediaServiceImpl implements MediaService {
     }
 
     private boolean storedFileExists(Media media) {
-        try {
-            return Files.exists(resolveStoredFilePath(media));
-        } catch (IOException exception) {
-            return true;
+        return resolveStorageForMedia(media).exists(media.getFileName(), media.getFileUrl());
+    }
+
+    private void syncCurrentStorageMedia() {
+        MediaStorage currentStorage = resolveCurrentStorage();
+        if ("local".equals(currentStorage.getStorageType())) {
+            cleanupMissingMediaRecords();
+            return;
+        }
+        if (!(currentStorage instanceof OssMediaStorage ossMediaStorage)) {
+            return;
+        }
+        syncOssMediaRecords(ossMediaStorage);
+    }
+
+    private void syncOssMediaRecords(OssMediaStorage ossMediaStorage) {
+        Set<String> existingFileNames = dyxMediaMapper.selectList(new LambdaQueryWrapper<Media>()
+                        .select(Media::getFileName))
+                .stream()
+                .map(Media::getFileName)
+                .filter(StringUtils::hasText)
+                .collect(Collectors.toCollection(HashSet::new));
+        for (OssMediaStorage.StoredObject storedObject : ossMediaStorage.listStoredObjects()) {
+            if (!StringUtils.hasText(storedObject.objectKey()) || existingFileNames.contains(storedObject.objectKey())) {
+                continue;
+            }
+            Media media = new Media();
+            media.setOriginalName(StringUtils.hasText(storedObject.originalName()) ? storedObject.originalName() : storedObject.objectKey());
+            media.setFileName(storedObject.objectKey());
+            media.setFileUrl(storedObject.fileUrl());
+            media.setMediaType(storedObject.contentType());
+            media.setFileSize(storedObject.fileSize());
+            media.setCreatedAt(storedObject.lastModifiedAt() != null ? storedObject.lastModifiedAt() : LocalDateTime.now());
+            dyxMediaMapper.insert(media);
+            existingFileNames.add(storedObject.objectKey());
         }
     }
 
@@ -220,6 +333,33 @@ public class MediaServiceImpl implements MediaService {
             return "/";
         }
         return accessPrefix.endsWith("/") ? accessPrefix : accessPrefix + "/";
+    }
+
+    private MediaStorage resolveCurrentStorage() {
+        SystemConfig systemConfig = dyxAdminService.getSystemConfig();
+        String storageType = systemConfig == null || !StringUtils.hasText(systemConfig.getStorageType())
+                ? dyxFileProperties.getStorageType()
+                : systemConfig.getStorageType();
+        return requireStorage(storageType);
+    }
+
+    private MediaStorage resolveStorageForMedia(Media media) {
+        String fileUrl = media.getFileUrl();
+        if (StringUtils.hasText(fileUrl) && fileUrl.startsWith(normalizeAccessPrefix())) {
+            return requireStorage("local");
+        }
+        if (StringUtils.hasText(fileUrl) && (fileUrl.startsWith("http://") || fileUrl.startsWith("https://"))) {
+            return requireStorage("oss");
+        }
+        return resolveCurrentStorage();
+    }
+
+    private MediaStorage requireStorage(String storageType) {
+        String normalizedStorageType = StringUtils.hasText(storageType) ? storageType.trim().toLowerCase() : "local";
+        return mediaStorages.stream()
+                .filter(storage -> normalizedStorageType.equals(storage.getStorageType()))
+                .findFirst()
+                .orElseThrow(() -> new BusinessException("未找到可用的媒体存储实现：" + normalizedStorageType));
     }
 
     private String resolveReferenceModule(String fileUrl) {

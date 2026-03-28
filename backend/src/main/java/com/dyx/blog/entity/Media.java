@@ -2,6 +2,8 @@ package com.dyx.blog.entity;
 
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -14,6 +16,7 @@ import java.time.LocalDateTime;
 public class Media {
 
     @TableId
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long id;
     private String originalName;
     private String fileName;

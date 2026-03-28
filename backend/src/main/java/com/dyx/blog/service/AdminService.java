@@ -1,10 +1,13 @@
 package com.dyx.blog.service;
 
+import com.dyx.blog.entity.Footprint;
+import com.dyx.blog.entity.GuestbookMessage;
 import com.dyx.blog.entity.Honor;
 import com.dyx.blog.entity.Moment;
 import com.dyx.blog.entity.Post;
 import com.dyx.blog.entity.Profile;
 import com.dyx.blog.entity.Project;
+import com.dyx.blog.entity.SystemConfig;
 import com.dyx.blog.entity.User;
 import com.dyx.blog.entity.Work;
 
@@ -51,6 +54,37 @@ public interface AdminService {
      * @param ids 访问日志主键列表。
      */
     void deleteVisitLogs(List<Long> ids);
+
+    /**
+     * 获取留言管理数据。
+     *
+     * @return 留言管理数据。
+     */
+    Map<String, Object> getGuestbookAdminData();
+
+    /**
+     * 更新留言页介绍。
+     *
+     * @param guestbookIntro 介绍文案。
+     * @return 保存后的个人资料。
+     */
+    Profile saveGuestbookIntro(String guestbookIntro);
+
+    /**
+     * 更新留言。
+     *
+     * @param id 留言主键。
+     * @param message 留言内容。
+     * @return 保存后的留言。
+     */
+    GuestbookMessage updateGuestbookMessage(Long id, GuestbookMessage message);
+
+    /**
+     * 删除留言。
+     *
+     * @param id 留言主键。
+     */
+    void deleteGuestbookMessage(Long id);
 
     /**
      * 查询全部文章。
@@ -163,6 +197,28 @@ public interface AdminService {
     void deleteHonor(Long id);
 
     /**
+     * 查询全部首页足迹。
+     *
+     * @return 足迹列表。
+     */
+    List<Footprint> listFootprints();
+
+    /**
+     * 保存首页足迹。
+     *
+     * @param footprint 足迹对象。
+     * @return 保存后的足迹。
+     */
+    Footprint saveFootprint(Footprint footprint);
+
+    /**
+     * 删除首页足迹。
+     *
+     * @param id 足迹主键。
+     */
+    void deleteFootprint(Long id);
+
+    /**
      * 获取首页横幅配置。
      *
      * @return 首页横幅相关资料。
@@ -191,6 +247,21 @@ public interface AdminService {
      * @return 保存后的个人资料。
      */
     Profile saveProfile(Profile profile);
+
+    /**
+     * 获取系统配置。
+     *
+     * @return 系统配置对象。
+     */
+    SystemConfig getSystemConfig();
+
+    /**
+     * 保存系统配置。
+     *
+     * @param systemConfig 系统配置对象。
+     * @return 保存后的系统配置。
+     */
+    SystemConfig saveSystemConfig(SystemConfig systemConfig);
 
     /**
      * 查询后台用户列表。

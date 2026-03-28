@@ -36,3 +36,5 @@ jwt:
 file:
   upload-path: uploads/
   access-prefix: /media/
+
+
