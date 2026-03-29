@@ -80,6 +80,7 @@ interface AMapPolygonOptions {
   fillOpacity?: number;
   bubble?: boolean;
   zIndex?: number;
+  visible?: boolean;
 }
 
 declare class AMapMapClass implements AMapEventCapable {
@@ -109,6 +110,8 @@ declare class AMapPolygonClass implements AMapEventCapable {
   setMap(map: AMapMap | null): void;
   on(eventName: string, handler: (...args: any[]) => void): void;
   off(eventName: string, handler: (...args: any[]) => void): void;
+  show(): void;
+  hide(): void;
 }
 
 declare class AMapTextClass implements AMapEventCapable {

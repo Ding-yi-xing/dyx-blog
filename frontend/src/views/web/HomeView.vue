@@ -257,21 +257,8 @@ import {
   type HeroTagsBlock,
   type HeroTextBlock,
   type HomeData,
-  type MomentData,
-  type PostData,
 } from "@/api/modules/site";
-import { formatDateYmd } from "@/utils/date";
 import { buildFootprintMapItems } from "@/utils/footprintGeo";
-
-interface RecentActivityItem {
-  id: string;
-  label: "博客" | "动态";
-  title: string;
-  summary: string;
-  to: string;
-  date?: string;
-  sortValue: number;
-}
 
 type ThemeMode = "light" | "dark";
 
@@ -321,8 +308,6 @@ const setTopNavVisible = inject<((visible: boolean) => void) | undefined>(
 const currentTheme = inject<Ref<ThemeMode> | undefined>("dyx-theme");
 
 const profile = computed(() => homeData.value.profile ?? {});
-const posts = computed(() => homeData.value.latestPosts ?? []);
-const moments = computed(() => homeData.value.latestMoments ?? []);
 const footprints = computed(() =>
   (homeData.value.footprints ?? []).filter((item) => item.published !== 0)
 );
@@ -400,39 +385,8 @@ const activityBackdropClass = computed(() =>
 const activityTitleClass = computed(() =>
   activeTheme.value === "dark" ? "text-white" : "text-slate-900"
 );
-const activityMetaClass = computed(() =>
-  activeTheme.value === "dark" ? "text-slate-400" : "text-slate-500"
-);
 const activityTextClass = computed(() =>
   activeTheme.value === "dark" ? "text-slate-300" : "text-slate-600"
-);
-const activityPanelClass = computed(() =>
-  activeTheme.value === "dark"
-    ? "border-white/10 bg-slate-950/28 shadow-[0_20px_64px_rgba(2,6,23,0.32)]"
-    : "border-slate-200/80 bg-white/78 shadow-[0_20px_64px_rgba(148,163,184,0.18)]"
-);
-const activityItemClass = computed(() =>
-  activeTheme.value === "dark"
-    ? "border-white/10 bg-white/5 hover:bg-white/8"
-    : "border-slate-200/80 bg-slate-50/90 hover:bg-white"
-);
-const activityFooterClass = computed(() =>
-  activeTheme.value === "dark"
-    ? "border-white/20 bg-slate-950/60 text-slate-200 shadow-xl"
-    : "border-slate-200 bg-white/90 text-slate-700 shadow-lg"
-);
-const activityTimelineClass = computed(() =>
-  activeTheme.value === "dark" ? "bg-white/10" : "bg-slate-300/80"
-);
-const activityTimelineDotClass = computed(() =>
-  activeTheme.value === "dark"
-    ? "border-[#08101b] bg-cyan-300"
-    : "border-slate-100 bg-blue-600"
-);
-const activityEmptyClass = computed(() =>
-  activeTheme.value === "dark"
-    ? "border-white/15 text-slate-400"
-    : "border-slate-300 text-slate-500"
 );
 const footprintMapData = computed(() =>
   buildFootprintMapItems(footprints.value)
@@ -513,19 +467,6 @@ const heroBackgroundStyle = computed(() => {
 const hasHeroBackground = computed(
   () => !!heroImageBlock.value?.backgroundImageUrl?.trim()
 );
-const timelineLeadText = computed(() => {
-  if (recentActivityItems.value.length >= 2) {
-    return `当前首页会把最近 ${recentActivityItems.value.length} 条公开更新压缩成一条轻量时间线，方便快速感知这段时间的输出节奏。`;
-  }
-  return "最近的更新还不算多，但后续会继续沿着这条时间线把新的文章和动态补上。";
-});
-const recentActivityItems = computed<RecentActivityItem[]>(() => {
-  const postItems = posts.value.map((item) => createPostActivity(item));
-  const momentItems = moments.value.map((item) => createMomentActivity(item));
-  return [...momentItems, ...postItems]
-    .sort((left, right) => right.sortValue - left.sortValue)
-    .slice(0, 6);
-});
 
 const scrollContainer = ref<HTMLElement | null>(null);
 const currentSectionIndex = ref(0);
@@ -578,60 +519,6 @@ function isTagsBlock(
   block: HeroTextBlock | HeroTagsBlock
 ): block is HeroTagsBlock {
   return block.type === "tags";
-}
-
-function summarizeText(value: string | undefined, fallback: string): string {
-  const normalized = (value ?? "").replace(/\s+/g, " ").trim();
-  if (!normalized) {
-    return fallback;
-  }
-  return normalized.length > 110
-    ? `${normalized.slice(0, 110).trim()}…`
-    : normalized;
-}
-
-function parseSortValue(value?: string): number {
-  if (!value) {
-    return 0;
-  }
-  const normalized = value.includes(" ") ? value.replace(" ", "T") : value;
-  const timestamp = Date.parse(normalized);
-  if (!Number.isNaN(timestamp)) {
-    return timestamp;
-  }
-  const matched = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (!matched) {
-    return 0;
-  }
-  return new Date(
-    Number(matched[1]),
-    Number(matched[2]) - 1,
-    Number(matched[3])
-  ).getTime();
-}
-
-function createPostActivity(item: PostData): RecentActivityItem {
-  return {
-    id: `post-${item.id}`,
-    label: "博客",
-    title: item.title,
-    summary: summarizeText(item.summary, "最近更新了一篇新的博客文章。"),
-    to: `/blog/${item.id}`,
-    date: item.updatedAt,
-    sortValue: parseSortValue(item.updatedAt),
-  };
-}
-
-function createMomentActivity(item: MomentData): RecentActivityItem {
-  return {
-    id: `moment-${item.id}`,
-    label: "动态",
-    title: item.title,
-    summary: summarizeText(item.content, "记录了一条新的近期动态。"),
-    to: `/moments/${item.id}`,
-    date: item.happenedAt,
-    sortValue: parseSortValue(item.happenedAt),
-  };
 }
 
 async function loadHomeData(): Promise<void> {
