@@ -1,14 +1,16 @@
 package com.dyx.blog.controller.publics;
 
+import com.dyx.blog.common.dto.GuestbookDataDTO;
+import com.dyx.blog.common.dto.HomeDataDTO;
 import com.dyx.blog.common.response.Result;
 import com.dyx.blog.entity.Footprint;
 import com.dyx.blog.entity.GuestbookMessage;
-import com.dyx.blog.entity.Honor;
 import com.dyx.blog.entity.Moment;
 import com.dyx.blog.entity.Post;
 import com.dyx.blog.entity.Profile;
 import com.dyx.blog.entity.Project;
 import com.dyx.blog.entity.Work;
+import com.dyx.blog.entity.Honor;
 import com.dyx.blog.service.SiteService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -23,12 +25,12 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 前台站点控制器。
- * 提供公开访问的个人资料、文章和展示内容接口。
+ * 前台展示控制器。
+ * 提供首页数据、博客、动态、项目及留言接口。
  */
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api")
+@RequestMapping("/api/site")
 public class SiteController {
 
     private final SiteService dyxSiteService;
@@ -36,19 +38,19 @@ public class SiteController {
     /**
      * 获取首页聚合数据。
      *
-     * @return 首页聚合结果。
+     * @return 首页展示数据。
      */
-    @GetMapping("/site/home")
-    public Result<Map<String, Object>> getHomeData() {
+    @GetMapping("/home")
+    public Result<HomeDataDTO> getHomeData() {
         return Result.success(dyxSiteService.getHomeData());
     }
 
     /**
      * 获取个人资料。
      *
-     * @return 个人资料结果。
+     * @return 个人资料对象。
      */
-    @GetMapping("/site/profile")
+    @GetMapping("/profile")
     public Result<Profile> getProfile() {
         return Result.success(dyxSiteService.getProfile());
     }
@@ -56,10 +58,10 @@ public class SiteController {
     /**
      * 获取留言页数据。
      *
-     * @return 留言页结果。
+     * @return 留言页展示数据。
      */
-    @GetMapping("/site/guestbook")
-    public Result<Map<String, Object>> getGuestbookData() {
+    @GetMapping("/guestbook")
+    public Result<GuestbookDataDTO> getGuestbookData() {
         return Result.success(dyxSiteService.getGuestbookData());
     }
 

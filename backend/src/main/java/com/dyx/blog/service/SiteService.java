@@ -1,5 +1,7 @@
 package com.dyx.blog.service;
 
+import com.dyx.blog.common.dto.GuestbookDataDTO;
+import com.dyx.blog.common.dto.HomeDataDTO;
 import com.dyx.blog.entity.Footprint;
 import com.dyx.blog.entity.GuestbookMessage;
 import com.dyx.blog.entity.Honor;
@@ -23,7 +25,7 @@ public interface SiteService {
      *
      * @return 首页展示数据。
      */
-    Map<String, Object> getHomeData();
+    HomeDataDTO getHomeData();
 
     /**
      * 获取个人资料信息。
@@ -37,7 +39,7 @@ public interface SiteService {
      *
      * @return 留言页数据。
      */
-    Map<String, Object> getGuestbookData();
+    GuestbookDataDTO getGuestbookData();
 
     /**
      * 提交留言。

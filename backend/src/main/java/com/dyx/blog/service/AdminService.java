@@ -1,5 +1,8 @@
 package com.dyx.blog.service;
 
+import com.dyx.blog.common.dto.DashboardSummaryDTO;
+import com.dyx.blog.common.dto.GuestbookAdminDTO;
+import com.dyx.blog.common.dto.PageResult;
 import com.dyx.blog.entity.Footprint;
 import com.dyx.blog.entity.GuestbookMessage;
 import com.dyx.blog.entity.Honor;
@@ -25,7 +28,7 @@ public interface AdminService {
      *
      * @return 统计摘要。
      */
-    Map<String, Object> getDashboardSummary();
+    DashboardSummaryDTO getDashboardSummary();
 
     /**
      * 获取访问日志列表（分页）。
@@ -39,7 +42,7 @@ public interface AdminService {
      * @param pageSize 每页数量。
      * @return 包含访问日志记录及分页信息的结果。
      */
-    Map<String, Object> listVisitLogs(LocalDateTime startTime, LocalDateTime endTime, String pageKey, String deviceType, String ipAddress, Integer page, Integer pageSize);
+    PageResult<Map<String, Object>> listVisitLogs(LocalDateTime startTime, LocalDateTime endTime, String pageKey, String deviceType, String ipAddress, Integer page, Integer pageSize);
 
     /**
      * 删除访问日志。
@@ -60,7 +63,7 @@ public interface AdminService {
      *
      * @return 留言管理数据。
      */
-    Map<String, Object> getGuestbookAdminData();
+    GuestbookAdminDTO getGuestbookAdminData();
 
     /**
      * 更新留言页介绍。

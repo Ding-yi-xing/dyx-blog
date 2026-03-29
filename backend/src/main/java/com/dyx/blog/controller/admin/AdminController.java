@@ -1,5 +1,8 @@
 package com.dyx.blog.controller.admin;
 
+import com.dyx.blog.common.dto.DashboardSummaryDTO;
+import com.dyx.blog.common.dto.GuestbookAdminDTO;
+import com.dyx.blog.common.dto.PageResult;
 import com.dyx.blog.common.response.Result;
 import com.dyx.blog.entity.Footprint;
 import com.dyx.blog.entity.GuestbookMessage;
@@ -49,7 +52,7 @@ public class AdminController {
      * @return 摘要数据。
      */
     @GetMapping("/dashboard/summary")
-    public Result<Map<String, Object>> getDashboardSummary() {
+    public Result<DashboardSummaryDTO> getDashboardSummary() {
         return Result.success(dyxAdminService.getDashboardSummary());
     }
 
@@ -59,16 +62,16 @@ public class AdminController {
      * @return 包含访问日志记录及分页信息的结果。
      */
     @GetMapping("/visit-logs")
-    public Result<Map<String, Object>> listVisitLogs(
+    public Result<PageResult<Map<String, Object>>> listVisitLogs(
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime startTime,
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime endTime,
             @RequestParam(required = false) String pageKey,
             @RequestParam(required = false) String deviceType,
             @RequestParam(required = false) String ipAddress,
             @RequestParam(value = "page", defaultValue = "1") Integer page,
-            @RequestParam(value = "pageSize", defaultValue = "20") Integer pageSize
-    ) {
-        return Result.success(dyxAdminService.listVisitLogs(startTime, endTime, pageKey, deviceType, ipAddress, page, pageSize));
+            @RequestParam(value = "pageSize", defaultValue = "20") Integer pageSize) {
+        return Result.success(
+                dyxAdminService.listVisitLogs(startTime, endTime, pageKey, deviceType, ipAddress, page, pageSize));
     }
 
     /**
@@ -98,10 +101,10 @@ public class AdminController {
     /**
      * 获取留言管理数据。
      *
-     * @return 留言管理结果。
+     * @return 留言管理数据。
      */
     @GetMapping("/guestbook")
-    public Result<Map<String, Object>> getGuestbookAdminData() {
+    public Result<GuestbookAdminDTO> getGuestbookAdminData() {
         return Result.success(dyxAdminService.getGuestbookAdminData());
     }
 
@@ -113,18 +116,20 @@ public class AdminController {
      */
     @PutMapping("/guestbook/intro")
     public Result<Profile> updateGuestbookIntro(@RequestBody Map<String, String> payload) {
-        return Result.success(dyxAdminService.saveGuestbookIntro(payload == null ? null : payload.get("guestbookIntro")));
+        return Result
+                .success(dyxAdminService.saveGuestbookIntro(payload == null ? null : payload.get("guestbookIntro")));
     }
 
     /**
      * 更新留言。
      *
-     * @param id 留言主键。
+     * @param id      留言主键。
      * @param message 留言对象。
      * @return 保存结果。
      */
     @PutMapping("/guestbook/messages/{id}")
-    public Result<GuestbookMessage> updateGuestbookMessage(@PathVariable Long id, @RequestBody GuestbookMessage message) {
+    public Result<GuestbookMessage> updateGuestbookMessage(@PathVariable Long id,
+            @RequestBody GuestbookMessage message) {
         return Result.success(dyxAdminService.updateGuestbookMessage(id, message));
     }
 
@@ -164,7 +169,7 @@ public class AdminController {
     /**
      * 更新文章。
      *
-     * @param id 文章主键。
+     * @param id   文章主键。
      * @param post 文章对象。
      * @return 保存结果。
      */
@@ -210,7 +215,7 @@ public class AdminController {
     /**
      * 更新动态。
      *
-     * @param id 动态主键。
+     * @param id     动态主键。
      * @param moment 动态对象。
      * @return 保存结果。
      */
@@ -256,7 +261,7 @@ public class AdminController {
     /**
      * 更新项目经历。
      *
-     * @param id 项目经历主键。
+     * @param id      项目经历主键。
      * @param project 项目经历对象。
      * @return 保存结果。
      */
@@ -302,7 +307,7 @@ public class AdminController {
     /**
      * 更新个人作品。
      *
-     * @param id 作品主键。
+     * @param id   作品主键。
      * @param work 作品对象。
      * @return 保存结果。
      */
@@ -348,7 +353,7 @@ public class AdminController {
     /**
      * 更新荣誉。
      *
-     * @param id 荣誉主键。
+     * @param id    荣誉主键。
      * @param honor 荣誉对象。
      * @return 保存结果。
      */
@@ -394,7 +399,7 @@ public class AdminController {
     /**
      * 更新首页足迹。
      *
-     * @param id 足迹主键。
+     * @param id        足迹主键。
      * @param footprint 足迹对象。
      * @return 保存结果。
      */
@@ -503,7 +508,7 @@ public class AdminController {
     /**
      * 更新用户。
      *
-     * @param id 用户主键。
+     * @param id   用户主键。
      * @param user 用户对象。
      * @return 保存结果。
      */

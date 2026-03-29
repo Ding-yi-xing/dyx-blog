@@ -1,6 +1,8 @@
 package com.dyx.blog.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.dyx.blog.common.dto.GuestbookDataDTO;
+import com.dyx.blog.common.dto.HomeDataDTO;
 import com.dyx.blog.common.exception.BusinessException;
 import com.dyx.blog.common.util.HeroConfigUtil;
 import com.dyx.blog.entity.Footprint;
@@ -25,6 +27,7 @@ import com.dyx.blog.service.SiteService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
@@ -64,16 +67,16 @@ public class SiteServiceImpl implements SiteService {
      * @return 首页数据。
      */
     @Override
-    public Map<String, Object> getHomeData() {
-        Map<String, Object> result = new HashMap<>();
-        result.put("profile", getProfile());
-        result.put("latestPosts", listPosts().stream().limit(3).toList());
-        result.put("latestMoments", listMoments().stream().limit(3).toList());
-        result.put("featuredProjects", listProjects().stream().limit(3).toList());
-        result.put("latestHonors", listHonors().stream().limit(3).toList());
-        result.put("footprints", listFootprints());
-        result.put("systemConfig", getHomeSystemConfig());
-        return result;
+    public HomeDataDTO getHomeData() {
+        return HomeDataDTO.builder()
+                .profile(getProfile())
+                .latestPosts(listPosts().stream().limit(3).toList())
+                .latestMoments(listMoments().stream().limit(3).toList())
+                .featuredProjects(listProjects().stream().limit(3).toList())
+                .latestHonors(listHonors().stream().limit(3).toList())
+                .footprints(listFootprints())
+                .systemConfig(getHomeSystemConfig())
+                .build();
     }
 
     /**
@@ -82,9 +85,8 @@ public class SiteServiceImpl implements SiteService {
      * @return 个人资料对象。
      */
     @Override
+    @Cacheable(value = "site", key = "'profile'")
     public Profile getProfile() {
-        ensureProfileContactMethodsColumn();
-        ensureProfileGuestbookIntroColumn();
         Profile profile = dyxProfileMapper.selectById(1L);
         if (profile == null) {
             profile = new Profile();
@@ -101,16 +103,15 @@ public class SiteServiceImpl implements SiteService {
      * @return 留言页数据。
      */
     @Override
-    public Map<String, Object> getGuestbookData() {
-        ensureGuestbookMessageTable();
+    public GuestbookDataDTO getGuestbookData() {
         Profile profile = getProfile();
-        Map<String, Object> result = new HashMap<>();
-        result.put("guestbookIntro", profile.getGuestbookIntro());
-        result.put("messages", dyxGuestbookMessageMapper.selectList(new LambdaQueryWrapper<GuestbookMessage>()
-                .eq(GuestbookMessage::getPublished, 1)
-                .orderByDesc(GuestbookMessage::getCreatedAt)
-                .orderByDesc(GuestbookMessage::getId)));
-        return result;
+        return GuestbookDataDTO.builder()
+                .guestbookIntro(profile.getGuestbookIntro())
+                .messages(dyxGuestbookMessageMapper.selectList(new LambdaQueryWrapper<GuestbookMessage>()
+                        .eq(GuestbookMessage::getPublished, 1)
+                        .orderByDesc(GuestbookMessage::getCreatedAt)
+                        .orderByDesc(GuestbookMessage::getId)))
+                .build();
     }
 
     /**
@@ -122,7 +123,6 @@ public class SiteServiceImpl implements SiteService {
      */
     @Override
     public GuestbookMessage saveGuestbookMessage(GuestbookMessage message, HttpServletRequest request) {
-        ensureGuestbookMessageTable();
         if (message == null) {
             throw new BusinessException("留言内容不能为空");
         }
@@ -149,6 +149,7 @@ public class SiteServiceImpl implements SiteService {
      * @return 文章列表。
      */
     @Override
+    @Cacheable(value = "site", key = "'posts'")
     public List<Post> listPosts() {
         return dyxPostMapper.selectList(new LambdaQueryWrapper<Post>()
                 .eq(Post::getPublished, 1)
@@ -178,8 +179,8 @@ public class SiteServiceImpl implements SiteService {
      * @return 动态列表。
      */
     @Override
+    @Cacheable(value = "site", key = "'moments'")
     public List<Moment> listMoments() {
-        ensureMomentImageUrlsColumn();
         return dyxMomentMapper.selectList(new LambdaQueryWrapper<Moment>()
                 .eq(Moment::getPublished, 1)
                 .orderByDesc(Moment::getHappenedAt));
@@ -193,7 +194,6 @@ public class SiteServiceImpl implements SiteService {
      */
     @Override
     public Moment getMomentDetail(Long id) {
-        ensureMomentImageUrlsColumn();
         Moment moment = dyxMomentMapper.selectOne(new LambdaQueryWrapper<Moment>()
                 .eq(Moment::getId, id)
                 .eq(Moment::getPublished, 1)
@@ -210,6 +210,7 @@ public class SiteServiceImpl implements SiteService {
      * @return 项目经历列表。
      */
     @Override
+    @Cacheable(value = "site", key = "'projects'")
     public List<Project> listProjects() {
         return dyxProjectMapper.selectList(new LambdaQueryWrapper<Project>()
                 .eq(Project::getPublished, 1)
@@ -223,6 +224,7 @@ public class SiteServiceImpl implements SiteService {
      * @return 作品列表。
      */
     @Override
+    @Cacheable(value = "site", key = "'works'")
     public List<Work> listWorks() {
         return dyxWorkMapper.selectList(new LambdaQueryWrapper<Work>()
                 .eq(Work::getPublished, 1)
@@ -236,6 +238,7 @@ public class SiteServiceImpl implements SiteService {
      * @return 荣誉列表。
      */
     @Override
+    @Cacheable(value = "site", key = "'honors'")
     public List<Honor> listHonors() {
         return dyxHonorMapper.selectList(new LambdaQueryWrapper<Honor>()
                 .eq(Honor::getPublished, 1)
@@ -250,8 +253,8 @@ public class SiteServiceImpl implements SiteService {
      * @return 足迹列表。
      */
     @Override
+    @Cacheable(value = "site", key = "'footprints'")
     public List<Footprint> listFootprints() {
-        ensureFootprintTable();
         return dyxFootprintMapper.selectList(new LambdaQueryWrapper<Footprint>()
                 .eq(Footprint::getPublished, 1)
                 .orderByDesc(Footprint::getImportance)
@@ -261,7 +264,6 @@ public class SiteServiceImpl implements SiteService {
     }
 
     private Map<String, Object> getHomeSystemConfig() {
-        ensureSystemConfigTable();
         SystemConfig systemConfig = dyxSystemConfigMapper.selectById(1L);
         Map<String, Object> result = new HashMap<>();
         result.put("footprintEyebrow", systemConfig == null ? null : systemConfig.getFootprintEyebrow());
@@ -282,8 +284,6 @@ public class SiteServiceImpl implements SiteService {
     @Override
     public void recordSiteVisit(String pageKey, HttpServletRequest request) {
         String normalizedPageKey = normalizePageKey(pageKey);
-        ensureVisitStatTable();
-        ensureVisitLogTable();
 
         String userAgent = resolveUserAgent(request);
         String deviceType = resolveDeviceType(userAgent);
@@ -293,8 +293,7 @@ public class SiteServiceImpl implements SiteService {
         jdbcTemplate.update(
                 "INSERT INTO dyx_site_visit_stat (page_key, visit_count, updated_at) VALUES (?, 1, NOW()) "
                         + "ON DUPLICATE KEY UPDATE visit_count = visit_count + 1, updated_at = NOW()",
-                normalizedPageKey
-        );
+                normalizedPageKey);
         jdbcTemplate.update(
                 "INSERT INTO dyx_site_visit_log (page_key, ip_address, user_agent, device_type, device_name, created_at) VALUES (?, ?, ?, ?, ?, ?)",
                 normalizedPageKey,
@@ -302,8 +301,7 @@ public class SiteServiceImpl implements SiteService {
                 userAgent,
                 deviceType,
                 deviceName,
-                LocalDateTime.now()
-        );
+                LocalDateTime.now());
     }
 
     private String normalizePageKey(String pageKey) {
@@ -450,163 +448,6 @@ public class SiteServiceImpl implements SiteService {
                 || normalizedUserAgent.contains("slurp")
                 || normalizedUserAgent.contains("curl")
                 || normalizedUserAgent.contains("wget");
-    }
-
-    private void ensureVisitStatTable() {
-        jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS dyx_site_visit_stat ("
-                + "page_key VARCHAR(64) PRIMARY KEY, "
-                + "visit_count BIGINT NOT NULL DEFAULT 0, "
-                + "updated_at DATETIME NOT NULL)");
-    }
-
-    private void ensureMomentImageUrlsColumn() {
-        Integer tableExists = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'dyx_moment'",
-                Integer.class
-        );
-        if (tableExists == null || tableExists == 0) {
-            return;
-        }
-        Integer columnExists = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'dyx_moment' AND COLUMN_NAME = 'image_urls'",
-                Integer.class
-        );
-        if (columnExists == null || columnExists == 0) {
-            jdbcTemplate.execute("ALTER TABLE dyx_moment ADD COLUMN image_urls TEXT NULL AFTER cover_image");
-        }
-    }
-
-    private void ensureFootprintTable() {
-        jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS dyx_footprint ("
-                + "id BIGINT PRIMARY KEY, "
-                + "city_name VARCHAR(100) NOT NULL, "
-                + "country_name VARCHAR(100), "
-                + "region_name VARCHAR(100), "
-                + "position_x DECIMAL(5,2) NOT NULL DEFAULT 0, "
-                + "position_y DECIMAL(5,2) NOT NULL DEFAULT 0, "
-                + "visited_at DATETIME, "
-                + "description TEXT, "
-                + "importance INT NOT NULL DEFAULT 1, "
-                + "sort_order INT NOT NULL DEFAULT 0, "
-                + "published TINYINT NOT NULL DEFAULT 0, "
-                + "created_at DATETIME NOT NULL, "
-                + "updated_at DATETIME NOT NULL, "
-                + "INDEX idx_footprint_published (published), "
-                + "INDEX idx_footprint_sort_order (sort_order), "
-                + "INDEX idx_footprint_visited_at (visited_at))");
-    }
-
-    private void ensureSystemConfigTable() {
-        jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS dyx_system_config ("
-                + "id BIGINT PRIMARY KEY, "
-                + "storage_type VARCHAR(32) NOT NULL DEFAULT 'local', "
-                + "oss_endpoint VARCHAR(255), "
-                + "oss_region VARCHAR(100), "
-                + "oss_bucket_name VARCHAR(255), "
-                + "oss_public_url_prefix VARCHAR(255), "
-                + "oss_base_dir VARCHAR(255), "
-                + "footprint_eyebrow VARCHAR(120), "
-                + "footprint_title VARCHAR(200), "
-                + "footprint_subtitle VARCHAR(255), "
-                + "footprint_description VARCHAR(500), "
-                + "copyright_text VARCHAR(255), "
-                + "tech_support_text VARCHAR(255), "
-                + "updated_at DATETIME NOT NULL)");
-        ensureSystemConfigColumn("footprint_eyebrow", "ALTER TABLE dyx_system_config ADD COLUMN footprint_eyebrow VARCHAR(120) NULL AFTER oss_base_dir");
-        ensureSystemConfigColumn("footprint_title", "ALTER TABLE dyx_system_config ADD COLUMN footprint_title VARCHAR(200) NULL AFTER footprint_eyebrow");
-        ensureSystemConfigColumn("footprint_subtitle", "ALTER TABLE dyx_system_config ADD COLUMN footprint_subtitle VARCHAR(255) NULL AFTER footprint_title");
-        ensureSystemConfigColumn("footprint_description", "ALTER TABLE dyx_system_config ADD COLUMN footprint_description VARCHAR(500) NULL AFTER footprint_subtitle");
-        ensureSystemConfigColumn("copyright_text", "ALTER TABLE dyx_system_config ADD COLUMN copyright_text VARCHAR(255) NULL AFTER footprint_description");
-        ensureSystemConfigColumn("tech_support_text", "ALTER TABLE dyx_system_config ADD COLUMN tech_support_text VARCHAR(255) NULL AFTER copyright_text");
-    }
-
-    private void ensureProfileContactMethodsColumn() {
-        Integer tableExists = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'dyx_profile'",
-                Integer.class
-        );
-        if (tableExists == null || tableExists == 0) {
-            return;
-        }
-        Integer columnExists = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'dyx_profile' AND COLUMN_NAME = 'contact_methods'",
-                Integer.class
-        );
-        if (columnExists == null || columnExists == 0) {
-            jdbcTemplate.execute("ALTER TABLE dyx_profile ADD COLUMN contact_methods LONGTEXT NULL AFTER github_url");
-        }
-    }
-
-    private void ensureProfileGuestbookIntroColumn() {
-        Integer tableExists = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'dyx_profile'",
-                Integer.class
-        );
-        if (tableExists == null || tableExists == 0) {
-            return;
-        }
-        Integer columnExists = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'dyx_profile' AND COLUMN_NAME = 'guestbook_intro'",
-                Integer.class
-        );
-        if (columnExists == null || columnExists == 0) {
-            jdbcTemplate.execute("ALTER TABLE dyx_profile ADD COLUMN guestbook_intro TEXT NULL AFTER resume_pdf_url");
-        }
-    }
-
-    private void ensureGuestbookMessageTable() {
-        jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS dyx_guestbook_message ("
-                + "id BIGINT PRIMARY KEY AUTO_INCREMENT, "
-                + "content TEXT NOT NULL, "
-                + "published TINYINT NOT NULL DEFAULT 0, "
-                + "ip_address VARCHAR(45) NOT NULL, "
-                + "created_at DATETIME NOT NULL, "
-                + "updated_at DATETIME NOT NULL, "
-                + "INDEX idx_guestbook_message_published (published), "
-                + "INDEX idx_guestbook_message_created_at (created_at))");
-    }
-
-    private void ensureVisitLogTable() {
-        jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS dyx_site_visit_log ("
-                + "id BIGINT PRIMARY KEY AUTO_INCREMENT, "
-                + "page_key VARCHAR(64) NOT NULL, "
-                + "ip_address VARCHAR(45) NOT NULL, "
-                + "user_agent VARCHAR(512), "
-                + "device_type VARCHAR(32) NOT NULL, "
-                + "device_name VARCHAR(128), "
-                + "created_at DATETIME NOT NULL, "
-                + "INDEX idx_site_visit_log_created_at (created_at), "
-                + "INDEX idx_site_visit_log_page_key (page_key), "
-                + "INDEX idx_site_visit_log_device_type (device_type))");
-        ensureSiteVisitLogDeviceNameColumn();
-    }
-
-    private void ensureSiteVisitLogDeviceNameColumn() {
-        Integer tableExists = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'dyx_site_visit_log'",
-                Integer.class
-        );
-        if (tableExists == null || tableExists == 0) {
-            return;
-        }
-        Integer columnExists = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'dyx_site_visit_log' AND COLUMN_NAME = 'device_name'",
-                Integer.class
-        );
-        if (columnExists == null || columnExists == 0) {
-            jdbcTemplate.execute("ALTER TABLE dyx_site_visit_log ADD COLUMN device_name VARCHAR(128) AFTER device_type");
-        }
-    }
-
-    private void ensureSystemConfigColumn(String columnName, String alterSql) {
-        Integer columnExists = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'dyx_system_config' AND COLUMN_NAME = ?",
-                Integer.class,
-                columnName
-        );
-        if (columnExists == null || columnExists == 0) {
-            jdbcTemplate.execute(alterSql);
-        }
     }
 
     private String truncate(String value, int maxLength) {

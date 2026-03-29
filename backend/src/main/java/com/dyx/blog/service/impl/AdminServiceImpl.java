@@ -3,6 +3,9 @@ package com.dyx.blog.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.dyx.blog.common.constant.SystemConstant;
 import com.dyx.blog.common.context.UserContext;
+import com.dyx.blog.common.dto.DashboardSummaryDTO;
+import com.dyx.blog.common.dto.GuestbookAdminDTO;
+import com.dyx.blog.common.dto.PageResult;
 import com.dyx.blog.common.exception.BusinessException;
 import com.dyx.blog.common.util.HeroConfigUtil;
 import com.dyx.blog.entity.Footprint;
@@ -30,6 +33,7 @@ import com.dyx.blog.service.AdminService;
 import com.dyx.blog.storage.OssMediaStorage;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -73,21 +77,18 @@ public class AdminServiceImpl implements AdminService {
      * @return 摘要数据。
      */
     @Override
-    public Map<String, Object> getDashboardSummary() {
-        ensureVisitStatTable();
-        ensureVisitLogTable();
-
-        Map<String, Object> result = new HashMap<>();
-        result.put("postCount", dyxPostMapper.selectCount(null));
-        result.put("momentCount", dyxMomentMapper.selectCount(null));
-        result.put("honorCount", dyxHonorMapper.selectCount(null));
-        result.put("userCount", dyxUserMapper.selectCount(null));
-        result.put("totalPostViews", queryTotalPostViews());
-        result.put("totalSiteVisits", queryTotalSiteVisits());
-        result.put("dailySiteVisits", queryDailySiteVisits());
-        result.put("deviceTypeDistribution", queryDeviceTypeDistribution());
-        result.put("topVisitedPages", queryTopVisitedPages());
-        return result;
+    public DashboardSummaryDTO getDashboardSummary() {
+        return DashboardSummaryDTO.builder()
+                .postCount(dyxPostMapper.selectCount(null))
+                .momentCount(dyxMomentMapper.selectCount(null))
+                .honorCount(dyxHonorMapper.selectCount(null))
+                .userCount(dyxUserMapper.selectCount(null))
+                .totalPostViews(queryTotalPostViews())
+                .totalSiteVisits(queryTotalSiteVisits())
+                .dailySiteVisits(queryDailySiteVisits())
+                .deviceTypeDistribution(queryDeviceTypeDistribution())
+                .topVisitedPages(queryTopVisitedPages())
+                .build();
     }
 
     /**
@@ -96,8 +97,8 @@ public class AdminServiceImpl implements AdminService {
      * @return 包含访问日志记录及分页信息的结果。
      */
     @Override
-    public Map<String, Object> listVisitLogs(LocalDateTime startTime, LocalDateTime endTime, String pageKey, String deviceType, String ipAddress, Integer page, Integer pageSize) {
-        ensureVisitLogTable();
+    public PageResult<Map<String, Object>> listVisitLogs(LocalDateTime startTime, LocalDateTime endTime, String pageKey,
+            String deviceType, String ipAddress, Integer page, Integer pageSize) {
         int pageNo = (page == null || page < 1) ? 1 : page;
         int size = (pageSize == null || pageSize <= 0) ? 20 : pageSize;
         return queryVisitLogs(startTime, endTime, pageKey, deviceType, ipAddress, pageNo, size);
@@ -110,7 +111,6 @@ public class AdminServiceImpl implements AdminService {
      */
     @Override
     public void deleteVisitLog(Long id) {
-        ensureVisitLogTable();
         dyxSiteVisitLogMapper.deleteById(id);
     }
 
@@ -122,7 +122,6 @@ public class AdminServiceImpl implements AdminService {
     @Override
     @Transactional
     public void deleteVisitLogs(List<Long> ids) {
-        ensureVisitLogTable();
         if (ids == null || ids.isEmpty()) {
             throw new BusinessException("请选择需要删除的访问日志");
         }
@@ -135,15 +134,14 @@ public class AdminServiceImpl implements AdminService {
      * @return 留言管理数据。
      */
     @Override
-    public Map<String, Object> getGuestbookAdminData() {
-        ensureGuestbookMessageTable();
+    public GuestbookAdminDTO getGuestbookAdminData() {
         Profile profile = getProfile();
-        Map<String, Object> result = new HashMap<>();
-        result.put("guestbookIntro", profile.getGuestbookIntro());
-        result.put("messages", dyxGuestbookMessageMapper.selectList(new LambdaQueryWrapper<GuestbookMessage>()
-                .orderByDesc(GuestbookMessage::getCreatedAt)
-                .orderByDesc(GuestbookMessage::getId)));
-        return result;
+        return GuestbookAdminDTO.builder()
+                .guestbookIntro(profile.getGuestbookIntro())
+                .messages(dyxGuestbookMessageMapper.selectList(new LambdaQueryWrapper<GuestbookMessage>()
+                        .orderByDesc(GuestbookMessage::getCreatedAt)
+                        .orderByDesc(GuestbookMessage::getId)))
+                .build();
     }
 
     /**
@@ -153,6 +151,7 @@ public class AdminServiceImpl implements AdminService {
      * @return 保存后的个人资料。
      */
     @Override
+    @CacheEvict(value = "site", key = "'profile'")
     public Profile saveGuestbookIntro(String guestbookIntro) {
         Profile profile = getProfile();
         profile.setGuestbookIntro(guestbookIntro == null ? null : guestbookIntro.trim());
@@ -162,13 +161,12 @@ public class AdminServiceImpl implements AdminService {
     /**
      * 更新留言。
      *
-     * @param id 留言主键。
+     * @param id      留言主键。
      * @param message 留言内容。
      * @return 保存后的留言。
      */
     @Override
     public GuestbookMessage updateGuestbookMessage(Long id, GuestbookMessage message) {
-        ensureGuestbookMessageTable();
         GuestbookMessage existingMessage = dyxGuestbookMessageMapper.selectById(id);
         if (existingMessage == null) {
             throw new BusinessException("留言不存在");
@@ -198,7 +196,6 @@ public class AdminServiceImpl implements AdminService {
      */
     @Override
     public void deleteGuestbookMessage(Long id) {
-        ensureGuestbookMessageTable();
         dyxGuestbookMessageMapper.deleteById(id);
     }
 
@@ -219,6 +216,7 @@ public class AdminServiceImpl implements AdminService {
      * @return 保存后的文章。
      */
     @Override
+    @CacheEvict(value = "site", key = "'posts'")
     public Post savePost(Post post) {
         LocalDateTime now = LocalDateTime.now();
         post.setUpdatedAt(now);
@@ -237,6 +235,7 @@ public class AdminServiceImpl implements AdminService {
      * @param id 文章主键。
      */
     @Override
+    @CacheEvict(value = "site", key = "'posts'")
     public void deletePost(Long id) {
         dyxPostMapper.deleteById(id);
     }
@@ -248,7 +247,6 @@ public class AdminServiceImpl implements AdminService {
      */
     @Override
     public List<Moment> listMoments() {
-        ensureMomentImageUrlsColumn();
         return dyxMomentMapper.selectList(new LambdaQueryWrapper<Moment>().orderByDesc(Moment::getUpdatedAt));
     }
 
@@ -259,8 +257,8 @@ public class AdminServiceImpl implements AdminService {
      * @return 保存后的动态。
      */
     @Override
+    @CacheEvict(value = "site", key = "'moments'")
     public Moment saveMoment(Moment moment) {
-        ensureMomentImageUrlsColumn();
         LocalDateTime now = LocalDateTime.now();
         moment.setUpdatedAt(now);
         if (moment.getId() == null) {
@@ -278,6 +276,7 @@ public class AdminServiceImpl implements AdminService {
      * @param id 动态主键。
      */
     @Override
+    @CacheEvict(value = "site", key = "'moments'")
     public void deleteMoment(Long id) {
         dyxMomentMapper.deleteById(id);
     }
@@ -301,6 +300,7 @@ public class AdminServiceImpl implements AdminService {
      * @return 保存后的项目经历。
      */
     @Override
+    @CacheEvict(value = "site", key = "'projects'")
     public Project saveProject(Project project) {
         LocalDateTime now = LocalDateTime.now();
         project.setUpdatedAt(now);
@@ -319,6 +319,7 @@ public class AdminServiceImpl implements AdminService {
      * @param id 项目经历主键。
      */
     @Override
+    @CacheEvict(value = "site", key = "'projects'")
     public void deleteProject(Long id) {
         dyxProjectMapper.deleteById(id);
     }
@@ -342,6 +343,7 @@ public class AdminServiceImpl implements AdminService {
      * @return 保存后的作品。
      */
     @Override
+    @CacheEvict(value = "site", key = "'works'")
     public Work saveWork(Work work) {
         LocalDateTime now = LocalDateTime.now();
         work.setUpdatedAt(now);
@@ -360,6 +362,7 @@ public class AdminServiceImpl implements AdminService {
      * @param id 作品主键。
      */
     @Override
+    @CacheEvict(value = "site", key = "'works'")
     public void deleteWork(Long id) {
         dyxWorkMapper.deleteById(id);
     }
@@ -384,6 +387,7 @@ public class AdminServiceImpl implements AdminService {
      * @return 保存后的荣誉。
      */
     @Override
+    @CacheEvict(value = "site", key = "'honors'")
     public Honor saveHonor(Honor honor) {
         LocalDateTime now = LocalDateTime.now();
         honor.setUpdatedAt(now);
@@ -402,6 +406,7 @@ public class AdminServiceImpl implements AdminService {
      * @param id 荣誉主键。
      */
     @Override
+    @CacheEvict(value = "site", key = "'honors'")
     public void deleteHonor(Long id) {
         dyxHonorMapper.deleteById(id);
     }
@@ -413,7 +418,6 @@ public class AdminServiceImpl implements AdminService {
      */
     @Override
     public List<Footprint> listFootprints() {
-        ensureFootprintTable();
         return dyxFootprintMapper.selectList(new LambdaQueryWrapper<Footprint>()
                 .orderByDesc(Footprint::getImportance)
                 .orderByAsc(Footprint::getSortOrder)
@@ -428,8 +432,8 @@ public class AdminServiceImpl implements AdminService {
      * @return 保存后的足迹。
      */
     @Override
+    @CacheEvict(value = "site", key = "'footprints'")
     public Footprint saveFootprint(Footprint footprint) {
-        ensureFootprintTable();
         validateFootprint(footprint);
         LocalDateTime now = LocalDateTime.now();
         footprint.setUpdatedAt(now);
@@ -455,8 +459,8 @@ public class AdminServiceImpl implements AdminService {
      * @param id 足迹主键。
      */
     @Override
+    @CacheEvict(value = "site", key = "'footprints'")
     public void deleteFootprint(Long id) {
-        ensureFootprintTable();
         dyxFootprintMapper.deleteById(id);
     }
 
@@ -477,6 +481,7 @@ public class AdminServiceImpl implements AdminService {
      * @return 保存后的个人资料。
      */
     @Override
+    @CacheEvict(value = "site", key = "'profile'")
     public Profile saveHeroProfile(Profile profile) {
         Profile existingProfile = getProfile();
         existingProfile.setHeroConfig(profile.getHeroConfig());
@@ -493,8 +498,6 @@ public class AdminServiceImpl implements AdminService {
      */
     @Override
     public Profile getProfile() {
-        ensureProfileContactMethodsColumn();
-        ensureProfileGuestbookIntroColumn();
         Profile profile = dyxProfileMapper.selectById(1L);
         if (profile == null) {
             profile = new Profile();
@@ -512,9 +515,8 @@ public class AdminServiceImpl implements AdminService {
      * @return 保存后的个人资料。
      */
     @Override
+    @CacheEvict(value = "site", key = "'profile'")
     public Profile saveProfile(Profile profile) {
-        ensureProfileContactMethodsColumn();
-        ensureProfileGuestbookIntroColumn();
         HeroConfigUtil.ensureHeroConfig(profile, objectMapper);
         HeroConfigUtil.syncLegacyFields(profile, objectMapper);
         profile.setUpdatedAt(LocalDateTime.now());
@@ -536,7 +538,6 @@ public class AdminServiceImpl implements AdminService {
      */
     @Override
     public SystemConfig getSystemConfig() {
-        ensureSystemConfigTable();
         SystemConfig systemConfig = dyxSystemConfigMapper.selectById(1L);
         if (systemConfig == null) {
             systemConfig = new SystemConfig();
@@ -555,7 +556,6 @@ public class AdminServiceImpl implements AdminService {
      */
     @Override
     public SystemConfig saveSystemConfig(SystemConfig systemConfig) {
-        ensureSystemConfigTable();
         if (systemConfig == null) {
             throw new BusinessException("系统配置不能为空");
         }
@@ -616,7 +616,8 @@ public class AdminServiceImpl implements AdminService {
             if (isBlank(user.getPassword())) {
                 user.setPassword(existingUser.getPassword());
             }
-            if (existingUser.getId().equals(UserContext.getUserId()) && !SystemConstant.ROLE_ADMIN.equals(user.getRole())) {
+            if (existingUser.getId().equals(UserContext.getUserId())
+                    && !SystemConstant.ROLE_ADMIN.equals(user.getRole())) {
                 throw new BusinessException("当前登录账号必须保留管理员权限");
             }
             dyxUserMapper.updateById(user);
@@ -652,7 +653,8 @@ public class AdminServiceImpl implements AdminService {
     }
 
     private long queryTotalSiteVisits() {
-        Long total = jdbcTemplate.queryForObject("SELECT COALESCE(SUM(visit_count), 0) FROM dyx_site_visit_stat", Long.class);
+        Long total = jdbcTemplate.queryForObject("SELECT COALESCE(SUM(visit_count), 0) FROM dyx_site_visit_stat",
+                Long.class);
         return total == null ? 0L : total;
     }
 
@@ -662,8 +664,7 @@ public class AdminServiceImpl implements AdminService {
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(
                 "SELECT DATE(created_at) AS visit_day, COUNT(*) AS visit_count "
                         + "FROM dyx_site_visit_log WHERE created_at >= ? GROUP BY DATE(created_at) ORDER BY visit_day ASC",
-                startDate.atStartOfDay()
-        );
+                startDate.atStartOfDay());
         Map<String, Long> visitCountMap = new HashMap<>();
         for (Map<String, Object> row : rows) {
             Object visitDay = row.get("visit_day");
@@ -687,8 +688,7 @@ public class AdminServiceImpl implements AdminService {
 
     private List<Map<String, Object>> queryDeviceTypeDistribution() {
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(
-                "SELECT device_type, COUNT(*) AS visit_count FROM dyx_site_visit_log GROUP BY device_type ORDER BY visit_count DESC, device_type ASC"
-        );
+                "SELECT device_type, COUNT(*) AS visit_count FROM dyx_site_visit_log GROUP BY device_type ORDER BY visit_count DESC, device_type ASC");
         List<Map<String, Object>> result = new ArrayList<>();
         for (Map<String, Object> row : rows) {
             Map<String, Object> item = new HashMap<>();
@@ -704,8 +704,7 @@ public class AdminServiceImpl implements AdminService {
     private List<Map<String, Object>> queryTopVisitedPages() {
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(
                 "SELECT page_key, COUNT(*) AS visit_count, MAX(created_at) AS last_visit_at "
-                        + "FROM dyx_site_visit_log GROUP BY page_key ORDER BY visit_count DESC, last_visit_at DESC LIMIT 6"
-        );
+                        + "FROM dyx_site_visit_log GROUP BY page_key ORDER BY visit_count DESC, last_visit_at DESC LIMIT 6");
         List<Map<String, Object>> result = new ArrayList<>();
         for (Map<String, Object> row : rows) {
             Map<String, Object> item = new HashMap<>();
@@ -719,7 +718,8 @@ public class AdminServiceImpl implements AdminService {
         return result;
     }
 
-    private Map<String, Object> queryVisitLogs(LocalDateTime startTime, LocalDateTime endTime, String pageKey, String deviceType, String ipAddress, int page, int pageSize) {
+    private PageResult<Map<String, Object>> queryVisitLogs(LocalDateTime startTime, LocalDateTime endTime,
+            String pageKey, String deviceType, String ipAddress, int page, int pageSize) {
         StringBuilder baseSql = new StringBuilder(" FROM dyx_site_visit_log WHERE 1 = 1");
         List<Object> params = new ArrayList<>();
         if (startTime != null) {
@@ -774,12 +774,12 @@ public class AdminServiceImpl implements AdminService {
             }
         }
 
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("records", records);
-        result.put("total", totalCount);
-        result.put("page", page);
-        result.put("pageSize", pageSize);
-        return result;
+        return PageResult.<Map<String, Object>>builder()
+                .records(records)
+                .total(totalCount)
+                .page(page)
+                .pageSize(pageSize)
+                .build();
     }
 
     private String mapPageKeyLabel(String pageKey) {
@@ -804,163 +804,6 @@ public class AdminServiceImpl implements AdminService {
             case "BOT" -> "爬虫 / Bot";
             default -> "未知设备";
         };
-    }
-
-    private void ensureFootprintTable() {
-        jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS dyx_footprint ("
-                + "id BIGINT PRIMARY KEY, "
-                + "city_name VARCHAR(100) NOT NULL, "
-                + "country_name VARCHAR(100), "
-                + "region_name VARCHAR(100), "
-                + "position_x DECIMAL(5,2) NOT NULL DEFAULT 0, "
-                + "position_y DECIMAL(5,2) NOT NULL DEFAULT 0, "
-                + "visited_at DATETIME, "
-                + "description TEXT, "
-                + "importance INT NOT NULL DEFAULT 1, "
-                + "sort_order INT NOT NULL DEFAULT 0, "
-                + "published TINYINT NOT NULL DEFAULT 0, "
-                + "created_at DATETIME NOT NULL, "
-                + "updated_at DATETIME NOT NULL, "
-                + "INDEX idx_footprint_published (published), "
-                + "INDEX idx_footprint_sort_order (sort_order), "
-                + "INDEX idx_footprint_visited_at (visited_at))");
-    }
-
-    private void ensureVisitStatTable() {
-        jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS dyx_site_visit_stat ("
-                + "page_key VARCHAR(64) PRIMARY KEY, "
-                + "visit_count BIGINT NOT NULL DEFAULT 0, "
-                + "updated_at DATETIME NOT NULL)");
-    }
-
-    private void ensureMomentImageUrlsColumn() {
-        Integer tableExists = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'dyx_moment'",
-                Integer.class
-        );
-        if (tableExists == null || tableExists == 0) {
-            return;
-        }
-        Integer columnExists = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'dyx_moment' AND COLUMN_NAME = 'image_urls'",
-                Integer.class
-        );
-        if (columnExists == null || columnExists == 0) {
-            jdbcTemplate.execute("ALTER TABLE dyx_moment ADD COLUMN image_urls TEXT NULL AFTER cover_image");
-        }
-    }
-
-    private void ensureProfileContactMethodsColumn() {
-        Integer tableExists = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'dyx_profile'",
-                Integer.class
-        );
-        if (tableExists == null || tableExists == 0) {
-            return;
-        }
-        Integer columnExists = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'dyx_profile' AND COLUMN_NAME = 'contact_methods'",
-                Integer.class
-        );
-        if (columnExists == null || columnExists == 0) {
-            jdbcTemplate.execute("ALTER TABLE dyx_profile ADD COLUMN contact_methods LONGTEXT NULL AFTER github_url");
-        }
-    }
-
-    private void ensureProfileGuestbookIntroColumn() {
-        Integer tableExists = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'dyx_profile'",
-                Integer.class
-        );
-        if (tableExists == null || tableExists == 0) {
-            return;
-        }
-        Integer columnExists = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'dyx_profile' AND COLUMN_NAME = 'guestbook_intro'",
-                Integer.class
-        );
-        if (columnExists == null || columnExists == 0) {
-            jdbcTemplate.execute("ALTER TABLE dyx_profile ADD COLUMN guestbook_intro TEXT NULL AFTER resume_pdf_url");
-        }
-    }
-
-    private void ensureGuestbookMessageTable() {
-        jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS dyx_guestbook_message ("
-                + "id BIGINT PRIMARY KEY AUTO_INCREMENT, "
-                + "content TEXT NOT NULL, "
-                + "published TINYINT NOT NULL DEFAULT 0, "
-                + "ip_address VARCHAR(45) NOT NULL, "
-                + "created_at DATETIME NOT NULL, "
-                + "updated_at DATETIME NOT NULL, "
-                + "INDEX idx_guestbook_message_published (published), "
-                + "INDEX idx_guestbook_message_created_at (created_at))");
-    }
-
-    private void ensureVisitLogTable() {
-        jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS dyx_site_visit_log ("
-                + "id BIGINT PRIMARY KEY AUTO_INCREMENT, "
-                + "page_key VARCHAR(64) NOT NULL, "
-                + "ip_address VARCHAR(45) NOT NULL, "
-                + "user_agent VARCHAR(512), "
-                + "device_type VARCHAR(32) NOT NULL, "
-                + "device_name VARCHAR(128), "
-                + "created_at DATETIME NOT NULL, "
-                + "INDEX idx_site_visit_log_created_at (created_at), "
-                + "INDEX idx_site_visit_log_page_key (page_key), "
-                + "INDEX idx_site_visit_log_device_type (device_type))");
-        ensureSiteVisitLogDeviceNameColumn();
-    }
-
-    private void ensureSiteVisitLogDeviceNameColumn() {
-        Integer tableExists = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'dyx_site_visit_log'",
-                Integer.class
-        );
-        if (tableExists == null || tableExists == 0) {
-            return;
-        }
-        Integer columnExists = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'dyx_site_visit_log' AND COLUMN_NAME = 'device_name'",
-                Integer.class
-        );
-        if (columnExists == null || columnExists == 0) {
-            jdbcTemplate.execute("ALTER TABLE dyx_site_visit_log ADD COLUMN device_name VARCHAR(128) AFTER device_type");
-        }
-    }
-
-    private void ensureSystemConfigTable() {
-        jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS dyx_system_config ("
-                + "id BIGINT PRIMARY KEY, "
-                + "storage_type VARCHAR(32) NOT NULL DEFAULT 'local', "
-                + "oss_endpoint VARCHAR(255), "
-                + "oss_region VARCHAR(100), "
-                + "oss_bucket_name VARCHAR(255), "
-                + "oss_public_url_prefix VARCHAR(255), "
-                + "oss_base_dir VARCHAR(255), "
-                + "footprint_eyebrow VARCHAR(120), "
-                + "footprint_title VARCHAR(200), "
-                + "footprint_subtitle VARCHAR(255), "
-                + "footprint_description VARCHAR(500), "
-                + "copyright_text VARCHAR(255), "
-                + "tech_support_text VARCHAR(255), "
-                + "updated_at DATETIME NOT NULL)");
-        ensureSystemConfigColumn("footprint_eyebrow", "ALTER TABLE dyx_system_config ADD COLUMN footprint_eyebrow VARCHAR(120) NULL AFTER oss_base_dir");
-        ensureSystemConfigColumn("footprint_title", "ALTER TABLE dyx_system_config ADD COLUMN footprint_title VARCHAR(200) NULL AFTER footprint_eyebrow");
-        ensureSystemConfigColumn("footprint_subtitle", "ALTER TABLE dyx_system_config ADD COLUMN footprint_subtitle VARCHAR(255) NULL AFTER footprint_title");
-        ensureSystemConfigColumn("footprint_description", "ALTER TABLE dyx_system_config ADD COLUMN footprint_description VARCHAR(500) NULL AFTER footprint_subtitle");
-        ensureSystemConfigColumn("copyright_text", "ALTER TABLE dyx_system_config ADD COLUMN copyright_text VARCHAR(255) NULL AFTER footprint_description");
-        ensureSystemConfigColumn("tech_support_text", "ALTER TABLE dyx_system_config ADD COLUMN tech_support_text VARCHAR(255) NULL AFTER copyright_text");
-    }
-
-    private void ensureSystemConfigColumn(String columnName, String alterSql) {
-        Integer columnExists = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'dyx_system_config' AND COLUMN_NAME = ?",
-                Integer.class,
-                columnName
-        );
-        if (columnExists == null || columnExists == 0) {
-            jdbcTemplate.execute(alterSql);
-        }
     }
 
     private void validateSystemConfig(SystemConfig systemConfig) {
@@ -1050,7 +893,8 @@ public class AdminServiceImpl implements AdminService {
         if (duplicatedUser != null) {
             throw new BusinessException("用户名已存在");
         }
-        if (!SystemConstant.ROLE_ADMIN.equals(user.getRole()) && user.getId() != null && user.getId().equals(UserContext.getUserId())) {
+        if (!SystemConstant.ROLE_ADMIN.equals(user.getRole()) && user.getId() != null
+                && user.getId().equals(UserContext.getUserId())) {
             throw new BusinessException("当前登录账号必须保留管理员权限");
         }
         if (user.getId() != null && user.getId().equals(UserContext.getUserId()) && user.getEnabled() != 1) {
