@@ -159,10 +159,14 @@ async function handleSave(): Promise<void> {
   }
   saving.value = true;
   try {
-    await saveAdminHonor({
+    const payload = {
       ...form,
       imageUrls: stringifyImageUrls(selectedImageUrls.value)
-    });
+    };
+    if (!payload.id) {
+      delete payload.id;
+    }
+    await saveAdminHonor(payload);
     ElMessage.success(form.id ? '荣誉更新成功' : '荣誉创建成功');
     dialogVisible.value = false;
     await loadHonors();
