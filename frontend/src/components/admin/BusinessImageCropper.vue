@@ -9,7 +9,9 @@
     @update:model-value="emit('update:visible', $event)"
   >
     <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-      <div class="overflow-hidden rounded-[24px] border border-slate-200 bg-slate-950/95 p-4">
+      <div
+        class="overflow-hidden rounded-[24px] border border-slate-200 bg-slate-950/95 p-4"
+      >
         <div class="rounded-[20px] bg-slate-900 p-4">
           <div
             class="h-[460px] overflow-hidden rounded-[16px] bg-slate-950/90"
@@ -40,31 +42,56 @@
               :info="true"
               :full="true"
               :high="true"
-              :original="true"
+              :original="false"
               :enlarge="1"
               mode="contain"
               class="h-full w-full"
               @realTime="handleRealtime"
+              @imgLoad="handleImgLoad"
             />
-            <div v-else class="flex h-full items-center justify-center text-sm text-slate-400">暂无可裁剪图片</div>
+            <div
+              v-else
+              class="flex h-full items-center justify-center text-sm text-slate-400"
+            >
+              暂无可裁剪图片
+            </div>
           </div>
         </div>
       </div>
 
-      <div class="space-y-4 rounded-[24px] border border-slate-200 bg-slate-50 p-5">
+      <div
+        class="space-y-4 rounded-[24px] border border-slate-200 bg-slate-50 p-5"
+      >
         <div>
           <p class="text-sm font-semibold text-slate-900">裁剪说明</p>
-          <p class="mt-2 text-sm leading-6 text-slate-500">{{ config.description }}</p>
+          <p class="mt-2 text-sm leading-6 text-slate-500">
+            {{ config.description }}
+          </p>
         </div>
 
         <div class="rounded-[18px] border border-slate-200 bg-white p-4">
-          <p class="text-xs uppercase tracking-[0.22em] text-slate-400">业务预览</p>
+          <p class="text-xs uppercase tracking-[0.22em] text-slate-400">
+            业务预览
+          </p>
 
-          <div v-if="mode === 'avatar'" class="mt-4 flex flex-col items-center gap-3">
-            <div class="flex h-28 w-28 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-slate-100 shadow-sm">
-              <div v-if="hasPreview" :style="previewFrameStyle" class="preview-frame">
+          <div
+            v-if="mode === 'avatar'"
+            class="mt-4 flex flex-col items-center gap-3"
+          >
+            <div
+              class="flex h-28 w-28 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-slate-100 shadow-sm"
+            >
+              <div
+                v-if="hasPreview"
+                :style="previewFrameStyle"
+                class="preview-frame"
+              >
                 <div :style="preview.div">
-                  <img :src="preview.url || cropSourceUrl" :style="preview.img" alt="avatar-preview" />
+                  <img
+                    :src="preview.url || cropSourceUrl"
+                    :style="preview.img"
+                    alt="avatar-preview"
+                  />
                 </div>
               </div>
               <span v-else class="text-xs text-slate-400">等待预览</span>
@@ -73,32 +100,68 @@
           </div>
 
           <div v-else-if="mode === 'hero-background'" class="mt-4 space-y-3">
-            <div class="overflow-hidden rounded-[20px] border border-slate-200 bg-slate-950 shadow-sm">
+            <div
+              class="overflow-hidden rounded-[20px] border border-slate-200 bg-slate-950 shadow-sm"
+            >
               <div class="relative h-32 w-full bg-slate-900">
-                <div v-if="hasPreview" :style="previewFrameStyle" class="preview-frame absolute inset-0">
+                <div
+                  v-if="hasPreview"
+                  :style="previewFrameStyle"
+                  class="preview-frame absolute inset-0"
+                >
                   <div :style="preview.div">
-                    <img :src="preview.url || cropSourceUrl" :style="preview.img" alt="hero-background-preview" />
+                    <img
+                      :src="preview.url || cropSourceUrl"
+                      :style="preview.img"
+                      alt="hero-background-preview"
+                    />
                   </div>
                 </div>
-                <div class="absolute inset-0 bg-gradient-to-r from-slate-950/55 via-slate-950/20 to-transparent"></div>
-                <div class="relative z-10 flex h-full flex-col justify-end px-4 py-4 text-white">
-                  <p class="text-[11px] uppercase tracking-[0.28em] text-slate-200/90">HERO BACKGROUND</p>
-                  <p class="mt-2 text-base font-semibold leading-6">阅读博客 / 查看关于我</p>
+                <div
+                  class="absolute inset-0 bg-gradient-to-r from-slate-950/55 via-slate-950/20 to-transparent"
+                ></div>
+                <div
+                  class="relative z-10 flex h-full flex-col justify-end px-4 py-4 text-white"
+                >
+                  <p
+                    class="text-[11px] uppercase tracking-[0.28em] text-slate-200/90"
+                  >
+                    HERO BACKGROUND
+                  </p>
+                  <p class="mt-2 text-base font-semibold leading-6">
+                    阅读博客 / 查看关于我
+                  </p>
                 </div>
               </div>
             </div>
-            <p class="text-xs leading-5 text-slate-400">用于首页首屏背景，建议保留主体区域与文字安全区。</p>
+            <p class="text-xs leading-5 text-slate-400">
+              用于首页首屏背景，建议保留主体区域与文字安全区。
+            </p>
           </div>
 
           <div v-else class="mt-4 flex flex-col items-center gap-3">
-            <div class="overflow-hidden rounded-[28px] border border-slate-200 bg-slate-100 shadow-sm">
-              <div class="flex h-56 w-44 items-center justify-center overflow-hidden bg-slate-100">
-                <div v-if="hasPreview" :style="previewFrameStyle" class="preview-frame">
+            <div
+              class="overflow-hidden rounded-[28px] border border-slate-200 bg-slate-100 shadow-sm"
+            >
+              <div
+                class="flex h-56 w-44 items-center justify-center overflow-hidden bg-slate-100"
+              >
+                <div
+                  v-if="hasPreview"
+                  :style="previewFrameStyle"
+                  class="preview-frame"
+                >
                   <div :style="preview.div">
-                    <img :src="preview.url || cropSourceUrl" :style="preview.img" alt="hero-portrait-preview" />
+                    <img
+                      :src="preview.url || cropSourceUrl"
+                      :style="preview.img"
+                      alt="hero-portrait-preview"
+                    />
                   </div>
                 </div>
-                <span v-else class="px-4 text-center text-xs text-slate-400">等待预览</span>
+                <span v-else class="px-4 text-center text-xs text-slate-400"
+                  >等待预览</span
+                >
               </div>
             </div>
             <p class="text-xs text-slate-400">用于首页右侧人物图展示。</p>
@@ -117,10 +180,14 @@
 
     <template #footer>
       <div class="flex flex-wrap items-center justify-between gap-3">
-        <p class="text-sm text-slate-500">未调整裁剪区域时会直接使用原图，只有实际编辑后才重新上传。</p>
+        <p class="text-sm text-slate-500">
+          未调整裁剪区域时会直接使用原图，只有实际编辑后才重新上传。
+        </p>
         <div class="flex gap-3">
           <el-button @click="emit('update:visible', false)">取消</el-button>
-          <el-button type="primary" :loading="exporting" @click="handleConfirm">确认裁剪并上传</el-button>
+          <el-button type="primary" :loading="exporting" @click="handleConfirm"
+            >确认裁剪并上传</el-button
+          >
         </div>
       </div>
     </template>
@@ -128,12 +195,12 @@
 </template>
 
 <script setup lang="ts">
-import 'vue-cropper/dist/index.css';
-import { ElMessage } from 'element-plus';
-import { computed, nextTick, ref, watch } from 'vue';
-import { VueCropper } from 'vue-cropper';
-import { getAdminMediaContentUrl } from '@/api/modules/admin';
-import { extractFileName } from '@/utils/media';
+import "vue-cropper/dist/index.css";
+import { ElMessage } from "element-plus";
+import { computed, nextTick, ref, watch } from "vue";
+import { VueCropper } from "vue-cropper";
+import { getAdminMediaContentUrl } from "@/api/modules/admin";
+import { extractFileName } from "@/utils/media";
 
 interface CropperInstance {
   changeScale: (delta: number) => void;
@@ -156,7 +223,7 @@ interface CropConfirmPayload {
   originalUrl?: string;
 }
 
-type CropMode = 'avatar' | 'hero-background' | 'hero-portrait';
+type CropMode = "avatar" | "hero-background" | "hero-portrait";
 
 const props = defineProps<{
   visible: boolean;
@@ -166,8 +233,8 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (event: 'update:visible', value: boolean): void;
-  (event: 'confirm', value: CropConfirmPayload): void;
+  (event: "update:visible", value: boolean): void;
+  (event: "confirm", value: CropConfirmPayload): void;
 }>();
 
 const cropperRef = ref<CropperInstance | null>(null);
@@ -178,42 +245,42 @@ const edited = ref(false);
 const pointerStart = ref<{ x: number; y: number } | null>(null);
 
 const config = computed(() => {
-  if (props.mode === 'avatar') {
+  if (props.mode === "avatar") {
     return {
-      title: '裁剪头像',
-      description: '左侧调整头像取景，右侧实时查看圆形头像效果。',
+      title: "裁剪头像",
+      description: "左侧调整头像取景，右侧实时查看圆形头像效果。",
       fixedNumber: [1, 1],
       autoCropWidth: 260,
-      autoCropHeight: 260
+      autoCropHeight: 260,
     };
   }
-  if (props.mode === 'hero-background') {
+  if (props.mode === "hero-background") {
     return {
-      title: '裁剪横幅背景图',
-      description: '左侧调整横幅背景取景，右侧实时查看首页首屏背景比例效果。',
+      title: "裁剪横幅背景图",
+      description: "左侧调整横幅背景取景，右侧实时查看首页首屏背景比例效果。",
       fixedNumber: [16, 9],
       autoCropWidth: 360,
-      autoCropHeight: 202
+      autoCropHeight: 202,
     };
   }
   return {
-    title: '裁剪横幅人物图',
-    description: '左侧调整人物图取景，右侧实时查看首页右侧人物卡片效果。',
+    title: "裁剪横幅人物图",
+    description: "左侧调整人物图取景，右侧实时查看首页右侧人物卡片效果。",
     fixedNumber: [11, 14],
     autoCropWidth: 240,
-    autoCropHeight: 305
+    autoCropHeight: 305,
   };
 });
 
 const cropSourceUrl = computed(() => {
   const imageUrl = props.imageUrl?.trim();
-  return imageUrl ? getAdminMediaContentUrl(imageUrl) : '';
+  return imageUrl ? getAdminMediaContentUrl(imageUrl) : "";
 });
 const hasPreview = computed(() => !!preview.value.div && !!preview.value.img);
 const previewFrameStyle = computed(() => ({
   width: `${preview.value.w ?? 0}px`,
   height: `${preview.value.h ?? 0}px`,
-  overflow: 'hidden'
+  overflow: "hidden",
 }));
 
 watch(
@@ -267,13 +334,34 @@ function handleZoom(delta: number): void {
   cropperRef.value?.changeScale(delta);
 }
 
-function handleRotate(angle: number): void {
+function handleRotate(degree: number): void {
   edited.value = true;
-  if (angle > 0) {
+  if (degree > 0) {
     cropperRef.value?.rotateRight();
-    return;
+  } else {
+    cropperRef.value?.rotateLeft();
   }
-  cropperRef.value?.rotateLeft();
+}
+
+function handleImgLoad(status: string): void {
+  if (status === "success") {
+    // 图片加载成功后，将裁剪框设置为图片原始大小，实现默认全选
+    nextTick(() => {
+      if (cropperRef.value) {
+        // @ts-ignore: vue-cropper internal method
+        const imgW = cropperRef.value.trueWidth;
+        // @ts-ignore: vue-cropper internal method
+        const imgH = cropperRef.value.trueHeight;
+        if (imgW && imgH) {
+          // 强制设置裁剪框为图片原始尺寸
+          // @ts-ignore: vue-cropper internal method
+          cropperRef.value.cropW = imgW;
+          // @ts-ignore: vue-cropper internal method
+          cropperRef.value.cropH = imgH;
+        }
+      }
+    });
+  }
 }
 
 function handleReset(): void {
@@ -289,26 +377,28 @@ async function handleConfirm(): Promise<void> {
     return;
   }
   if (!edited.value) {
-    emit('confirm', {
+    emit("confirm", {
       edited: false,
-      originalUrl: props.imageUrl
+      originalUrl: props.imageUrl,
     });
-    emit('update:visible', false);
+    emit("update:visible", false);
     return;
   }
   exporting.value = true;
   try {
     const blob = await getCropBlob();
     if (!blob) {
-      ElMessage.warning('当前图片尚未完成加载，请调整后再试');
+      ElMessage.warning("当前图片尚未完成加载，请调整后再试");
       return;
     }
-    const outputName = `${removeFileExtension(props.sourceName || extractFileName(props.imageUrl) || 'image')}-cropped.png`;
-    emit('confirm', {
+    const outputName = `${removeFileExtension(
+      props.sourceName || extractFileName(props.imageUrl) || "image"
+    )}-cropped.png`;
+    emit("confirm", {
       edited: true,
-      file: new File([blob], outputName, { type: 'image/png' })
+      file: new File([blob], outputName, { type: "image/png" }),
     });
-    emit('update:visible', false);
+    emit("update:visible", false);
   } finally {
     exporting.value = false;
   }
@@ -336,7 +426,7 @@ function getCropBlob(): Promise<Blob | null> {
 }
 
 function removeFileExtension(fileName: string): string {
-  return fileName.replace(/\.[^.]+$/, '');
+  return fileName.replace(/\.[^.]+$/, "");
 }
 </script>
 
