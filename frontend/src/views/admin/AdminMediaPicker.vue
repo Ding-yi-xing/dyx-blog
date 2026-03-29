@@ -1,18 +1,39 @@
 <template>
   <div>
-    <div v-if="selectedUrls.length" class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+    <div
+      v-if="selectedUrls.length"
+      class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3"
+    >
       <div
         v-for="(url, index) in selectedUrls"
         :key="`${url}-${index}`"
         class="group relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-50"
       >
-        <img v-if="isImageUrl(url)" :src="url" alt="selected media" class="h-32 w-full object-cover" />
-        <video v-else-if="isVideoUrl(url)" :src="url" controls preload="metadata" class="h-32 w-full bg-black object-cover"></video>
-        <div v-else class="flex h-32 flex-col justify-between bg-slate-950 px-4 py-4 text-white">
-          <span class="w-fit rounded-full bg-white/15 px-3 py-1 text-[11px] uppercase tracking-[0.24em]">
-            {{ isPdfUrl(url) ? 'PDF' : 'FILE' }}
+        <img
+          v-if="isImageUrl(url)"
+          :src="url"
+          alt="selected media"
+          class="h-32 w-full object-cover"
+        />
+        <video
+          v-else-if="isVideoUrl(url)"
+          :src="url"
+          controls
+          preload="metadata"
+          class="h-32 w-full bg-black object-cover"
+        ></video>
+        <div
+          v-else
+          class="flex h-32 flex-col justify-between bg-slate-950 px-4 py-4 text-white"
+        >
+          <span
+            class="w-fit rounded-full bg-white/15 px-3 py-1 text-[11px] uppercase tracking-[0.24em]"
+          >
+            {{ isPdfUrl(url) ? "PDF" : "FILE" }}
           </span>
-          <p class="line-clamp-2 text-sm font-medium leading-6">{{ extractFileName(url) || '已选择文件' }}</p>
+          <p class="line-clamp-2 text-sm font-medium leading-6">
+            {{ extractFileName(url) || "已选择文件" }}
+          </p>
         </div>
         <button
           type="button"
@@ -23,42 +44,67 @@
         </button>
       </div>
     </div>
-    <div v-else class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-sm text-slate-400">
+    <div
+      v-else
+      class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-sm text-slate-400"
+    >
       {{ emptyText }}
     </div>
 
     <div class="mt-4 flex flex-wrap gap-3">
-      <el-button type="primary" plain @click="openDialog">{{ buttonText }}</el-button>
-      <el-button v-if="selectedUrls.length" @click="clearSelection">清空已选</el-button>
+      <el-button type="primary" plain @click="openDialog">{{
+        buttonText
+      }}</el-button>
+      <el-button v-if="selectedUrls.length" @click="clearSelection"
+        >清空已选</el-button
+      >
     </div>
     <p class="mt-2 text-xs leading-6 text-slate-400">
-      {{ multiple ? '支持多选图片、视频、PDF 与其他媒体文件。' : '支持从媒体库选择单个媒体文件，也可在弹窗内直接上传。' }}
+      {{
+        multiple
+          ? "支持多选图片、视频、PDF 与其他媒体文件。"
+          : "支持从媒体库选择单个媒体文件，也可在弹窗内直接上传。"
+      }}
     </p>
 
     <el-dialog v-model="dialogVisible" :title="title" width="960px">
-      <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4">
-        <p class="text-sm text-slate-500">点击卡片即可{{ multiple ? '多选' : '选择' }}，上传成功后会自动加入当前选择。</p>
+      <div
+        class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4"
+      >
+        <p class="text-sm text-slate-500">
+          点击卡片即可{{
+            multiple ? "多选" : "选择"
+          }}，上传成功后会自动加入当前选择。
+        </p>
         <el-upload :show-file-list="false" :http-request="handleUpload">
           <el-button type="primary" :loading="uploading">上传文件</el-button>
         </el-upload>
       </div>
 
-      <div v-if="loading" class="py-12 text-center text-sm text-slate-500">媒体资源加载中...</div>
+      <div v-if="loading" class="py-12 text-center text-sm text-slate-500">
+        媒体资源加载中...
+      </div>
       <div v-else-if="!mediaList.length" class="py-8">
         <el-empty description="暂无媒体资源" />
       </div>
-      <div v-else class="mt-6 grid max-h-[60vh] gap-4 overflow-y-auto sm:grid-cols-2 xl:grid-cols-3">
-        <button
+      <div
+        v-else
+        class="mt-6 grid max-h-[60vh] gap-4 overflow-y-auto sm:grid-cols-2 xl:grid-cols-3"
+      >
+        <div
           v-for="item in mediaList"
           :key="item.id"
-          type="button"
-          class="group overflow-hidden rounded-2xl border text-left transition"
-          :class="isSelected(item.fileUrl)
-            ? 'border-slate-900 bg-slate-900/5 shadow-sm'
-            : 'border-slate-200 bg-white hover:border-slate-300 hover:-translate-y-0.5'"
-          @click="toggleMedia(item.fileUrl)"
+          class="group relative overflow-hidden rounded-2xl border transition"
+          :class="
+            isSelected(item.fileUrl)
+              ? 'border-slate-900 bg-slate-900/5 shadow-sm'
+              : 'border-slate-200 bg-white hover:border-slate-300 hover:-translate-y-0.5'
+          "
         >
-          <div class="relative h-40 overflow-hidden bg-slate-100">
+          <div
+            class="relative h-40 overflow-hidden bg-slate-100 cursor-pointer"
+            @click="toggleMedia(item.fileUrl)"
+          >
             <img
               v-if="isImageUrl(item.fileUrl)"
               :src="item.fileUrl"
@@ -73,12 +119,17 @@
               playsinline
               class="h-full w-full bg-black object-cover"
             ></video>
-            <div v-else class="flex h-full flex-col justify-between bg-slate-950 px-4 py-4 text-white">
-              <span class="w-fit rounded-full bg-white/15 px-3 py-1 text-[11px] uppercase tracking-[0.24em]">
-                {{ isPdfUrl(item.fileUrl) ? 'PDF' : 'FILE' }}
+            <div
+              v-else
+              class="flex h-full flex-col justify-between bg-slate-950 px-4 py-4 text-white"
+            >
+              <span
+                class="w-fit rounded-full bg-white/15 px-3 py-1 text-[11px] uppercase tracking-[0.24em]"
+              >
+                {{ isPdfUrl(item.fileUrl) ? "PDF" : "FILE" }}
               </span>
               <p class="line-clamp-3 text-sm font-medium leading-6">
-                {{ item.originalName || item.fileName || '未命名文件' }}
+                {{ item.originalName || item.fileName || "未命名文件" }}
               </p>
             </div>
             <span
@@ -95,33 +146,69 @@
             </span>
           </div>
           <div class="space-y-2 p-4">
-            <p class="truncate text-sm font-medium text-slate-900">{{ item.originalName || item.fileName || '未命名文件' }}</p>
-            <p class="text-xs text-slate-500">{{ item.mediaType || '未知类型' }}</p>
-            <p class="text-xs text-slate-400">{{ item.createdAt || '暂无时间' }}</p>
+            <div class="flex items-center justify-between gap-2">
+              <p class="truncate text-sm font-medium text-slate-900 flex-1">
+                {{ item.originalName || item.fileName || "未命名文件" }}
+              </p>
+              <el-button
+                v-if="isImageUrl(item.fileUrl)"
+                type="primary"
+                link
+                size="small"
+                @click.stop="openCropper(item)"
+              >
+                裁剪
+              </el-button>
+            </div>
+            <p class="text-xs text-slate-500">
+              {{ item.mediaType || "未知类型" }}
+            </p>
+            <p class="text-xs text-slate-400">
+              {{ item.createdAt || "暂无时间" }}
+            </p>
           </div>
-        </button>
+        </div>
       </div>
 
       <template #footer>
         <div class="flex flex-wrap items-center justify-between gap-3">
-          <p class="text-sm text-slate-500">当前已选 {{ draftUrls.length }} {{ multiple ? '项资源' : '个文件' }}</p>
+          <p class="text-sm text-slate-500">
+            当前已选 {{ draftUrls.length }} {{ multiple ? "项资源" : "个文件" }}
+          </p>
           <div class="flex gap-3">
             <el-button @click="dialogVisible = false">取消</el-button>
-            <el-button type="primary" @click="confirmSelection">确认选择</el-button>
+            <el-button type="primary" @click="confirmSelection"
+              >确认选择</el-button
+            >
           </div>
         </div>
       </template>
     </el-dialog>
+
+    <BusinessImageCropper
+      :visible="cropperVisible"
+      :image-url="pendingCropUrl"
+      :source-name="pendingCropName"
+      @update:visible="cropperVisible = $event"
+      @confirm="handleCropConfirm"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ElMessage, type UploadRequestOptions } from 'element-plus';
-import { computed, ref, watch } from 'vue';
-import { getAdminMedia, uploadAdminMedia } from '@/api/modules/admin';
-import type { MediaPickerItem } from '@/types/media';
-import { extractFileName, isImageUrl, isPdfUrl, isVideoUrl } from '@/utils/media';
-import { resolveErrorMessage } from '@/utils/error';
+import { ElMessage, type UploadRequestOptions } from "element-plus";
+import { computed, ref, watch, nextTick } from "vue";
+import { getAdminMedia, uploadAdminMedia } from "@/api/modules/admin";
+import type { MediaPickerItem } from "@/types/media";
+import {
+  extractFileName,
+  isImageUrl,
+  isPdfUrl,
+  isVideoUrl,
+} from "@/utils/media";
+import { resolveErrorMessage } from "@/utils/error";
+import BusinessImageCropper from "@/components/admin/BusinessImageCropper.vue";
+import type { CropConfirmPayload } from "@/types/media";
 
 const props = withDefaults(
   defineProps<{
@@ -133,14 +220,14 @@ const props = withDefaults(
   }>(),
   {
     multiple: false,
-    title: '选择媒体资源',
-    buttonText: '从媒体库选择',
-    emptyText: '暂未选择文件'
+    title: "选择媒体资源",
+    buttonText: "从媒体库选择",
+    emptyText: "暂未选择文件",
   }
 );
 
 const emit = defineEmits<{
-  (event: 'update:modelValue', value: string | string[]): void;
+  (event: "update:modelValue", value: string | string[]): void;
 }>();
 
 const dialogVisible = ref(false);
@@ -148,6 +235,43 @@ const loading = ref(false);
 const uploading = ref(false);
 const mediaList = ref<MediaPickerItem[]>([]);
 const draftUrls = ref<string[]>([]);
+
+const cropperVisible = ref(false);
+const pendingCropUrl = ref("");
+const pendingCropName = ref("");
+
+function openCropper(item: MediaPickerItem): void {
+  pendingCropUrl.value = item.fileUrl;
+  pendingCropName.value = item.originalName || item.fileName || "";
+  cropperVisible.value = true;
+}
+
+async function handleCropConfirm(payload: CropConfirmPayload): Promise<void> {
+  if (!payload.edited) {
+    cropperVisible.value = false;
+    return;
+  }
+  if (!payload.file) {
+    ElMessage.warning("未获取到裁剪后的图片文件");
+    return;
+  }
+  try {
+    const response = await uploadAdminMedia(payload.file);
+    const newUrl = response.data?.fileUrl;
+    await loadMediaList();
+    if (newUrl) {
+      if (props.multiple) {
+        draftUrls.value = [...new Set([...draftUrls.value, newUrl])];
+      } else {
+        draftUrls.value = [newUrl];
+      }
+    }
+    ElMessage.success("图片裁剪并上传成功");
+    cropperVisible.value = false;
+  } catch (error) {
+    ElMessage.error("裁剪图片上传失败");
+  }
+}
 
 const selectedUrls = computed(() => {
   if (Array.isArray(props.modelValue)) {
@@ -167,7 +291,7 @@ watch(
 );
 
 function emitValue(urls: string[]): void {
-  emit('update:modelValue', props.multiple ? urls : (urls[0] ?? ''));
+  emit("update:modelValue", props.multiple ? urls : urls[0] ?? "");
 }
 
 function openDialog(): void {
@@ -180,15 +304,17 @@ async function loadMediaList(): Promise<void> {
   loading.value = true;
   try {
     const response = await getAdminMedia();
-    mediaList.value = ((response.data ?? []) as MediaPickerItem[]).map((item: MediaPickerItem) => ({
-      id: item.id,
-      originalName: item.originalName,
-      fileName: item.fileName,
-      fileUrl: item.fileUrl,
-      mediaType: item.mediaType,
-      fileSize: item.fileSize,
-      createdAt: item.createdAt
-    }));
+    mediaList.value = ((response.data ?? []) as MediaPickerItem[]).map(
+      (item: MediaPickerItem) => ({
+        id: item.id,
+        originalName: item.originalName,
+        fileName: item.fileName,
+        fileUrl: item.fileUrl,
+        mediaType: item.mediaType,
+        fileSize: item.fileSize,
+        createdAt: item.createdAt,
+      })
+    );
   } finally {
     loading.value = false;
   }
@@ -228,7 +354,6 @@ function clearSelection(): void {
   emitValue([]);
 }
 
-
 async function handleUpload(options: UploadRequestOptions): Promise<void> {
   uploading.value = true;
   try {
@@ -236,11 +361,13 @@ async function handleUpload(options: UploadRequestOptions): Promise<void> {
     const fileUrl = response.data?.fileUrl;
     await loadMediaList();
     if (fileUrl) {
-      draftUrls.value = props.multiple ? [...new Set([...draftUrls.value, fileUrl])] : [fileUrl];
+      draftUrls.value = props.multiple
+        ? [...new Set([...draftUrls.value, fileUrl])]
+        : [fileUrl];
     }
-    ElMessage.success('文件上传成功');
+    ElMessage.success("文件上传成功");
   } catch (error) {
-    ElMessage.error(resolveErrorMessage(error, '文件上传失败'));
+    ElMessage.error(resolveErrorMessage(error, "文件上传失败"));
   } finally {
     uploading.value = false;
   }
