@@ -138,6 +138,7 @@ import {
 
 use([CanvasRenderer, LineChart, PieChart, GridComponent, TooltipComponent, LegendComponent]);
 
+const loading = ref(false);
 const summary = ref<DashboardSummaryData>({});
 
 const trendPoints = computed<VisitTrendPoint[]>(() => summary.value.dailySiteVisits ?? []);
@@ -368,8 +369,15 @@ function formatDateTime(value?: string): string {
 }
 
 async function loadDashboardSummary(): Promise<void> {
-  const response = await getDashboardSummary();
-  summary.value = response.data ?? {};
+  loading.value = true;
+  try {
+    const response = await getDashboardSummary();
+    if (response.data) {
+      summary.value = response.data;
+    }
+  } finally {
+    loading.value = false;
+  }
 }
 
 onMounted(() => {
