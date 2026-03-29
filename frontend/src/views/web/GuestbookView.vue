@@ -74,6 +74,7 @@ import { ElMessage } from 'element-plus';
 import { computed, onMounted, reactive, ref } from 'vue';
 import { createGuestbookMessage, getGuestbookData, recordSiteVisit, type GuestbookMessageData } from '@/api/modules/site';
 import { formatDateTime } from '@/utils/date';
+import { resolveErrorMessage } from '@/utils/error';
 
 const guestbookData = ref<{ guestbookIntro?: string; messages?: GuestbookMessageData[] }>({});
 const submitting = ref(false);
@@ -92,16 +93,6 @@ const messages = computed(() => guestbookData.value.messages ?? []);
 function resetForm(): void {
   form.content = '';
   form.publishChecked = true;
-}
-
-function resolveErrorMessage(error: unknown, fallback: string): string {
-  if (typeof error === 'object' && error && 'response' in error) {
-    const response = (error as { response?: { data?: { message?: string } } }).response;
-    if (response?.data?.message) {
-      return response.data.message;
-    }
-  }
-  return fallback;
 }
 
 async function loadGuestbookData(): Promise<void> {

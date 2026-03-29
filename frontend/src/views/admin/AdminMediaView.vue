@@ -81,6 +81,7 @@ import { computed, h, onMounted, ref } from 'vue';
 import { deleteAdminMedia, getAdminMedia, importExistingAdminMedia, uploadAdminMedia } from '@/api/modules/admin';
 import type { MediaData } from '@/api/modules/admin';
 import { extractFileName, isImageUrl, isPdfUrl } from '@/utils/media';
+import { resolveErrorMessage } from '@/utils/error';
 
 const importing = ref(false);
 const uploading = ref(false);
@@ -161,16 +162,6 @@ function openPreview(url: string): void {
     return;
   }
   void window.open(url, '_blank', 'noopener,noreferrer');
-}
-
-function resolveErrorMessage(error: unknown, fallback: string): string {
-  if (typeof error === 'object' && error && 'response' in error) {
-    const response = (error as { response?: { data?: { message?: string } } }).response;
-    if (response?.data?.message) {
-      return response.data.message;
-    }
-  }
-  return fallback;
 }
 
 async function handleDelete(item: MediaData): Promise<void> {

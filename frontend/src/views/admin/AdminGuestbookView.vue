@@ -115,6 +115,7 @@ import {
   type AdminGuestbookData
 } from '@/api/modules/admin';
 import type { GuestbookMessageData } from '@/api/modules/site';
+import { resolveErrorMessage } from '@/utils/error';
 
 const guestbookIntro = ref('');
 const messages = ref<GuestbookMessageData[]>([]);
@@ -127,15 +128,6 @@ const editForm = reactive<Partial<GuestbookMessageData>>({
   published: 1
 });
 
-function resolveErrorMessage(error: unknown, fallback: string): string {
-  if (typeof error === 'object' && error && 'response' in error) {
-    const response = (error as { response?: { data?: { message?: string } } }).response;
-    if (response?.data?.message) {
-      return response.data.message;
-    }
-  }
-  return fallback;
-}
 
 function resetEditForm(): void {
   editingId.value = null;

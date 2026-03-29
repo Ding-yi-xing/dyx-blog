@@ -121,6 +121,7 @@ import { computed, ref, watch } from 'vue';
 import { getAdminMedia, uploadAdminMedia } from '@/api/modules/admin';
 import type { MediaPickerItem } from '@/types/media';
 import { extractFileName, isImageUrl, isPdfUrl, isVideoUrl } from '@/utils/media';
+import { resolveErrorMessage } from '@/utils/error';
 
 const props = withDefaults(
   defineProps<{
@@ -227,15 +228,6 @@ function clearSelection(): void {
   emitValue([]);
 }
 
-function resolveErrorMessage(error: unknown, fallback: string): string {
-  if (typeof error === 'object' && error && 'response' in error) {
-    const response = (error as { response?: { data?: { message?: string } } }).response;
-    if (response?.data?.message) {
-      return response.data.message;
-    }
-  }
-  return fallback;
-}
 
 async function handleUpload(options: UploadRequestOptions): Promise<void> {
   uploading.value = true;

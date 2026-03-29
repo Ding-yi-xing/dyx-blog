@@ -58,6 +58,7 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import { computed, onMounted, reactive, ref } from 'vue';
 import { deleteAdminUser, getAdminUsers, saveAdminUser, type AdminListUserData } from '@/api/modules/admin';
 import { useAuthStore } from '@/stores/auth';
+import { resolveErrorMessage } from '@/utils/error';
 
 const authStore = useAuthStore();
 const rawList = ref<AdminListUserData[]>([]);
@@ -110,15 +111,6 @@ function openEditDialog(item: AdminListUserData): void {
   dialogVisible.value = true;
 }
 
-function resolveErrorMessage(error: unknown, fallback: string): string {
-  if (typeof error === 'object' && error && 'response' in error) {
-    const response = (error as { response?: { data?: { message?: string } } }).response;
-    if (response?.data?.message) {
-      return response.data.message;
-    }
-  }
-  return fallback;
-}
 
 async function handleSave(): Promise<void> {
   if (saving.value) {

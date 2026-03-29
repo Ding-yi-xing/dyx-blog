@@ -104,6 +104,7 @@ import {
   type AdminVisitLogQuery,
   type RecentVisitRecord
 } from '@/api/modules/admin';
+import { resolveErrorMessage } from '@/utils/error';
 
 const logs = ref<RecentVisitRecord[]>([]);
 const selectedIds = ref<number[]>([]);
@@ -136,16 +137,6 @@ const deviceTypeOptions = [
   { label: '爬虫 / Bot', value: 'BOT' },
   { label: '未知设备', value: 'UNKNOWN' }
 ];
-
-function resolveErrorMessage(error: unknown, fallback: string): string {
-  if (typeof error === 'object' && error && 'response' in error) {
-    const response = (error as { response?: { data?: { message?: string } } }).response;
-    if (response?.data?.message) {
-      return response.data.message;
-    }
-  }
-  return fallback;
-}
 
 function buildQueryParams(): AdminVisitLogQuery {
   return {

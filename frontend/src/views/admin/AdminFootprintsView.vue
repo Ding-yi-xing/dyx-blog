@@ -120,6 +120,7 @@ import {
   type SystemConfigData
 } from '@/api/modules/admin';
 import type { FootprintData } from '@/api/modules/site';
+import { resolveErrorMessage } from '@/utils/error';
 import { chinaRegionOptions, findChinaRegionSelection, resolveChinaRegionDistrictName } from '@/constants/chinaRegions';
 
 interface FootprintTableRow extends FootprintData {
@@ -243,15 +244,6 @@ function openEditDialog(item: FootprintData): void {
   dialogVisible.value = true;
 }
 
-function resolveErrorMessage(error: unknown, fallback: string): string {
-  if (typeof error === 'object' && error && 'response' in error) {
-    const response = (error as { response?: { data?: { message?: string } } }).response;
-    if (response?.data?.message) {
-      return response.data.message;
-    }
-  }
-  return fallback;
-}
 
 async function handleSaveCopy(): Promise<void> {
   if (copySaving.value) {
