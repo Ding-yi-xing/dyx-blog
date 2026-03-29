@@ -67,23 +67,22 @@
                         {{ item }}
                       </span>
                     </div>
+                    <div class="flex flex-wrap items-center gap-3">
+                      <RouterLink
+                        to="/blog"
+                        class="inline-flex items-center rounded-full bg-[rgb(var(--dyx-text-main-rgb))] px-5 py-3 text-sm font-medium text-[rgb(var(--dyx-text-inverse-rgb))] transition hover:opacity-90"
+                      >
+                        阅读博客
+                      </RouterLink>
+                      <RouterLink
+                        to="/about"
+                        class="dyx-ghost-pill inline-flex items-center"
+                      >
+                        查看关于我
+                      </RouterLink>
+                    </div>
                   </template>
                 </template>
-              </div>
-
-              <div class="flex flex-wrap items-center gap-3">
-                <RouterLink
-                  to="/blog"
-                  class="inline-flex items-center rounded-full bg-[rgb(var(--dyx-text-main-rgb))] px-5 py-3 text-sm font-medium text-[rgb(var(--dyx-text-inverse-rgb))] transition hover:opacity-90"
-                >
-                  阅读博客
-                </RouterLink>
-                <RouterLink
-                  to="/about"
-                  class="dyx-ghost-pill inline-flex items-center"
-                >
-                  查看关于我
-                </RouterLink>
               </div>
             </div>
 
@@ -565,19 +564,19 @@ const heroInnerClass = computed(() =>
 );
 const heroViewportClass = computed(() => {
   if (hasHeroBackground.value) {
-    return "home-hero-viewport home-hero-viewport--with-bg h-full pt-[64px] pb-0 sm:pb-0 sm:pt-[92px] lg:pt-[78px]";
+    return "home-hero-viewport home-hero-viewport--with-bg h-full pt-[64px] pb-0 sm:pb-0 sm:pt-[92px] lg:pt-[160px]";
   }
   return "home-hero-viewport h-full pt-[76px] pb-2 sm:pb-3 sm:pt-[96px] lg:pt-[88px]";
 });
 const heroCopyClass = computed(() =>
   hasHeroBackground.value
-    ? "justify-start gap-6 pt-4 sm:justify-center sm:gap-7 sm:pt-0 lg:justify-center lg:gap-8"
-    : "justify-start gap-8 pt-4 sm:justify-center sm:pt-0"
+    ? "justify-start gap-6 pt-4 sm:justify-center sm:gap-7 sm:pt-0 lg:justify-start lg:gap-8 lg:pt-0"
+    : "justify-start gap-8 pt-4 sm:justify-center sm:pt-0 lg:justify-start lg:pt-0"
 );
 const heroContentClass = computed(() =>
   hasHeroBackground.value
-    ? "justify-start gap-5 sm:justify-center sm:gap-6 lg:justify-center lg:gap-7 lg:pr-8"
-    : "justify-start gap-6 sm:justify-center lg:gap-7 lg:pr-8"
+    ? "justify-start gap-5 sm:justify-center sm:gap-6 lg:justify-start lg:gap-7 lg:pr-8"
+    : "justify-start gap-6 sm:justify-center lg:justify-start lg:gap-7 lg:pr-8"
 );
 const heroBackgroundStyle = computed(() => {
   const backgroundImageUrl = heroImageBlock.value?.backgroundImageUrl?.trim();

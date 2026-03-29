@@ -124,6 +124,12 @@ const normalizedProvinceGeoCollection = unwrapModuleExport(
   provinceGeoCollection as Record<string, GeoJsonCollection | undefined> | { default?: Record<string, GeoJsonCollection | undefined> }
 );
 
+// 缓存已解码和处理过的地理数据，提升重复查询和缩放时的性能
+const normalizedProvinceCache = new Map<string, GeoJsonCollection>();
+const boundaryCache = new Map<string, GeoJsonFeature[]>();
+let cachedMapLabelItems: MapLabelItem[] | null = null;
+let cachedMapBoundaryItems: MapBoundaryItem[] | null = null;
+
 export const DIRECT_ADMIN_PROVINCE_SET = new Set([
   '北京市',
   '天津市',
@@ -279,11 +285,20 @@ function getProvinceGeoCollection(provinceName?: string): GeoJsonCollection | nu
   if (!moduleName) {
     return null;
   }
+  if (normalizedProvinceCache.has(moduleName)) {
+    return normalizedProvinceCache.get(moduleName)!;
+  }
   const provinceModule = normalizedProvinceGeoCollection[moduleName];
   if (!provinceModule) {
     return null;
   }
-  return normalizeGeoJsonCollection(unwrapModuleExport(provinceModule as GeoJsonCollection | { default?: GeoJsonCollection }));
+  const collection = normalizeGeoJsonCollection(
+    unwrapModuleExport(
+      provinceModule as GeoJsonCollection | { default?: GeoJsonCollection }
+    )
+  );
+  normalizedProvinceCache.set(moduleName, collection);
+  return collection;
 }
 
 function isPrefectureLevelCityFeature(feature: GeoJsonFeature, provinceName?: string): boolean {
@@ -311,15 +326,19 @@ function isMunicipalDistrictFeature(feature: GeoJsonFeature, provinceName?: stri
 }
 
 export function collectProvinceBoundaryFeatures(provinceName?: string): GeoJsonFeature[] {
+  const normalizedProvinceName = normalizeProvinceName(provinceName);
+  if (!normalizedProvinceName) return [];
+  if (boundaryCache.has(normalizedProvinceName)) {
+    return boundaryCache.get(normalizedProvinceName)!;
+  }
   const provinceCollection = getProvinceGeoCollection(provinceName);
   if (!provinceCollection?.features?.length) {
     return [];
   }
-  return provinceCollection.features
+  const features = provinceCollection.features
     .filter((feature) => feature?.geometry && feature.properties?.name)
     .filter((feature) => {
-      const normalizedProvinceName = normalizeProvinceName(provinceName);
-      if (normalizedProvinceName && DIRECT_ADMIN_PROVINCE_SET.has(normalizedProvinceName)) {
+      if (DIRECT_ADMIN_PROVINCE_SET.has(normalizedProvinceName)) {
         return isMunicipalDistrictFeature(feature, provinceName);
       }
       return isPrefectureLevelCityFeature(feature, provinceName);
@@ -331,6 +350,8 @@ export function collectProvinceBoundaryFeatures(provinceName?: string): GeoJsonF
         name: normalizeCityName(String(feature.properties?.name ?? '')) ?? String(feature.properties?.name ?? '')
       }
     }));
+  boundaryCache.set(normalizedProvinceName, features);
+  return features;
 }
 
 export function getCityFeatureByName(cityName?: string, provinceName?: string): GeoJsonFeature | null {
@@ -464,8 +485,10 @@ export function featureToPolygonPaths(feature: GeoJsonFeature | null | undefined
   return [];
 }
 
-
 export function getMapLabelItems(provinceNames: string[]): MapLabelItem[] {
+  if (cachedMapLabelItems) {
+    return cachedMapLabelItems;
+  }
   const seen = new Set<string>();
   const result: MapLabelItem[] = [];
 
@@ -513,10 +536,14 @@ export function getMapLabelItems(provinceNames: string[]): MapLabelItem[] {
     });
   });
 
+  cachedMapLabelItems = result;
   return result;
 }
 
 export function getMapBoundaryItems(provinceNames: string[]): MapBoundaryItem[] {
+  if (cachedMapBoundaryItems) {
+    return cachedMapBoundaryItems;
+  }
   const seen = new Set<string>();
   const result: MapBoundaryItem[] = [];
 
@@ -548,6 +575,7 @@ export function getMapBoundaryItems(provinceNames: string[]): MapBoundaryItem[] 
     });
   });
 
+  cachedMapBoundaryItems = result;
   return result;
 }
 

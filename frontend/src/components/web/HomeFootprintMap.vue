@@ -1,50 +1,70 @@
 <template>
   <div class="dyx-footprint-map relative h-full w-full overflow-hidden">
-    <div class="pointer-events-none absolute inset-0 z-0" :class="mapGlowClass"></div>
-    <div ref="mapRoot" class="dyx-footprint-map--interactive relative z-[1] h-full w-full"></div>
+    <div
+      class="pointer-events-none absolute inset-0 z-0"
+      :class="mapGlowClass"
+    ></div>
+    <div
+      ref="mapRoot"
+      class="dyx-footprint-map--interactive relative z-[1] h-full w-full"
+    ></div>
     <div
       v-if="statusMessage"
       class="absolute inset-0 z-20 flex items-center justify-center px-6 text-center text-sm backdrop-blur-sm"
       :class="overlayTextClass"
     >
-      <div class="max-w-md rounded-3xl border px-5 py-4" :class="overlayPanelClass">
+      <div
+        class="max-w-md rounded-3xl border px-5 py-4"
+        :class="overlayPanelClass"
+      >
         {{ statusMessage }}
       </div>
     </div>
-    <div class="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-28" :class="mapBottomFadeClass"></div>
+    <div
+      class="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-28"
+      :class="mapBottomFadeClass"
+    ></div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import type { FootprintMapItem } from '@/utils/footprintGeo';
-import { featureToPolygonPaths, getAllProvinceFeatures, getCityFeatureByName, getMapBoundaryItems, getMapLabelItems } from '@/utils/footprintGeo';
-import { getAmapApiKeyConfigured, loadAmapSdk } from '@/utils/amapLoader';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import type { FootprintMapItem } from "@/utils/footprintGeo";
+import {
+  featureToPolygonPaths,
+  getAllProvinceFeatures,
+  getCityFeatureByName,
+  getMapBoundaryItems,
+  getMapLabelItems,
+} from "@/utils/footprintGeo";
+import { getAmapApiKeyConfigured, loadAmapSdk } from "@/utils/amapLoader";
 
 const props = defineProps<{
   items: FootprintMapItem[];
   visitedProvinceNames: string[];
-  theme: 'light' | 'dark';
+  theme: "light" | "dark";
 }>();
 
 const mapRoot = ref<HTMLElement | null>(null);
-const statusMessage = ref('');
+const statusMessage = ref("");
 
 const overlayPanelClass = computed(() =>
-  props.theme === 'dark'
-    ? 'border-white/10 bg-slate-950/72 text-slate-200 shadow-[0_18px_56px_rgba(2,6,23,0.42)]'
-    : 'border-slate-200/80 bg-white/88 text-slate-700 shadow-[0_18px_56px_rgba(148,163,184,0.22)]'
+  props.theme === "dark"
+    ? "border-white/10 bg-slate-950/72 text-slate-200 shadow-[0_18px_56px_rgba(2,6,23,0.42)]"
+    : "border-slate-200/80 bg-white/88 text-slate-700 shadow-[0_18px_56px_rgba(148,163,184,0.22)]"
 );
-const overlayTextClass = computed(() => (props.theme === 'dark' ? 'text-slate-200' : 'text-slate-700'));
+const overlayTextClass = computed(() =>
+  props.theme === "dark" ? "text-slate-200" : "text-slate-700"
+);
 const mapGlowClass = computed(() =>
-  props.theme === 'dark'
-    ? 'bg-[radial-gradient(circle_at_50%_42%,rgba(34,211,238,0.24),rgba(15,23,42,0.08)_34%,rgba(2,6,23,0)_66%),radial-gradient(circle_at_50%_88%,rgba(8,145,178,0.26),rgba(2,6,23,0)_52%)]'
-    : 'bg-[radial-gradient(circle_at_50%_42%,rgba(56,189,248,0.14),rgba(255,255,255,0)_42%),radial-gradient(circle_at_50%_92%,rgba(125,211,252,0.22),rgba(255,255,255,0)_54%)]'
+  props.theme === "dark"
+    ? "bg-[radial-gradient(circle_at_50%_42%,rgba(34,211,238,0.24),rgba(15,23,42,0.08)_34%,rgba(2,6,23,0)_66%),radial-gradient(circle_at_50%_88%,rgba(8,145,178,0.26),rgba(2,6,23,0)_52%)]"
+    : "bg-[radial-gradient(circle_at_50%_42%,rgba(56,189,248,0.14),rgba(255,255,255,0)_42%),radial-gradient(circle_at_50%_92%,rgba(125,211,252,0.22),rgba(255,255,255,0)_54%)]"
 );
 const mapBottomFadeClass = computed(() =>
-  props.theme === 'dark'
-    ? 'bg-[linear-gradient(180deg,rgba(2,6,23,0),rgba(2,6,23,0.16)_28%,rgba(2,6,23,0.58)_100%)]'
-    : 'bg-[linear-gradient(180deg,rgba(255,255,255,0),rgba(241,245,249,0.18)_28%,rgba(226,232,240,0.56)_100%)]'
+  props.theme === "dark"
+    ? "bg-[linear-gradient(180deg,rgba(2,6,23,0),rgba(2,6,23,0.16)_28%,rgba(2,6,23,0.58)_100%)]"
+    : "bg-[linear-gradient(180deg,rgba(255,255,255,0),rgba(241,245,249,0.18)_28%,rgba(226,232,240,0.56)_100%)]"
 );
 
 let mapInstance: AMapMap | null = null;
@@ -55,6 +75,8 @@ let cityOverlays: AMapPolygon[] = [];
 let markerOverlays: AMapMarker[] = [];
 let labelOverlays: AMapText[] = [];
 let latestRenderToken = 0;
+let renderTimer: ReturnType<typeof setTimeout> | null = null;
+let isOverlaysInitialized = false; // 记录是否已经初始化了持久化覆盖物
 let moveHandler: (() => void) | null = null;
 let zoomEndHandler: (() => void) | null = null;
 let rootClickHandler: ((event: MouseEvent) => void) | null = null;
@@ -68,24 +90,24 @@ const LABEL_ZOOM_THRESHOLD = 4.8;
 const CITY_NAME_ZOOM_THRESHOLD = 5.05;
 const CITY_BOUNDARY_ZOOM_THRESHOLD = 5.05;
 const allProvinceNames = getAllProvinceFeatures()
-  .map((feature) => String(feature.properties?.name ?? '').trim())
+  .map((feature) => String(feature.properties?.name ?? "").trim())
   .filter((name): name is string => !!name);
 
 function escapeHtml(value: string): string {
   return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 function buildMarkerContent(item: FootprintMapItem): string {
   const dotSize = item.isLatest ? 10 : 7;
   const labelText = escapeHtml(item.cityName || item.name);
-  const labelDisplay = shouldShowLabels() ? 'block' : 'none';
+  const labelDisplay = shouldShowLabels() ? "block" : "none";
 
-  if (props.theme === 'dark') {
+  if (props.theme === "dark") {
     return `
       <div style="position:relative;display:flex;flex-direction:column;align-items:center;pointer-events:none;">
         <span style="display:block;width:${dotSize}px;height:${dotSize}px;border-radius:9999px;background:#ffffff;border:1.5px solid rgba(34,211,238,0.92);box-sizing:border-box;"></span>
@@ -103,79 +125,81 @@ function buildMarkerContent(item: FootprintMapItem): string {
 }
 
 function getProvincePolygonStyle(visited: boolean) {
-  if (props.theme === 'dark') {
+  if (props.theme === "dark") {
     return visited
       ? {
-          strokeColor: 'rgba(203, 213, 225, 0.5)',
+          strokeColor: "rgba(203, 213, 225, 0.5)",
           strokeOpacity: 1,
           strokeWeight: 1,
-          fillColor: 'rgba(8, 145, 178, 0.3)',
-          fillOpacity: 0.3
+          fillColor: "rgba(8, 145, 178, 0.3)",
+          fillOpacity: 0.3,
         }
       : {
-          strokeColor: 'rgba(148, 163, 184, 0.42)',
+          strokeColor: "rgba(148, 163, 184, 0.42)",
           strokeOpacity: 1,
           strokeWeight: 1,
-          fillColor: 'rgba(17, 24, 39, 0.88)',
-          fillOpacity: 0.96
+          fillColor: "rgba(17, 24, 39, 0.88)",
+          fillOpacity: 0.96,
         };
   }
   return visited
     ? {
-        strokeColor: 'rgba(203, 213, 225, 0.72)',
+        strokeColor: "rgba(203, 213, 225, 0.72)",
         strokeOpacity: 1,
         strokeWeight: 1,
-        fillColor: 'rgba(56, 189, 248, 0.3)',
-        fillOpacity: 0.3
+        fillColor: "rgba(56, 189, 248, 0.3)",
+        fillOpacity: 0.3,
       }
     : {
-        strokeColor: 'rgba(148, 163, 184, 0.58)',
+        strokeColor: "rgba(148, 163, 184, 0.58)",
         strokeOpacity: 1,
         strokeWeight: 1,
-        fillColor: 'rgba(203, 213, 225, 0.72)',
-        fillOpacity: 0.9
+        fillColor: "rgba(203, 213, 225, 0.72)",
+        fillOpacity: 0.9,
       };
 }
 
 function getCityPolygonStyle() {
-  if (props.theme === 'dark') {
+  if (props.theme === "dark") {
     return {
-      strokeColor: 'rgba(255, 255, 255, 0.92)',
+      strokeColor: "rgba(255, 255, 255, 0.92)",
       strokeOpacity: 1,
       strokeWeight: 1,
-      fillColor: 'rgba(34, 211, 238, 0.3)',
-      fillOpacity: 0.3
+      fillColor: "rgba(34, 211, 238, 0.3)",
+      fillOpacity: 0.3,
     };
   }
   return {
-    strokeColor: 'rgba(255, 255, 255, 0.96)',
+    strokeColor: "rgba(255, 255, 255, 0.96)",
     strokeOpacity: 1,
     strokeWeight: 1,
-    fillColor: 'rgba(14, 165, 233, 0.3)',
-    fillOpacity: 0.3
+    fillColor: "rgba(14, 165, 233, 0.3)",
+    fillOpacity: 0.3,
   };
 }
 
 function getCityBoundaryStyle() {
-  return props.theme === 'dark'
+  return props.theme === "dark"
     ? {
-        strokeColor: 'rgba(203, 213, 225, 0.34)',
+        strokeColor: "rgba(203, 213, 225, 0.34)",
         strokeOpacity: 1,
         strokeWeight: 1,
         fillOpacity: 0,
-        fillColor: 'rgba(0,0,0,0)'
+        fillColor: "rgba(0,0,0,0)",
       }
     : {
-        strokeColor: 'rgba(148, 163, 184, 0.46)',
+        strokeColor: "rgba(148, 163, 184, 0.46)",
         strokeOpacity: 1,
         strokeWeight: 1,
         fillOpacity: 0,
-        fillColor: 'rgba(0,0,0,0)'
+        fillColor: "rgba(0,0,0,0)",
       };
 }
 
 function getMapStyle(): string {
-  return props.theme === 'dark' ? 'amap://styles/darkblue' : 'amap://styles/whitesmoke';
+  return props.theme === "dark"
+    ? "amap://styles/darkblue"
+    : "amap://styles/whitesmoke";
 }
 
 function shouldShowLabels(): boolean {
@@ -187,7 +211,9 @@ function shouldShowCityNameLabels(): boolean {
 }
 
 function shouldShowCityBoundaries(): boolean {
-  return (mapInstance?.getZoom() ?? INITIAL_ZOOM) >= CITY_BOUNDARY_ZOOM_THRESHOLD;
+  return (
+    (mapInstance?.getZoom() ?? INITIAL_ZOOM) >= CITY_BOUNDARY_ZOOM_THRESHOLD
+  );
 }
 
 function getCityNameCollisionDistance(zoom: number): number {
@@ -201,22 +227,22 @@ function getCityNameCollisionDistance(zoom: number): number {
 }
 
 function getLabelTextStyle(): AMapTextStyle {
-  return props.theme === 'dark'
+  return props.theme === "dark"
     ? {
-        'font-size': '12px',
-        'font-weight': '500',
-        color: 'rgba(255,255,255,0.88)',
-        'text-shadow': '0 2px 10px rgba(0,0,0,0.5)',
-        'background-color': 'transparent',
-        border: 'none'
+        "font-size": "12px",
+        "font-weight": "500",
+        color: "rgba(255,255,255,0.88)",
+        "text-shadow": "0 2px 10px rgba(0,0,0,0.5)",
+        "background-color": "transparent",
+        border: "none",
       }
     : {
-        'font-size': '12px',
-        'font-weight': '500',
-        color: '#334155',
-        'text-shadow': '0 1px 8px rgba(255,255,255,0.92)',
-        'background-color': 'transparent',
-        border: 'none'
+        "font-size": "12px",
+        "font-weight": "500",
+        color: "#334155",
+        "text-shadow": "0 1px 8px rgba(255,255,255,0.92)",
+        "background-color": "transparent",
+        border: "none",
       };
 }
 
@@ -239,7 +265,10 @@ function getVisibleItems(items: FootprintMapItem[]): FootprintMapItem[] {
     const [longitude, latitude] = item.position;
     const isTooClose = visible.some((current) => {
       const [currentLongitude, currentLatitude] = current.position;
-      return Math.abs(currentLongitude - longitude) < collisionDistance && Math.abs(currentLatitude - latitude) < collisionDistance;
+      return (
+        Math.abs(currentLongitude - longitude) < collisionDistance &&
+        Math.abs(currentLatitude - latitude) < collisionDistance
+      );
     });
     if (!isTooClose) {
       visible.push(item);
@@ -300,6 +329,10 @@ function renderProvinceOverlays(AMap: AMapNamespace): void {
   if (!mapInstance) {
     return;
   }
+  // 如果已经初始化，不再重新创建，除非数据变更
+  if (isOverlaysInitialized && provinceOverlays.length > 0) {
+    return;
+  }
   clearProvinceOverlays();
   const provinceNamesWithCityHighlights = new Set(
     props.items
@@ -307,12 +340,16 @@ function renderProvinceOverlays(AMap: AMapNamespace): void {
       .filter((provinceName): provinceName is string => !!provinceName)
   );
   const visitedProvinceNameSet = new Set(
-    props.visitedProvinceNames.filter((provinceName) => !provinceNamesWithCityHighlights.has(provinceName))
+    props.visitedProvinceNames.filter(
+      (provinceName) => !provinceNamesWithCityHighlights.has(provinceName)
+    )
   );
   const overlays: AMapPolygon[] = [];
   getAllProvinceFeatures().forEach((feature) => {
-    const provinceName = String(feature.properties?.name ?? '').trim();
-    const polygonStyle = getProvincePolygonStyle(visitedProvinceNameSet.has(provinceName));
+    const provinceName = String(feature.properties?.name ?? "").trim();
+    const polygonStyle = getProvincePolygonStyle(
+      visitedProvinceNameSet.has(provinceName)
+    );
     const paths = featureToPolygonPaths(feature);
     paths.forEach((path) => {
       overlays.push(
@@ -320,7 +357,7 @@ function renderProvinceOverlays(AMap: AMapNamespace): void {
           path,
           ...polygonStyle,
           bubble: false,
-          zIndex: visitedProvinceNameSet.has(provinceName) ? 22 : 12
+          zIndex: visitedProvinceNameSet.has(provinceName) ? 22 : 12,
         })
       );
     });
@@ -345,23 +382,32 @@ function renderCityBoundaryOverlays(AMap: AMapNamespace): void {
   if (!mapInstance) {
     return;
   }
-  clearCityBoundaryOverlays();
-  if (!shouldShowCityBoundaries()) {
+
+  const shouldShow = shouldShowCityBoundaries();
+
+  // 如果已经初始化过，只需要显示或隐藏，不再重新创建数千个对象
+  if (isOverlaysInitialized && cityBoundaryOverlays.length > 0) {
+    cityBoundaryOverlays.forEach((overlay) => {
+      if (shouldShow) overlay.show();
+      else overlay.hide();
+    });
     return;
   }
+
+  clearCityBoundaryOverlays();
   const boundaryStyle = getCityBoundaryStyle();
-  cityBoundaryOverlays = getMapBoundaryItems(allProvinceNames)
-    .flatMap((item) =>
-      item.paths.map(
-        (path) =>
-          new AMap.Polygon({
-            path,
-            ...boundaryStyle,
-            bubble: false,
-            zIndex: 20
-          })
-      )
-    );
+  cityBoundaryOverlays = getMapBoundaryItems(allProvinceNames).flatMap((item) =>
+    item.paths.map(
+      (path) =>
+        new AMap.Polygon({
+          path,
+          ...boundaryStyle,
+          bubble: false,
+          zIndex: 20,
+          visible: shouldShow, // 初始可见性
+        })
+    )
+  );
   if (cityBoundaryOverlays.length) {
     mapInstance.add(cityBoundaryOverlays);
   }
@@ -371,13 +417,17 @@ function renderCityOverlays(AMap: AMapNamespace): void {
   if (!mapInstance) {
     return;
   }
+  // 如果已经初始化过，不再重新创建，因为数据没变
+  if (isOverlaysInitialized && cityOverlays.length > 0) {
+    return;
+  }
   clearCityOverlays();
   const cityPolygonStyle = getCityPolygonStyle();
   const overlayMap = new Map<string, AMapPolygon[]>();
   props.items.forEach((item) => {
     const cityName = item.name || item.cityName;
     const provinceName = item.provinceName ?? undefined;
-    const key = `${provinceName || ''}::${cityName}`;
+    const key = `${provinceName || ""}::${cityName}`;
     if (overlayMap.has(key)) {
       return;
     }
@@ -394,7 +444,7 @@ function renderCityOverlays(AMap: AMapNamespace): void {
             path,
             ...cityPolygonStyle,
             bubble: false,
-            zIndex: 28
+            zIndex: 28,
           })
       )
     );
@@ -417,7 +467,7 @@ function renderCityNameLabels(AMap: AMapNamespace): void {
   const collisionDistance = getCityNameCollisionDistance(zoom);
   const visibleItems: { position: [number, number] }[] = [];
   const labels = getMapLabelItems(allProvinceNames)
-    .sort((left, right) => left.name.localeCompare(right.name, 'zh-CN'))
+    .sort((left, right) => left.name.localeCompare(right.name, "zh-CN"))
     .filter((item) => {
       if (collisionDistance <= 0) {
         visibleItems.push(item);
@@ -426,7 +476,10 @@ function renderCityNameLabels(AMap: AMapNamespace): void {
       const [longitude, latitude] = item.position;
       const isTooClose = visibleItems.some((current) => {
         const [currentLongitude, currentLatitude] = current.position;
-        return Math.abs(currentLongitude - longitude) < collisionDistance && Math.abs(currentLatitude - latitude) < collisionDistance;
+        return (
+          Math.abs(currentLongitude - longitude) < collisionDistance &&
+          Math.abs(currentLatitude - latitude) < collisionDistance
+        );
       });
       if (isTooClose) {
         return false;
@@ -439,10 +492,10 @@ function renderCityNameLabels(AMap: AMapNamespace): void {
         new AMap.Text({
           text: item.name,
           position: item.position,
-          anchor: 'center',
+          anchor: "center",
           offset: new AMap.Pixel(0, 0),
           style: getLabelTextStyle(),
-          zIndex: 24
+          zIndex: 24,
         })
     );
   labelOverlays = labels;
@@ -461,11 +514,11 @@ function renderMarkers(AMap: AMapNamespace): void {
     (item) =>
       new AMap.Marker({
         position: item.position,
-        anchor: 'center',
+        anchor: "center",
         offset: new AMap.Pixel(0, 0),
         content: buildMarkerContent(item),
         zIndex: item.isLatest ? 130 : 120,
-        extData: item
+        extData: item,
       })
   );
   if (markerOverlays.length) {
@@ -478,11 +531,42 @@ function renderMapOverlays(): void {
   if (!mapInstance || !AMap) {
     return;
   }
-  renderProvinceOverlays(AMap);
-  renderCityBoundaryOverlays(AMap);
-  renderCityOverlays(AMap);
-  renderCityNameLabels(AMap);
-  renderMarkers(AMap);
+
+  // 防抖处理，避免频繁渲染
+  if (renderTimer) {
+    clearTimeout(renderTimer);
+  }
+
+  const performRender = (): void => {
+    const renderToken = ++latestRenderToken;
+
+    // 分批异步渲染，避免阻塞主线程
+    requestAnimationFrame(() => {
+      if (renderToken !== latestRenderToken) return;
+      renderProvinceOverlays(AMap);
+
+      requestAnimationFrame(() => {
+        if (renderToken !== latestRenderToken) return;
+        renderCityBoundaryOverlays(AMap);
+
+        requestAnimationFrame(() => {
+          if (renderToken !== latestRenderToken) return;
+          renderCityOverlays(AMap);
+
+          requestAnimationFrame(() => {
+            if (renderToken !== latestRenderToken) return;
+            renderCityNameLabels(AMap);
+            renderMarkers(AMap);
+            isOverlaysInitialized = true; // 首次全量渲染完成后标记
+          });
+        });
+      });
+    });
+  };
+
+  // 如果是第一次渲染或已经移动，则增加一点防抖
+  // 如果在缩放/拖拽中，会由 zoomend/moveend 触发
+  renderTimer = setTimeout(performRender, 60);
 }
 
 function fitInitialView(): void {
@@ -493,7 +577,17 @@ function fitInitialView(): void {
     mapInstance.setZoomAndCenter(INITIAL_ZOOM, INITIAL_CENTER, true);
     return;
   }
-  mapInstance.setFitView([...provinceOverlays, ...cityBoundaryOverlays, ...cityOverlays, ...markerOverlays], true, [100, 120, 100, 120], 5.6);
+  mapInstance.setFitView(
+    [
+      ...provinceOverlays,
+      ...cityBoundaryOverlays,
+      ...cityOverlays,
+      ...markerOverlays,
+    ],
+    true,
+    [100, 120, 100, 120],
+    5.6
+  );
 }
 
 function bindMapEvents(): void {
@@ -502,14 +596,15 @@ function bindMapEvents(): void {
   }
   moveHandler = () => {
     hasUserMoved = true;
-    renderMapOverlays();
+    // 移动时不重新渲染复杂的覆盖物，仅在停止后渲染
   };
   zoomEndHandler = () => {
     renderMapOverlays();
   };
-  mapInstance.on('dragstart', moveHandler);
-  mapInstance.on('zoomstart', moveHandler);
-  mapInstance.on('zoomend', zoomEndHandler);
+  mapInstance.on("dragstart", moveHandler);
+  mapInstance.on("zoomstart", moveHandler);
+  mapInstance.on("zoomend", zoomEndHandler);
+  mapInstance.on("moveend", zoomEndHandler); // 移动停止后触发渲染
 }
 
 function unbindMapEvents(): void {
@@ -519,11 +614,12 @@ function unbindMapEvents(): void {
     return;
   }
   if (moveHandler) {
-    mapInstance.off('dragstart', moveHandler);
-    mapInstance.off('zoomstart', moveHandler);
+    mapInstance.off("dragstart", moveHandler);
+    mapInstance.off("zoomstart", moveHandler);
   }
   if (zoomEndHandler) {
-    mapInstance.off('zoomend', zoomEndHandler);
+    mapInstance.off("zoomend", zoomEndHandler);
+    mapInstance.off("moveend", zoomEndHandler);
   }
   moveHandler = null;
   zoomEndHandler = null;
@@ -539,7 +635,11 @@ function adjustMapZoom(delta: 1 | -1): void {
     return;
   }
   hasUserMoved = true;
-  mapInstance.setZoomAndCenter(nextZoom, [mapInstance.getCenter().lng, mapInstance.getCenter().lat], true);
+  mapInstance.setZoomAndCenter(
+    nextZoom,
+    [mapInstance.getCenter().lng, mapInstance.getCenter().lat],
+    true
+  );
   renderMapOverlays();
 }
 
@@ -557,8 +657,8 @@ function bindRootMouseEvents(): void {
     event.preventDefault();
     adjustMapZoom(-1);
   };
-  mapRoot.value.addEventListener('click', rootClickHandler);
-  mapRoot.value.addEventListener('contextmenu', rootContextMenuHandler);
+  mapRoot.value.addEventListener("click", rootClickHandler);
+  mapRoot.value.addEventListener("contextmenu", rootContextMenuHandler);
 }
 
 function unbindRootMouseEvents(): void {
@@ -568,10 +668,10 @@ function unbindRootMouseEvents(): void {
     return;
   }
   if (rootClickHandler) {
-    mapRoot.value.removeEventListener('click', rootClickHandler);
+    mapRoot.value.removeEventListener("click", rootClickHandler);
   }
   if (rootContextMenuHandler) {
-    mapRoot.value.removeEventListener('contextmenu', rootContextMenuHandler);
+    mapRoot.value.removeEventListener("contextmenu", rootContextMenuHandler);
   }
   rootClickHandler = null;
   rootContextMenuHandler = null;
@@ -582,10 +682,10 @@ async function initMap(): Promise<void> {
     return;
   }
   if (!getAmapApiKeyConfigured()) {
-    statusMessage.value = '未配置 VITE_AMAP_API_KEY，足迹地图暂时无法加载。';
+    statusMessage.value = "未配置 VITE_AMAP_API_KEY，足迹地图暂时无法加载。";
     return;
   }
-  statusMessage.value = '地图加载中…';
+  statusMessage.value = "地图加载中…";
   try {
     const AMap = await loadAmapSdk();
     if (!mapRoot.value) {
@@ -593,7 +693,7 @@ async function initMap(): Promise<void> {
     }
     if (!mapInstance) {
       mapInstance = new AMap.Map(mapRoot.value, {
-        viewMode: '2D',
+        viewMode: "2D",
         zoom: INITIAL_ZOOM,
         center: INITIAL_CENTER,
         zooms: [MIN_ZOOM, MAX_ZOOM],
@@ -606,25 +706,25 @@ async function initMap(): Promise<void> {
         keyboardEnable: false,
         scrollEnable: true,
         scrollWheel: false,
-        features: ['bg', 'road'],
-        mapStyle: getMapStyle()
+        features: ["bg", "road"],
+        mapStyle: getMapStyle(),
       });
     }
     bindMapEvents();
     bindRootMouseEvents();
-    statusMessage.value = '';
-    renderProvinceOverlays(AMap);
-    renderCityBoundaryOverlays(AMap);
-    renderCityOverlays(AMap);
-    renderCityNameLabels(AMap);
-    renderMarkers(AMap);
+    statusMessage.value = "";
+
+    // 初始渲染也使用分批异步模式，避免阻塞
+    renderMapOverlays();
     fitInitialView();
   } catch (error) {
-    statusMessage.value = error instanceof Error ? error.message : '高德地图加载失败。';
+    statusMessage.value =
+      error instanceof Error ? error.message : "高德地图加载失败。";
   }
 }
 
 function updateMapTheme(): void {
+  isOverlaysInitialized = false; // 主题变更需要重新生成覆盖物
   mapInstance?.setMapStyle(getMapStyle());
   renderMapOverlays();
 }
@@ -639,6 +739,7 @@ watch(
 watch(
   () => [props.items, props.visitedProvinceNames] as const,
   () => {
+    isOverlaysInitialized = false; // 数据变更需要重新生成覆盖物
     const renderToken = ++latestRenderToken;
     queueMicrotask(() => {
       if (renderToken !== latestRenderToken) {
@@ -656,6 +757,9 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+  if (renderTimer) {
+    clearTimeout(renderTimer);
+  }
   unbindMapEvents();
   unbindRootMouseEvents();
   clearProvinceOverlays();

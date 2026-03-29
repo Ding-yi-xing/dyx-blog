@@ -52,7 +52,7 @@ Authorization: Bearer <token>
 ## 2. 数据模型
 
 ### 2.1 ProfileData
-用于首页、关于我、简历三个页面共享的人物资料。
+用于首页、关于我、简历、留言页和后台资料管理共享的人物资料。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|---:|---|
@@ -60,6 +60,7 @@ Authorization: Bearer <token>
 | siteTitle | string | 否 | 站点标题 |
 | heroTitle | string | 否 | 首页主标题 / 个人定位 |
 | heroSubtitle | string | 否 | 首页副标题 |
+| heroConfig | string | 否 | 首页 Hero 区块配置 JSON |
 | aboutContent | string | 否 | 关于我正文 |
 | educationExperience | string | 否 | 教育经历文本 |
 | workExperience | string | 否 | 工作经历文本 |
@@ -69,6 +70,8 @@ Authorization: Bearer <token>
 | githubUrl | string | 否 | GitHub 地址 |
 | avatarUrl | string | 否 | 头像地址 |
 | resumePdfUrl | string | 否 | PDF 简历地址 |
+| guestbookIntro | string | 否 | 留言页介绍文案 |
+| contactMethods | string | 否 | 联系方式配置 JSON |
 
 ### 2.2 ProjectData
 用于简历页的项目经历与关于我页面的个人作品展示。
@@ -164,7 +167,38 @@ Authorization: Bearer <token>
 | fileSize | number | 否 | 文件大小 |
 | createdAt | string | 否 | 创建时间 |
 
-### 2.8 HomeData
+### 2.8 FootprintData
+用于首页足迹地图和后台足迹管理。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|---:|---|
+| id | number | 否 | 主键 |
+| cityName | string | 是 | 城市名，当前也兼容保存区县名 |
+| countryName | string | 否 | 国家名，当前默认 `中国` |
+| regionName | string | 否 | 省级行政区名称 |
+| positionX | number | 否 | 地图横向保留字段 |
+| positionY | number | 否 | 地图纵向保留字段 |
+| visitedAt | string | 否 | 到访时间，格式 `YYYY-MM-DD HH:mm:ss` |
+| description | string | 否 | 足迹说明 |
+| importance | number | 否 | 高亮权重 |
+| sortOrder | number | 否 | 排序值 |
+| published | number | 否 | 是否发布，1=已发布，0=草稿 |
+| createdAt | string | 否 | 创建时间 |
+| updatedAt | string | 否 | 更新时间 |
+
+### 2.9 HomeSystemConfigData
+首页公开页面消费的系统配置子集。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|---:|---|
+| footprintEyebrow | string | 否 | 足迹区眉标题 |
+| footprintTitle | string | 否 | 足迹区主标题 |
+| footprintSubtitle | string | 否 | 足迹区副标题 |
+| footprintDescription | string | 否 | 足迹区说明文案 |
+| copyrightText | string | 否 | 页脚版权文案 |
+| techSupportText | string | 否 | 页脚技术支持文案 |
+
+### 2.10 HomeData
 首页聚合数据。
 
 | 字段 | 类型 | 必填 | 说明 |
@@ -174,8 +208,50 @@ Authorization: Bearer <token>
 | latestMoments | MomentData[] | 否 | 最新动态 |
 | featuredProjects | ProjectData[] | 否 | 精选项目 |
 | latestHonors | HonorData[] | 否 | 最新荣誉 |
+| footprints | FootprintData[] | 否 | 已发布足迹列表 |
+| systemConfig | HomeSystemConfigData | 否 | 首页足迹与页脚文案配置 |
 
-### 2.9 VisitTrendPoint
+### 2.11 GuestbookMessageData
+留言页与后台留言管理共用的留言数据。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|---:|---|
+| id | number | 否 | 主键 |
+| content | string | 否 | 留言正文 |
+| published | number | 否 | 是否公开，1=公开，0=隐藏 |
+| ipAddress | string | 否 | 提交 IP |
+| createdAt | string | 否 | 创建时间 |
+| updatedAt | string | 否 | 更新时间 |
+
+### 2.12 GuestbookData
+留言页聚合数据。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|---:|---|
+| guestbookIntro | string | 否 | 留言页顶部介绍文案 |
+| messages | GuestbookMessageData[] | 否 | 已公开留言列表 |
+
+### 2.13 SystemConfigData
+后台系统配置数据。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|---:|---|
+| id | number | 否 | 主键 |
+| storageType | string | 否 | 存储类型，当前支持 `local` / `oss` |
+| ossEndpoint | string | 否 | OSS 接入端点 |
+| ossRegion | string | 否 | OSS 区域 |
+| ossBucketName | string | 否 | OSS Bucket 名称 |
+| ossPublicUrlPrefix | string | 否 | OSS 公共访问前缀 |
+| ossBaseDir | string | 否 | OSS 基础目录 |
+| footprintEyebrow | string | 否 | 足迹区眉标题 |
+| footprintTitle | string | 否 | 足迹区主标题 |
+| footprintSubtitle | string | 否 | 足迹区副标题 |
+| footprintDescription | string | 否 | 足迹区说明文案 |
+| copyrightText | string | 否 | 页脚版权文案 |
+| techSupportText | string | 否 | 页脚技术支持文案 |
+| updatedAt | string | 否 | 更新时间 |
+
+### 2.14 VisitTrendPoint
 后台仪表盘访问趋势点。
 
 | 字段 | 类型 | 说明 |
@@ -184,7 +260,7 @@ Authorization: Bearer <token>
 | label | string | 图表展示标签，格式 `MM-DD` |
 | visitCount | number | 当日访问次数 |
 
-### 2.10 DeviceTypeStat
+### 2.15 DeviceTypeStat
 后台仪表盘设备分布统计。
 
 | 字段 | 类型 | 说明 |
@@ -193,7 +269,7 @@ Authorization: Bearer <token>
 | label | string | 设备类型中文名 |
 | visitCount | number | 访问次数 |
 
-### 2.11 PageVisitStat
+### 2.16 PageVisitStat
 后台仪表盘热门页面统计。
 
 | 字段 | 类型 | 说明 |
@@ -203,7 +279,7 @@ Authorization: Bearer <token>
 | visitCount | number | 页面访问次数 |
 | lastVisitAt | string | 最近访问时间 |
 
-### 2.12 RecentVisitRecord
+### 2.17 RecentVisitRecord
 后台仪表盘最近访问记录。
 
 | 字段 | 类型 | 说明 |
@@ -348,7 +424,41 @@ Authorization: Bearer <token>
 }
 ```
 
-### 4.7 记录页面访问
+### 4.7 获取留言页数据
+**GET** `/api/site/guestbook`
+
+#### 功能说明
+用于公开留言页拉取顶部介绍文案与已公开留言列表。
+
+#### 响应体
+`data` 为 `GuestbookData`
+
+### 4.8 提交留言
+**POST** `/api/site/guestbook/messages`
+
+#### 功能说明
+访客提交留言。服务端会结合请求头与代理头记录来源 IP，新留言默认是否公开由服务端保存逻辑决定。
+
+#### 请求体
+`Partial<GuestbookMessageData>`
+
+#### 请求示例
+```json
+{
+  "content": "你好，作品和博客都很喜欢。"
+}
+```
+
+### 4.9 获取已发布足迹列表
+**GET** `/api/site/footprints`
+
+#### 功能说明
+用于首页足迹地图获取已发布足迹点位与排序后的展示数据。
+
+#### 响应体
+`data` 为 `FootprintData[]`
+
+### 4.10 记录页面访问
 **POST** `/api/site/visit/{pageKey}`
 
 #### 功能说明
@@ -368,7 +478,7 @@ Authorization: Bearer <token>
 - 设备名称
 - 访问时间
 
-### 4.8 获取博客列表
+### 4.11 获取博客列表
 **GET** `/api/posts`
 
 #### 功能说明
@@ -377,7 +487,7 @@ Authorization: Bearer <token>
 #### 响应体
 `data` 为 `PostData[]`
 
-### 4.9 获取博客详情
+### 4.12 获取博客详情
 **GET** `/api/posts/{id}`
 
 #### 路径参数
@@ -602,7 +712,66 @@ Authorization: Bearer <token>
 ### 5.22 删除荣誉
 **DELETE** `/api/admin/honors/{id}`
 
-### 5.23 获取后台个人资料
+### 5.23 获取后台留言管理数据
+**GET** `/api/admin/guestbook`
+
+#### 功能说明
+用于后台留言管理页获取留言介绍文案与全部留言列表。
+
+#### 响应体
+`data` 为 `GuestbookData`
+
+### 5.24 更新留言页介绍
+**PUT** `/api/admin/guestbook/intro`
+
+#### 请求体字段
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|---:|---|
+| guestbookIntro | string | 否 | 留言页顶部介绍文案 |
+
+### 5.25 更新单条留言
+**PUT** `/api/admin/guestbook/messages/{id}`
+
+#### 路径参数
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|---:|---|
+| id | number | 是 | 留言主键 |
+
+#### 请求体
+`Partial<GuestbookMessageData>`
+
+### 5.26 删除单条留言
+**DELETE** `/api/admin/guestbook/messages/{id}`
+
+### 5.27 获取足迹列表
+**GET** `/api/admin/footprints`
+
+#### 功能说明
+用于后台足迹管理页获取全部足迹记录。
+
+#### 响应体
+`data` 为 `FootprintData[]`
+
+### 5.28 新增足迹
+**POST** `/api/admin/footprints`
+
+#### 请求体
+`Partial<FootprintData>`
+
+#### 说明
+- `visitedAt` 使用 `YYYY-MM-DD HH:mm:ss` 字符串格式
+- 当前管理端选择器已支持完整省 / 市 / 区县联动，但保存模型仍以 `regionName` + `cityName` 为主
+
+### 5.29 更新足迹
+**PUT** `/api/admin/footprints/{id}`
+
+#### 请求体
+`Partial<FootprintData>`
+
+### 5.30 删除足迹
+**DELETE** `/api/admin/footprints/{id}`
+
+### 5.31 获取后台个人资料
 **GET** `/api/admin/profile`
 
 #### 功能说明
@@ -611,7 +780,7 @@ Authorization: Bearer <token>
 #### 响应体
 `data` 为 `ProfileData`
 
-### 5.24 更新后台个人资料
+### 5.32 更新后台个人资料
 **PUT** `/api/admin/profile`
 
 #### 请求体
@@ -620,7 +789,22 @@ Authorization: Bearer <token>
 #### 功能说明
 更新站点标题、关于我、联系方式、教育经历、工作经历、头像与 PDF 简历地址等共享资料。
 
-### 5.25 获取媒体资源列表
+### 5.33 获取系统配置
+**GET** `/api/admin/system-config`
+
+#### 功能说明
+用于后台读取站点系统配置，包括存储配置、首页足迹文案和页脚文案。
+
+#### 响应体
+`data` 为 `SystemConfigData`
+
+### 5.34 更新系统配置
+**PUT** `/api/admin/system-config`
+
+#### 请求体
+`SystemConfigData`
+
+### 5.35 获取媒体资源列表
 **GET** `/api/admin/media`
 
 #### 功能说明
@@ -637,7 +821,7 @@ Authorization: Bearer <token>
 | fileSize | number | 文件大小 |
 | createdAt | string | 创建时间 |
 
-### 5.26 上传媒体资源
+### 5.36 上传媒体资源
 **POST** `/api/admin/media/upload`
 
 #### 请求类型
@@ -648,7 +832,7 @@ Authorization: Bearer <token>
 |---|---|---:|---|
 | file | file | 是 | 上传文件 |
 
-### 5.27 删除媒体资源
+### 5.37 删除媒体资源
 **DELETE** `/api/admin/media/{id}`
 
 #### 功能说明
@@ -659,7 +843,7 @@ Authorization: Bearer <token>
 |---|---|---:|---|
 | id | number | 是 | 媒体主键 |
 
-### 5.28 导入 uploads 已有文件
+### 5.38 导入 uploads 已有文件
 **POST** `/api/admin/media/import-existing`
 
 #### 功能说明
@@ -668,7 +852,7 @@ Authorization: Bearer <token>
 #### 响应体
 `data` 为 `number`，表示本次成功导入的文件数量。
 
-### 5.29 获取用户列表
+### 5.39 获取用户列表
 **GET** `/api/admin/users`
 
 #### 功能说明
@@ -677,19 +861,19 @@ Authorization: Bearer <token>
 #### 响应体
 `data` 为 `AdminListUserData[]`
 
-### 5.30 新增用户
+### 5.40 新增用户
 **POST** `/api/admin/users`
 
 #### 请求体
 `Partial<AdminListUserData>`
 
-### 5.31 更新用户
+### 5.41 更新用户
 **PUT** `/api/admin/users/{id}`
 
 #### 请求体
 `Partial<AdminListUserData>`
 
-### 5.32 删除用户
+### 5.42 删除用户
 **DELETE** `/api/admin/users/{id}`
 
 ---
@@ -708,6 +892,16 @@ Authorization: Bearer <token>
 ---
 
 ## 7. 文档变更说明
+
+### 2026-03-29
+- 为 `ProfileData` 补充 `heroConfig`、`guestbookIntro`、`contactMethods` 字段说明
+- 新增 `FootprintData`、`HomeSystemConfigData`、`GuestbookMessageData`、`GuestbookData`、`SystemConfigData` 数据模型说明
+- 补齐前台留言页接口：`/api/site/guestbook`、`/api/site/guestbook/messages`
+- 补齐前台足迹接口：`/api/site/footprints`
+- 补齐后台留言管理接口：`/api/admin/guestbook`、`/api/admin/guestbook/intro`、`/api/admin/guestbook/messages/{id}`
+- 补齐后台足迹 CRUD 接口：`/api/admin/footprints`
+- 补齐后台系统配置接口：`/api/admin/system-config`
+- 同步足迹时间字段格式为 `YYYY-MM-DD HH:mm:ss`
 
 ### 2026-03-25
 - 修正访问日志设计，明确服务端会优先解析 `X-Forwarded-For` / `X-Real-IP`，并将 `::1`、`0:0:0:0:0:0:0:1`、`::ffff:127.0.0.1` 统一归一化为 `127.0.0.1`

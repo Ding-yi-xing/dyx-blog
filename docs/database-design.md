@@ -81,6 +81,7 @@
 - `site_title` varchar(200) 站点标题
 - `hero_title` varchar(200) 首页主标题
 - `hero_subtitle` varchar(500) 首页副标题
+- `hero_config` text 首页 Hero 区块配置 JSON
 - `about_content` text 关于我
 - `education_experience` text 教育经历
 - `work_experience` text 工作经历
@@ -90,9 +91,19 @@
 - `github_url` varchar(255) GitHub 地址
 - `avatar_url` varchar(255) 头像地址
 - `resume_pdf_url` varchar(255) PDF 简历地址
+- `guestbook_intro` text 留言页顶部介绍文案
+- `contact_methods` text 联系方式配置 JSON
 - `updated_at` datetime 更新时间
 
-## 8. 媒体资源表 `dyx_media`
+## 8. 留言表 `dyx_guestbook_message`
+- `id` bigint 主键 / 自增
+- `content` text 留言正文
+- `published` tinyint 是否公开
+- `ip_address` varchar(45) 提交 IP
+- `created_at` datetime 创建时间
+- `updated_at` datetime 更新时间
+
+## 9. 媒体资源表 `dyx_media`
 - `id` bigint 主键
 - `original_name` varchar(255) 原始文件名
 - `file_name` varchar(255) 存储文件名
@@ -101,12 +112,12 @@
 - `file_size` bigint 文件大小
 - `created_at` datetime 创建时间
 
-## 9. 站点访问统计表 `dyx_site_visit_stat`
+## 10. 站点访问统计表 `dyx_site_visit_stat`
 - `page_key` varchar(64) 页面标识主键
 - `visit_count` bigint 累计访问次数
 - `updated_at` datetime 最近更新时间
 
-## 10. 站点访问日志表 `dyx_site_visit_log`
+## 11. 站点访问日志表 `dyx_site_visit_log`
 - `id` bigint 自增主键
 - `page_key` varchar(64) 页面标识
 - `ip_address` varchar(45) 访问 IP
@@ -115,7 +126,38 @@
 - `device_name` varchar(128) 推导出的设备名称，例如 `iPhone`、`Windows`、`Android`
 - `created_at` datetime 访问发生时间
 
-## 11. 当前内容结构说明
+## 12. 足迹表 `dyx_footprint`
+- `id` bigint 主键
+- `city_name` varchar(100) 城市名或当前保存的区县名
+- `country_name` varchar(100) 国家名
+- `region_name` varchar(100) 省级行政区名称
+- `position_x` decimal(5,2) 地图横向保留字段
+- `position_y` decimal(5,2) 地图纵向保留字段
+- `visited_at` datetime 到访时间
+- `description` text 足迹说明
+- `importance` int 高亮权重
+- `sort_order` int 排序值
+- `published` tinyint 是否发布
+- `created_at` datetime 创建时间
+- `updated_at` datetime 更新时间
+
+## 13. 系统配置表 `dyx_system_config`
+- `id` bigint 主键
+- `storage_type` varchar(32) 存储类型，支持 `local` / `oss`
+- `oss_endpoint` varchar(255) OSS 接入端点
+- `oss_region` varchar(100) OSS 区域
+- `oss_bucket_name` varchar(255) OSS Bucket
+- `oss_public_url_prefix` varchar(255) OSS 公共访问前缀
+- `oss_base_dir` varchar(255) OSS 基础目录
+- `footprint_eyebrow` varchar(120) 首页足迹眉标题
+- `footprint_title` varchar(200) 首页足迹主标题
+- `footprint_subtitle` varchar(255) 首页足迹副标题
+- `footprint_description` varchar(500) 首页足迹说明文案
+- `copyright_text` varchar(255) 页脚版权文案
+- `tech_support_text` varchar(255) 页脚技术支持文案
+- `updated_at` datetime 更新时间
+
+## 14. 当前内容结构说明
 - 前台主模块为：首页、关于我、简历、动态、博客
 - “关于我”页面同时消费 `dyx_profile`、`dyx_work`、`dyx_honor`，展示个人资料、个人作品与横向荣誉时间线
 - 简历页通过 `dyx_profile.resume_pdf_url` 提供 PDF 下载入口，并结合 `dyx_project` 展示项目经历
@@ -128,10 +170,10 @@
 - 资源能力由 `dyx_media` 提供统一支持，不再保留独立照片模块
 - `dyx_media` 既可记录后台上传文件，也可记录 `backend/uploads` 中导入的已有文件
 
-## 12. 媒体引用与删除约束
+## 15. 媒体引用与删除约束
 当前媒体资源不是通过外键关联业务表，而是以 URL 字符串形式直接保存到各业务字段中，因此删除媒体时不能只删 `dyx_media` 记录，还必须先做业务引用校验。
 
-### 12.1 当前引用字段
+### 15.1 当前引用字段
 - `dyx_profile.avatar_url`
 - `dyx_profile.resume_pdf_url`
 - `dyx_post.cover_image`
@@ -145,15 +187,17 @@
 - `dyx_honor.image_urls`
 - `dyx_honor.attachment_url`
 
-### 12.2 删除规则
+### 15.2 删除规则
 - 后台删除媒体时，先根据 `dyx_media.file_url` 扫描上述业务字段
 - 若仍被个人资料、文章、项目、作品、动态或荣誉引用，则拒绝删除
 - 仅当未被任何业务字段引用时，才允许同时删除物理文件与 `dyx_media` 记录
 - 当前不做级联清空业务字段，也不提供强制删除模式，以避免前台图片或附件出现坏链
 
-## 13. 旧库兼容说明
+## 16. 旧库兼容说明
 - 应用启动时会自动补齐历史库缺失的 `dyx_profile.resume_pdf_url` 字段
-- 应用启动时会自动确保 `dyx_work`、`dyx_site_visit_stat` 与 `dyx_site_visit_log` 表存在
+- 应用启动时会自动补齐历史库缺失的 `dyx_profile.guestbook_intro` 与 `dyx_profile.contact_methods` 字段
+- 应用启动时会自动确保 `dyx_work`、`dyx_site_visit_stat`、`dyx_site_visit_log`、`dyx_guestbook_message`、`dyx_footprint` 与 `dyx_system_config` 表存在
 - 若旧库中的 `dyx_site_visit_log` 尚未包含 `device_name` 字段，启动时会自动补齐
 - 访问日志写入时会优先从 `X-Forwarded-For`、`X-Real-IP` 解析客户端 IP，并将 `::1`、`0:0:0:0:0:0:0:1`、`::ffff:127.0.0.1` 归一化为 `127.0.0.1`
-- 初始化 SQL 会补入站点访问统计初始记录与访问日志示例记录，便于仪表盘与访问日志模块直接展示数据
+- 初始化 SQL 会补入站点访问统计初始记录、访问日志示例记录、留言示例、足迹示例与系统配置默认记录，便于后台模块直接展示数据
+
