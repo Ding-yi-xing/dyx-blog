@@ -24,6 +24,71 @@
       class="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-28"
       :class="mapBottomFadeClass"
     ></div>
+
+    <!-- 地图操作提示 -->
+    <div
+      v-if="!statusMessage"
+      class="pointer-events-none absolute left-1/2 z-20 -translate-x-1/2 opacity-0 transition-opacity duration-1000"
+      :class="[
+        isMobile ? 'top-28' : 'bottom-12',
+        { 'opacity-100': showInteractionTip },
+      ]"
+    >
+      <!-- 移动端提示 -->
+      <div
+        v-if="isMobile"
+        class="flex items-center gap-3 rounded-full border px-4 py-2.5 text-[11px] font-medium backdrop-blur-md sm:gap-4 sm:px-6 sm:text-xs"
+        :class="overlayPanelClass"
+      >
+        <span class="flex items-center gap-1.5">
+          <kbd class="rounded border border-current/20 px-1 py-0.5 font-sans">双指</kbd>
+          <span>缩放</span>
+        </span>
+        <span class="h-2.5 w-[1px] bg-current/20"></span>
+        <span class="flex items-center gap-1.5">
+          <kbd class="rounded border border-current/20 px-1 py-0.5 font-sans">单指</kbd>
+          <span>移动</span>
+        </span>
+        <span class="h-2.5 w-[1px] bg-current/20"></span>
+        <span class="flex items-center gap-1.5">
+          <kbd class="rounded border border-current/20 px-1 py-0.5 font-sans">双击</kbd>
+          <span>放大</span>
+        </span>
+        <span class="h-2.5 w-[1px] bg-current/20"></span>
+        <span class="flex items-center gap-1.5">
+          <kbd class="rounded border border-current/20 px-1 py-0.5 font-sans">侧边</kbd>
+          <span>翻页</span>
+        </span>
+      </div>
+
+      <!-- 桌面端提示 -->
+      <div
+        v-else
+        class="flex items-center gap-4 rounded-full border px-6 py-2.5 text-xs font-medium backdrop-blur-md"
+        :class="overlayPanelClass"
+      >
+        <span class="flex items-center gap-1.5">
+          <kbd class="rounded border border-current/20 px-1.5 py-0.5 font-sans"
+            >双击</kbd
+          >
+          <span>放大</span>
+        </span>
+        <span class="h-3 w-[1px] bg-current/20"></span>
+        <span class="flex items-center gap-1.5">
+          <kbd class="rounded border border-current/20 px-1.5 py-0.5 font-sans"
+            >右键</kbd
+          >
+          <span>缩小</span>
+        </span>
+        <span class="h-3 w-[1px] bg-current/20"></span>
+        <span class="flex items-center gap-1.5">
+          <kbd class="rounded border border-current/20 px-1.5 py-0.5 font-sans"
+            >拖拽</kbd
+          >
+          <span>移动</span>
+        </span>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -43,10 +108,17 @@ const props = defineProps<{
   items: FootprintMapItem[];
   visitedProvinceNames: string[];
   theme: "light" | "dark";
+  visible?: boolean;
 }>();
 
 const mapRoot = ref<HTMLElement | null>(null);
 const statusMessage = ref("");
+const showInteractionTip = ref(false);
+const isMobile = ref(false);
+
+const checkIsMobile = (): void => {
+  isMobile.value = window.innerWidth < 768 || "ontouchstart" in window;
+};
 
 const overlayPanelClass = computed(() =>
   props.theme === "dark"
@@ -76,6 +148,7 @@ let markerOverlays: AMapMarker[] = [];
 let labelOverlays: AMapText[] = [];
 let latestRenderToken = 0;
 let renderTimer: ReturnType<typeof setTimeout> | null = null;
+let tipTimer: ReturnType<typeof setTimeout> | null = null;
 let isOverlaysInitialized = false; // 记录是否已经初始化了持久化覆盖物
 let moveHandler: (() => void) | null = null;
 let zoomEndHandler: (() => void) | null = null;
@@ -677,6 +750,17 @@ function unbindRootMouseEvents(): void {
   rootContextMenuHandler = null;
 }
 
+function showInteractionTipOnce(): void {
+  if (tipTimer) {
+    clearTimeout(tipTimer);
+  }
+  showInteractionTip.value = true;
+  tipTimer = setTimeout(() => {
+    showInteractionTip.value = false;
+    tipTimer = null;
+  }, 5000);
+}
+
 async function initMap(): Promise<void> {
   if (!mapRoot.value) {
     return;
@@ -713,6 +797,7 @@ async function initMap(): Promise<void> {
     bindMapEvents();
     bindRootMouseEvents();
     statusMessage.value = "";
+    showInteractionTipOnce();
 
     // 初始渲染也使用分批异步模式，避免阻塞
     renderMapOverlays();
@@ -752,13 +837,28 @@ watch(
   { deep: true }
 );
 
+watch(
+  () => props.visible,
+  (newVal) => {
+    if (newVal) {
+      showInteractionTipOnce();
+    }
+  }
+);
+
 onMounted(() => {
+  checkIsMobile();
+  window.addEventListener("resize", checkIsMobile);
   void initMap();
 });
 
 onBeforeUnmount(() => {
+  window.removeEventListener("resize", checkIsMobile);
   if (renderTimer) {
     clearTimeout(renderTimer);
+  }
+  if (tipTimer) {
+    clearTimeout(tipTimer);
   }
   unbindMapEvents();
   unbindRootMouseEvents();

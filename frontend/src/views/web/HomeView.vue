@@ -118,6 +118,7 @@
             :items="footprintMapData"
             :visited-province-names="visitedProvinceNames"
             :theme="activeTheme"
+            :visible="currentSectionIndex === 1"
           />
           <div
             v-else
@@ -197,123 +198,41 @@
         :class="activitySectionClass"
       >
         <div class="absolute inset-0" :class="activityBackdropClass"></div>
+        <div class="relative z-10 flex h-full items-center justify-center px-4">
+          <div class="text-center space-y-6">
+            <h2
+              class="home-section-title text-3xl font-semibold tracking-tight sm:text-4xl"
+              :class="activityTitleClass"
+            >
+              这页还没想好放什么
+            </h2>
+            <p
+              class="text-sm leading-7 sm:text-lg opacity-80"
+              :class="activityTextClass"
+            >
+              可以在
+              <RouterLink
+                to="/guestbook"
+                class="home-section-link border-b border-current"
+                >留言</RouterLink
+              >
+              中给我点建议
+            </p>
+          </div>
+        </div>
+
+        <!-- 页脚版权信息 -->
         <div
-          class="relative z-10 flex h-full flex-col px-4 pb-6 pt-[82px] sm:px-6 sm:pb-8 sm:pt-[94px] lg:px-8 lg:pb-10 lg:pt-[104px]"
+          v-if="copyrightText || techSupportText"
+          class="absolute bottom-6 right-6 z-50 text-right text-[11px] leading-5 sm:bottom-8 sm:right-8 lg:bottom-10 lg:right-10"
+          :class="activeTheme === 'dark' ? 'text-slate-500' : 'text-slate-400'"
         >
-          <div
-            class="grid gap-8 lg:flex-1 lg:grid-cols-[minmax(0,0.72fr)_minmax(0,1.28fr)] lg:items-start"
-          >
-            <div class="max-w-[34rem] space-y-4 lg:sticky lg:top-0">
-              <p
-                class="home-meta text-[11px] font-medium uppercase tracking-[0.3em]"
-                :class="activityMetaClass"
-              >
-                Recent activity
-              </p>
-              <h2
-                class="home-section-title text-3xl font-semibold tracking-tight sm:text-4xl"
-                :class="activityTitleClass"
-              >
-                最近更新节奏
-              </h2>
-              <p
-                class="text-sm leading-7 sm:text-[15px]"
-                :class="activityTextClass"
-              >
-                把博客与动态放到同一条公开时间线上，继续延续前两屏的叙事：我是谁、我去过哪里、我最近又在持续输出什么。
-              </p>
-              <p
-                class="text-sm leading-7 sm:text-[15px]"
-                :class="activityTextClass"
-              >
-                {{ timelineLeadText }}
-              </p>
-              <div
-                class="flex flex-wrap items-center gap-3 pt-2 text-[12px] font-medium"
-              >
-                <RouterLink to="/blog" class="home-section-link"
-                  >博客 →</RouterLink
-                >
-                <RouterLink to="/moments" class="home-section-link"
-                  >动态 →</RouterLink
-                >
-              </div>
-            </div>
-
-            <div
-              class="relative min-h-0 flex-1 overflow-hidden rounded-[32px] border px-5 py-5 sm:px-6 sm:py-6 lg:h-full lg:px-8 lg:py-8"
-              :class="activityPanelClass"
-            >
-              <div
-                class="absolute left-7 top-8 bottom-8 hidden w-px md:block"
-                :class="activityTimelineClass"
-              ></div>
-              <div
-                v-if="recentActivityItems.length"
-                class="flex h-full flex-col gap-4 overflow-y-auto pr-1 md:pl-8"
-              >
-                <RouterLink
-                  v-for="item in recentActivityItems"
-                  :key="item.id"
-                  :to="item.to"
-                  class="group relative block"
-                >
-                  <span
-                    class="absolute left-[-20px] top-7 hidden h-4 w-4 rounded-full border-4 md:block"
-                    :class="activityTimelineDotClass"
-                  ></span>
-                  <article
-                    class="rounded-[28px] border px-5 py-5 transition group-hover:-translate-y-0.5"
-                    :class="activityItemClass"
-                  >
-                    <div class="flex flex-wrap items-center gap-3">
-                      <span class="dyx-meta-pill">{{ item.label }}</span>
-                      <span
-                        class="home-meta text-[12px]"
-                        :class="activityMetaClass"
-                        >{{ formatDateYmd(item.date) || "近期" }}</span
-                      >
-                    </div>
-                    <h3
-                      class="mt-4 text-lg font-semibold transition group-hover:opacity-80"
-                      :class="activityTitleClass"
-                    >
-                      {{ item.title }}
-                    </h3>
-                    <p
-                      class="mt-3 text-[13px] leading-7"
-                      :class="activityTextClass"
-                    >
-                      {{ item.summary }}
-                    </p>
-                    <div class="mt-4 text-[12px] home-section-link">
-                      继续阅读 →
-                    </div>
-                  </article>
-                </RouterLink>
-              </div>
-              <article
-                v-else
-                class="flex h-full items-center justify-center rounded-[28px] border border-dashed px-5 py-5 text-sm"
-                :class="activityEmptyClass"
-              >
-                最近还没有公开更新，稍后再来看看。
-              </article>
-            </div>
-          </div>
-
-          <div
-            v-if="copyrightText || techSupportText"
-            class="mt-6 flex justify-end"
-          >
-            <div
-              class="max-w-[24rem] rounded-[24px] border px-4 py-4 text-right text-xs leading-6 backdrop-blur sm:px-5 sm:py-5 sm:text-sm"
-              :class="activityFooterClass"
-            >
-              <p v-if="copyrightText">{{ copyrightText }}</p>
-              <p v-if="techSupportText">{{ techSupportText }}</p>
-            </div>
-          </div>
+          <p v-if="copyrightText" class="font-medium tracking-wide">
+            {{ copyrightText }}
+          </p>
+          <p v-if="techSupportText" class="mt-0.5 opacity-80">
+            {{ techSupportText }}
+          </p>
         </div>
       </section>
     </div>
@@ -426,10 +345,14 @@ const footprintDescription = computed(
     "这些城市和区域构成了最近几年的出发方向，也让首页第二屏变成一张正在持续扩展的旅行轨迹。"
 );
 const copyrightText = computed(
-  () => footprintConfig.value.copyrightText?.trim() || ""
+  () =>
+    footprintConfig.value.copyrightText?.trim() ||
+    `© ${new Date().getFullYear()} DYX BLOG. All rights reserved.`
 );
 const techSupportText = computed(
-  () => footprintConfig.value.techSupportText?.trim() || ""
+  () =>
+    footprintConfig.value.techSupportText?.trim() ||
+    "Powered by Vue 3 & Spring Boot 3"
 );
 const footprintSectionClass = computed(() =>
   activeTheme.value === "dark"
@@ -495,8 +418,8 @@ const activityItemClass = computed(() =>
 );
 const activityFooterClass = computed(() =>
   activeTheme.value === "dark"
-    ? "border-white/10 bg-slate-950/34 text-slate-300"
-    : "border-slate-200/80 bg-white/86 text-slate-600"
+    ? "border-white/20 bg-slate-950/60 text-slate-200 shadow-xl"
+    : "border-slate-200 bg-white/90 text-slate-700 shadow-lg"
 );
 const activityTimelineClass = computed(() =>
   activeTheme.value === "dark" ? "bg-white/10" : "bg-slate-300/80"
