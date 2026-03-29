@@ -5,6 +5,7 @@ import com.dyx.blog.common.dto.GuestbookDataDTO;
 import com.dyx.blog.common.dto.HomeDataDTO;
 import com.dyx.blog.common.exception.BusinessException;
 import com.dyx.blog.common.util.HeroConfigUtil;
+import com.dyx.blog.common.util.XssUtil;
 import com.dyx.blog.entity.Footprint;
 import com.dyx.blog.entity.GuestbookMessage;
 import com.dyx.blog.entity.Honor;
@@ -14,6 +15,7 @@ import com.dyx.blog.entity.Profile;
 import com.dyx.blog.entity.Project;
 import com.dyx.blog.entity.SystemConfig;
 import com.dyx.blog.entity.Work;
+import com.dyx.blog.entity.SiteVisitLog;
 import com.dyx.blog.mapper.FootprintMapper;
 import com.dyx.blog.mapper.GuestbookMessageMapper;
 import com.dyx.blog.mapper.HonorMapper;
@@ -21,12 +23,14 @@ import com.dyx.blog.mapper.MomentMapper;
 import com.dyx.blog.mapper.PostMapper;
 import com.dyx.blog.mapper.ProfileMapper;
 import com.dyx.blog.mapper.ProjectMapper;
+import com.dyx.blog.mapper.SiteVisitLogMapper;
 import com.dyx.blog.mapper.SystemConfigMapper;
 import com.dyx.blog.mapper.WorkMapper;
 import com.dyx.blog.service.SiteService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -45,9 +49,11 @@ import java.util.regex.Pattern;
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class SiteServiceImpl implements SiteService {
 
-    private static final Pattern ANDROID_DEVICE_PATTERN = Pattern.compile(";\\s*([^;\\)]+?)\\s+Build/", Pattern.CASE_INSENSITIVE);
+    private static final Pattern ANDROID_DEVICE_PATTERN = Pattern.compile(";\\s*([^;\\)]+?)\\s+Build/",
+            Pattern.CASE_INSENSITIVE);
 
     private final PostMapper dyxPostMapper;
     private final MomentMapper dyxMomentMapper;
@@ -58,6 +64,7 @@ public class SiteServiceImpl implements SiteService {
     private final HonorMapper dyxHonorMapper;
     private final FootprintMapper dyxFootprintMapper;
     private final GuestbookMessageMapper dyxGuestbookMessageMapper;
+    private final SiteVisitLogMapper dyxSiteVisitLogMapper;
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
 
@@ -134,7 +141,7 @@ public class SiteServiceImpl implements SiteService {
             throw new BusinessException("留言内容不能超过 2000 个字符");
         }
         GuestbookMessage nextMessage = new GuestbookMessage();
-        nextMessage.setContent(content);
+        nextMessage.setContent(XssUtil.cleanText(content));
         nextMessage.setPublished(message.getPublished() != null && message.getPublished() == 1 ? 1 : 0);
         nextMessage.setIpAddress(resolveClientIp(request));
         nextMessage.setCreatedAt(LocalDateTime.now());
@@ -283,25 +290,40 @@ public class SiteServiceImpl implements SiteService {
      */
     @Override
     public void recordSiteVisit(String pageKey, HttpServletRequest request) {
-        String normalizedPageKey = normalizePageKey(pageKey);
+        try {
+            SiteVisitLog visitLog = new SiteVisitLog();
+            visitLog.setPageKey(pageKey);
+            String ipAddress = request.getHeader("X-Forwarded-For");
+            if (ipAddress == null || ipAddress.isEmpty() || "unknown".equalsIgnoreCase(ipAddress)) {
+                ipAddress = request.getRemoteAddr();
+            }
+            // 处理多个代理 IP 的情况
+            if (ipAddress != null && ipAddress.contains(",")) {
+                ipAddress = ipAddress.split(",")[0].trim();
+            }
+            visitLog.setIpAddress(ipAddress);
+            String userAgent = request.getHeader("User-Agent");
+            visitLog.setUserAgent(userAgent);
 
-        String userAgent = resolveUserAgent(request);
-        String deviceType = resolveDeviceType(userAgent);
-        String deviceName = resolveDeviceName(userAgent);
-        String clientIp = resolveClientIp(request);
+            // 解析 User-Agent 获取设备信息
+            if (userAgent != null) {
+                String ua = userAgent.toLowerCase();
+                if (ua.contains("mobile") || ua.contains("android") || ua.contains("iphone")) {
+                    visitLog.setDeviceType("MOBILE");
+                } else if (ua.contains("tablet") || ua.contains("ipad")) {
+                    visitLog.setDeviceType("TABLET");
+                } else {
+                    visitLog.setDeviceType("PC");
+                }
+            } else {
+                visitLog.setDeviceType("UNKNOWN");
+            }
 
-        jdbcTemplate.update(
-                "INSERT INTO dyx_site_visit_stat (page_key, visit_count, updated_at) VALUES (?, 1, NOW()) "
-                        + "ON DUPLICATE KEY UPDATE visit_count = visit_count + 1, updated_at = NOW()",
-                normalizedPageKey);
-        jdbcTemplate.update(
-                "INSERT INTO dyx_site_visit_log (page_key, ip_address, user_agent, device_type, device_name, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-                normalizedPageKey,
-                clientIp,
-                userAgent,
-                deviceType,
-                deviceName,
-                LocalDateTime.now());
+            visitLog.setCreatedAt(LocalDateTime.now());
+            dyxSiteVisitLogMapper.insert(visitLog);
+        } catch (Exception e) {
+            log.error("记录访问日志失败: {}", e.getMessage());
+        }
     }
 
     private String normalizePageKey(String pageKey) {
