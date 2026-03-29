@@ -72,8 +72,9 @@ public class SiteController {
      * @param request 当前请求。
      * @return 保存结果。
      */
-    @PostMapping("/site/guestbook/messages")
-    public Result<GuestbookMessage> createGuestbookMessage(@RequestBody GuestbookMessage message, HttpServletRequest request) {
+    @PostMapping("/guestbook/messages")
+    public Result<GuestbookMessage> createGuestbookMessage(@RequestBody GuestbookMessage message,
+            HttpServletRequest request) {
         return Result.success(dyxSiteService.saveGuestbookMessage(message, request));
     }
 
@@ -82,7 +83,7 @@ public class SiteController {
      *
      * @return 动态结果列表。
      */
-    @GetMapping("/site/moments")
+    @GetMapping("/moments")
     public Result<List<Moment>> listMoments() {
         return Result.success(dyxSiteService.listMoments());
     }
@@ -93,7 +94,7 @@ public class SiteController {
      * @param id 动态主键。
      * @return 动态详情。
      */
-    @GetMapping("/site/moments/{id}")
+    @GetMapping("/moments/{id}")
     public Result<Moment> getMomentDetail(@PathVariable Long id) {
         return Result.success(dyxSiteService.getMomentDetail(id));
     }
@@ -103,7 +104,7 @@ public class SiteController {
      *
      * @return 项目经历结果列表。
      */
-    @GetMapping("/site/projects")
+    @GetMapping("/projects")
     public Result<List<Project>> listProjects() {
         return Result.success(dyxSiteService.listProjects());
     }
@@ -113,7 +114,7 @@ public class SiteController {
      *
      * @return 个人作品结果列表。
      */
-    @GetMapping("/site/works")
+    @GetMapping("/works")
     public Result<List<Work>> listWorks() {
         return Result.success(dyxSiteService.listWorks());
     }
@@ -123,7 +124,7 @@ public class SiteController {
      *
      * @return 荣誉结果列表。
      */
-    @GetMapping("/site/honors")
+    @GetMapping("/honors")
     public Result<List<Honor>> listHonors() {
         return Result.success(dyxSiteService.listHonors());
     }
@@ -133,7 +134,7 @@ public class SiteController {
      *
      * @return 足迹结果列表。
      */
-    @GetMapping("/site/footprints")
+    @GetMapping("/footprints")
     public Result<List<Footprint>> listFootprints() {
         return Result.success(dyxSiteService.listFootprints());
     }
@@ -145,7 +146,7 @@ public class SiteController {
      * @param request 当前请求。
      * @return 成功结果。
      */
-    @PostMapping("/site/visit/{pageKey}")
+    @PostMapping("/visit/{pageKey}")
     public Result<Void> recordSiteVisit(@PathVariable String pageKey, HttpServletRequest request) {
         dyxSiteService.recordSiteVisit(pageKey, request);
         return Result.success();
