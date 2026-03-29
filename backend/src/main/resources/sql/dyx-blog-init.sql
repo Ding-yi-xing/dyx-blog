@@ -208,7 +208,7 @@ ON DUPLICATE KEY UPDATE
     updated_at = NOW();
 
 INSERT INTO dyx_user (id, username, password, display_name, role, enabled, created_at, updated_at)
-VALUES (1, 'admin', 'admin123456', 'DYX 管理员', 'ADMIN', 1, NOW(), NOW())
+VALUES (1, 'admin', '$2a$10$ljtG8hDLJXuc5ZzJf7zEeuGP1iL6Bi9YsQHg8jbFkw7ER298G3Dfq', 'DYX 管理员', 'ADMIN', 1, NOW(), NOW())
 ON DUPLICATE KEY UPDATE
     display_name = VALUES(display_name),
     role = VALUES(role),
