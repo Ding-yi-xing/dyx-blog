@@ -291,38 +291,28 @@ public class SiteServiceImpl implements SiteService {
     @Override
     public void recordSiteVisit(String pageKey, HttpServletRequest request) {
         try {
+            String normalizedPageKey = normalizePageKey(pageKey);
+            String clientIp = resolveClientIp(request);
+            String userAgent = resolveUserAgent(request);
+
             SiteVisitLog visitLog = new SiteVisitLog();
-            visitLog.setPageKey(pageKey);
-            String ipAddress = request.getHeader("X-Forwarded-For");
-            if (ipAddress == null || ipAddress.isEmpty() || "unknown".equalsIgnoreCase(ipAddress)) {
-                ipAddress = request.getRemoteAddr();
-            }
-            // 处理多个代理 IP 的情况
-            if (ipAddress != null && ipAddress.contains(",")) {
-                ipAddress = ipAddress.split(",")[0].trim();
-            }
-            visitLog.setIpAddress(ipAddress);
-            String userAgent = request.getHeader("User-Agent");
+            visitLog.setPageKey(normalizedPageKey);
+            visitLog.setIpAddress(clientIp);
             visitLog.setUserAgent(userAgent);
-
-            // 解析 User-Agent 获取设备信息
-            if (userAgent != null) {
-                String ua = userAgent.toLowerCase();
-                if (ua.contains("mobile") || ua.contains("android") || ua.contains("iphone")) {
-                    visitLog.setDeviceType("MOBILE");
-                } else if (ua.contains("tablet") || ua.contains("ipad")) {
-                    visitLog.setDeviceType("TABLET");
-                } else {
-                    visitLog.setDeviceType("PC");
-                }
-            } else {
-                visitLog.setDeviceType("UNKNOWN");
-            }
-
+            visitLog.setDeviceType(resolveDeviceType(userAgent));
+            visitLog.setDeviceName(resolveDeviceName(userAgent));
             visitLog.setCreatedAt(LocalDateTime.now());
+
             dyxSiteVisitLogMapper.insert(visitLog);
+
+            // 异步累加统计
+            jdbcTemplate.update(
+                    "INSERT INTO dyx_site_visit_stat (page_key, visit_count, updated_at) VALUES (?, 1, NOW()) " +
+                            "ON DUPLICATE KEY UPDATE visit_count = visit_count + 1, updated_at = NOW()",
+                    normalizedPageKey);
+
         } catch (Exception e) {
-            log.error("记录访问日志失败: {}", e.getMessage());
+            log.error("记录访问日志失败 [{}]: {}", pageKey, e.getMessage());
         }
     }
 
@@ -440,7 +430,7 @@ public class SiteServiceImpl implements SiteService {
         if (normalizedUserAgent.contains("ipad")) {
             return "iPad";
         }
-        Matcher matcher = ANDROID_DEVICE_PATTERN.matcher(userAgent == null ? "" : userAgent);
+        Matcher matcher = ANDROID_DEVICE_PATTERN.matcher(userAgent == null ? "" : userAgent.toLowerCase(Locale.ROOT));
         if (matcher.find()) {
             return truncate(matcher.group(1).trim(), 128);
         }

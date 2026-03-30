@@ -34,13 +34,16 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.imageio.ImageIO;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -54,7 +57,18 @@ import java.util.stream.Stream;
 public class MediaServiceImpl implements MediaService {
 
     private static final Set<String> IMPORTABLE_EXTENSIONS = Set.of(
-            "jpg", "jpeg", "png", "gif", "webp", "bmp", "svg", "pdf", "mp4", "webm", "mov", "m4v"
+            "jpg", "jpeg", "png", "gif", "webp", "bmp", "pdf", "mp4", "webm", "mov", "m4v"
+    );
+    private static final long MAX_UPLOAD_SIZE = 20L * 1024 * 1024;
+    private static final Set<String> ALLOWED_UPLOAD_EXTENSIONS = Set.of(
+            "jpg", "jpeg", "png", "gif", "webp", "bmp", "pdf", "mp4", "webm", "mov", "m4v"
+    );
+    private static final Set<String> ALLOWED_UPLOAD_MEDIA_TYPES = Set.of(
+            "image/jpeg", "image/png", "image/gif", "image/webp", "image/bmp",
+            "application/pdf", "video/mp4", "video/webm", "video/quicktime", "video/x-m4v"
+    );
+    private static final Set<String> IMAGE_MEDIA_TYPES = Set.of(
+            "image/jpeg", "image/png", "image/gif", "image/webp", "image/bmp"
     );
 
     private final MediaMapper dyxMediaMapper;
@@ -77,19 +91,17 @@ public class MediaServiceImpl implements MediaService {
      */
     @Override
     public Media upload(MultipartFile file) {
-        if (file == null || file.isEmpty()) {
-            throw new BusinessException("上传文件不能为空");
-        }
+        validateUpload(file);
         String originalFilename = file.getOriginalFilename();
-        String extension = StringUtils.getFilenameExtension(originalFilename);
-        String storedFileName = UUID.randomUUID() + (extension == null ? "" : "." + extension);
+        String extension = normalizeExtension(StringUtils.getFilenameExtension(originalFilename));
+        String storedFileName = UUID.randomUUID() + "." + extension;
         MediaStorageResult storageResult = resolveCurrentStorage().upload(file, storedFileName);
 
         Media media = new Media();
-        media.setOriginalName(originalFilename);
+        media.setOriginalName(sanitizeOriginalFilename(originalFilename));
         media.setFileName(storageResult.fileName());
         media.setFileUrl(storageResult.fileUrl());
-        media.setMediaType(file.getContentType());
+        media.setMediaType(normalizeMediaType(file.getContentType()));
         media.setFileSize(file.getSize());
         media.setCreatedAt(LocalDateTime.now());
         dyxMediaMapper.insert(media);
@@ -132,8 +144,10 @@ public class MediaServiceImpl implements MediaService {
                     Media media = new Media();
                     media.setOriginalName(fileName);
                     media.setFileName(fileName);
+                    String detectedMediaType = normalizeMediaType(Files.probeContentType(filePath));
+                    validateImportedFile(filePath, detectedMediaType);
                     media.setFileUrl(buildLocalFileUrl(fileName));
-                    media.setMediaType(Files.probeContentType(filePath));
+                    media.setMediaType(detectedMediaType);
                     media.setFileSize(Files.size(filePath));
                     media.setCreatedAt(LocalDateTime.now());
                     dyxMediaMapper.insert(media);
@@ -197,6 +211,88 @@ public class MediaServiceImpl implements MediaService {
         }
         resolveStorageForMedia(media).delete(media.getFileName(), media.getFileUrl());
         dyxMediaMapper.deleteById(id);
+    }
+
+    private void validateUpload(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new BusinessException("上传文件不能为空");
+        }
+        if (file.getSize() > MAX_UPLOAD_SIZE) {
+            throw new BusinessException("上传文件不能超过 20MB");
+        }
+        String originalFilename = file.getOriginalFilename();
+        String extension = normalizeExtension(StringUtils.getFilenameExtension(originalFilename));
+        if (!ALLOWED_UPLOAD_EXTENSIONS.contains(extension)) {
+            throw new BusinessException("不支持的文件类型，仅允许上传图片、PDF 或常见视频文件");
+        }
+        String mediaType = normalizeMediaType(file.getContentType());
+        if (!ALLOWED_UPLOAD_MEDIA_TYPES.contains(mediaType)) {
+            throw new BusinessException("检测到不安全的文件类型，上传已拒绝");
+        }
+        if (IMAGE_MEDIA_TYPES.contains(mediaType)) {
+            validateImageContent(file);
+        }
+    }
+
+    private void validateImportedFile(Path filePath, String mediaType) {
+        try {
+            long fileSize = Files.size(filePath);
+            if (fileSize <= 0) {
+                throw new BusinessException("检测到空文件，禁止导入");
+            }
+            if (fileSize > MAX_UPLOAD_SIZE) {
+                throw new BusinessException("检测到超出限制的文件，禁止导入");
+            }
+            if (!ALLOWED_UPLOAD_MEDIA_TYPES.contains(mediaType)) {
+                throw new BusinessException("检测到不安全的本地文件类型，禁止导入");
+            }
+            if (IMAGE_MEDIA_TYPES.contains(mediaType)) {
+                validateImageContent(filePath);
+            }
+        } catch (IOException exception) {
+            throw new BusinessException("校验本地文件失败，无法导入");
+        }
+    }
+
+    private void validateImageContent(Path filePath) {
+        try (InputStream inputStream = Files.newInputStream(filePath)) {
+            if (ImageIO.read(inputStream) == null) {
+                throw new BusinessException("图片内容无效或已损坏");
+            }
+        } catch (IOException exception) {
+            throw new BusinessException("图片内容校验失败");
+        }
+    }
+
+    private void validateImageContent(MultipartFile file) {
+        try (InputStream inputStream = file.getInputStream()) {
+            if (ImageIO.read(inputStream) == null) {
+                throw new BusinessException("图片内容无效或已损坏");
+            }
+        } catch (IOException exception) {
+            throw new BusinessException("图片内容校验失败");
+        }
+    }
+
+    private String normalizeExtension(String extension) {
+        if (!StringUtils.hasText(extension)) {
+            throw new BusinessException("文件缺少合法扩展名");
+        }
+        return extension.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private String normalizeMediaType(String mediaType) {
+        if (!StringUtils.hasText(mediaType)) {
+            throw new BusinessException("无法识别文件类型，请更换文件后重试");
+        }
+        return mediaType.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private String sanitizeOriginalFilename(String originalFilename) {
+        if (!StringUtils.hasText(originalFilename)) {
+            return "未命名文件";
+        }
+        return originalFilename.replace("\r", "").replace("\n", "").trim();
     }
 
     private ResponseEntity<byte[]> proxyLocalMedia(Media media) {

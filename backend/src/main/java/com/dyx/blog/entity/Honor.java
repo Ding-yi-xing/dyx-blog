@@ -2,6 +2,7 @@ package com.dyx.blog.entity;
 
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -21,6 +22,7 @@ public class Honor {
     private String coverImage;
     private String imageUrls;
     private String attachmentUrl;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime awardAt;
     private Integer sortOrder;
     private Integer published;
