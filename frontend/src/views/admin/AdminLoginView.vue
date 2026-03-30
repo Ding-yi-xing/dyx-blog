@@ -24,8 +24,6 @@
           进入后台
         </el-button>
       </el-form>
-
-      <p class="mt-5 text-center text-sm text-slate-500">初始化 SQL 默认账号：admin / admin123456</p>
     </div>
   </div>
 </template>
@@ -36,6 +34,7 @@ import { reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { adminLogin } from '@/api/modules/admin';
 import { useAuthStore } from '@/stores/auth';
+import { resolveErrorMessage } from '@/utils/error';
 
 const router = useRouter();
 const route = useRoute();
@@ -43,8 +42,8 @@ const authStore = useAuthStore();
 const submitting = ref(false);
 
 const form = reactive({
-  username: 'admin',
-  password: 'admin123456'
+  username: '',
+  password: ''
 });
 
 async function handleLogin(): Promise<void> {
@@ -56,10 +55,10 @@ async function handleLogin(): Promise<void> {
     const response = await adminLogin(form);
     authStore.setAuth(response.data.token, response.data.user);
     ElMessage.success('登录成功');
-    const redirectPath = typeof route.query.redirect === 'string' ? route.query.redirect : '/admin/dashboard';
+    const redirectPath = typeof route.query.redirect === 'string' ? route.query.redirect : '/dyx-manager/dashboard';
     await router.push(redirectPath);
   } catch (error) {
-    ElMessage.error('登录失败，请检查账号或密码');
+    ElMessage.error(resolveErrorMessage(error, '登录失败，请检查账号或密码'));
   } finally {
     submitting.value = false;
   }

@@ -188,6 +188,7 @@
     <BusinessImageCropper
       :visible="cropperVisible"
       :image-url="pendingCropUrl"
+      :mode="cropMode"
       :source-name="pendingCropName"
       @update:visible="cropperVisible = $event"
       @confirm="handleCropConfirm"
@@ -197,9 +198,13 @@
 
 <script setup lang="ts">
 import { ElMessage, type UploadRequestOptions } from "element-plus";
-import { computed, ref, watch, nextTick } from "vue";
+import { computed, ref, watch } from "vue";
 import { getAdminMedia, uploadAdminMedia } from "@/api/modules/admin";
-import type { MediaPickerItem } from "@/types/media";
+import type {
+  MediaPickerItem,
+  CropConfirmPayload,
+  CropMode,
+} from "@/types/media";
 import {
   extractFileName,
   isImageUrl,
@@ -208,7 +213,6 @@ import {
 } from "@/utils/media";
 import { resolveErrorMessage } from "@/utils/error";
 import BusinessImageCropper from "@/components/admin/BusinessImageCropper.vue";
-import type { CropConfirmPayload } from "@/types/media";
 
 const props = withDefaults(
   defineProps<{
@@ -217,12 +221,14 @@ const props = withDefaults(
     title?: string;
     buttonText?: string;
     emptyText?: string;
+    cropMode?: CropMode;
   }>(),
   {
     multiple: false,
     title: "选择媒体资源",
     buttonText: "从媒体库选择",
     emptyText: "暂未选择文件",
+    cropMode: "hero-portrait",
   }
 );
 
@@ -241,7 +247,7 @@ const pendingCropUrl = ref("");
 const pendingCropName = ref("");
 
 function openCropper(item: MediaPickerItem): void {
-  pendingCropUrl.value = item.fileUrl;
+  pendingCropUrl.value = item.fileUrl || "";
   pendingCropName.value = item.originalName || item.fileName || "";
   cropperVisible.value = true;
 }

@@ -138,48 +138,48 @@ const adminNavGroups = [
   {
     label: "概览",
     items: [
-      { path: "/admin/dashboard", label: "仪表盘" },
-      { path: "/admin/visit-logs", label: "访问日志" },
+      { path: "/dyx-manager/dashboard", label: "仪表盘" },
+      { path: "/dyx-manager/visit-logs", label: "访问日志" },
     ],
   },
   {
     label: "首页管理",
     items: [
-      { path: "/admin/home/hero", label: "首屏管理" },
-      { path: "/admin/home/footprints", label: "足迹管理" },
-      { path: "/admin/home/activity", label: "更新节奏" },
+      { path: "/dyx-manager/home/hero", label: "首屏管理" },
+      { path: "/dyx-manager/home/footprints", label: "足迹管理" },
+      { path: "/dyx-manager/home/activity", label: "更新节奏" },
     ],
   },
   {
     label: "内容管理",
     items: [
-      { path: "/admin/guestbook", label: "留言管理" },
-      { path: "/admin/posts", label: "博客管理" },
-      { path: "/admin/moments", label: "动态管理" },
-      { path: "/admin/honors", label: "荣誉管理" },
-      { path: "/admin/works", label: "作品管理" },
+      { path: "/dyx-manager/guestbook", label: "留言管理" },
+      { path: "/dyx-manager/posts", label: "博客管理" },
+      { path: "/dyx-manager/moments", label: "动态管理" },
+      { path: "/dyx-manager/honors", label: "荣誉管理" },
+      { path: "/dyx-manager/works", label: "作品管理" },
     ],
   },
   {
     label: "个人资料",
     items: [
-      { path: "/admin/about", label: "关于我管理" },
-      { path: "/admin/resume", label: "简历管理" },
+      { path: "/dyx-manager/about", label: "关于我管理" },
+      { path: "/dyx-manager/resume", label: "简历管理" },
     ],
   },
   {
     label: "系统",
     items: [
-      { path: "/admin/media", label: "媒体资源" },
-      { path: "/admin/system-config", label: "系统配置" },
-      { path: "/admin/users", label: "用户管理" },
+      { path: "/dyx-manager/media", label: "媒体资源" },
+      { path: "/dyx-manager/system-config", label: "系统配置" },
+      { path: "/dyx-manager/users", label: "用户管理" },
     ],
   },
 ];
 
 function handleLogout(): void {
   authStore.clearAuth();
-  void router.push("/admin/login");
+  void router.push("/dyx-manager/login");
 }
 </script>
 

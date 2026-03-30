@@ -32,15 +32,17 @@
             </div>
           </div>
 
-          <div v-if="item.coverImage" class="shrink-0 sm:w-44">
-            <el-image
-              :src="item.coverImage"
-              :preview-src-list="[item.coverImage]"
-              fit="cover"
-              preview-teleported
-              class="h-28 w-full rounded-[24px] object-cover"
-              @click.stop
-            />
+          <div v-if="item.coverImage" class="shrink-0 sm:w-48">
+            <div class="flex aspect-[4/3] items-center justify-center overflow-hidden rounded-[24px]">
+              <el-image
+                :src="item.coverImage"
+                :preview-src-list="[item.coverImage]"
+                fit="contain"
+                preview-teleported
+                class="h-full w-full"
+                @click.stop
+              />
+            </div>
           </div>
         </div>
       </RouterLink>

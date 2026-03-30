@@ -152,24 +152,7 @@ const dyxNavItems = [
   { path: "/resume", label: "简历" },
 ];
 
-let clickCount = 0;
-let resetTimer: ReturnType<typeof setTimeout> | undefined;
-
 function handleBrandClick(): void {
-  clickCount += 1;
-  if (resetTimer) {
-    clearTimeout(resetTimer);
-  }
-  resetTimer = setTimeout(() => {
-    clickCount = 0;
-  }, 1800);
-
-  if (clickCount >= 5) {
-    clickCount = 0;
-    void router.push("/admin/login");
-    return;
-  }
-
   void router.push("/");
 }
 

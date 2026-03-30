@@ -201,12 +201,17 @@ import { computed, nextTick, ref, watch } from "vue";
 import { VueCropper } from "vue-cropper";
 import { getAdminMediaContentUrl } from "@/api/modules/admin";
 import { extractFileName } from "@/utils/media";
+import type { CropConfirmPayload, CropMode } from "@/types/media";
 
 interface CropperInstance {
   changeScale: (delta: number) => void;
   rotateLeft: () => void;
   rotateRight: () => void;
   getCropBlob: (callback: (blob: Blob | null) => void) => void;
+  trueWidth?: number;
+  trueHeight?: number;
+  cropW?: number;
+  cropH?: number;
 }
 
 interface CropPreviewData {
@@ -216,14 +221,6 @@ interface CropPreviewData {
   w?: number;
   h?: number;
 }
-
-interface CropConfirmPayload {
-  edited: boolean;
-  file?: File;
-  originalUrl?: string;
-}
-
-type CropMode = "avatar" | "hero-background" | "hero-portrait";
 
 const props = defineProps<{
   visible: boolean;

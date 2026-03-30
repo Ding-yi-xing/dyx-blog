@@ -108,7 +108,7 @@ export interface SystemConfigData {
  * 调用后台访问日志列表接口。
  */
 export function getAdminVisitLogs(params?: AdminVisitLogQuery) {
-  return http.get('/admin/visit-logs', { params });
+  return http.get('/dyx-manager/visit-logs', { params });
 }
 
 /**
@@ -116,7 +116,7 @@ export function getAdminVisitLogs(params?: AdminVisitLogQuery) {
  * @param id 访问日志主键。
  */
 export function deleteAdminVisitLog(id: number) {
-  return http.delete(`/admin/visit-logs/${id}`);
+  return http.delete(`/dyx-manager/visit-logs/${id}`);
 }
 
 /**
@@ -124,23 +124,23 @@ export function deleteAdminVisitLog(id: number) {
  * @param ids 访问日志主键列表。
  */
 export function deleteAdminVisitLogs(ids: number[]) {
-  return http.post('/admin/visit-logs/batch-delete', ids);
+  return http.post('/dyx-manager/visit-logs/batch-delete', ids);
 }
 
 export function getAdminGuestbook() {
-  return http.get('/admin/guestbook');
+  return http.get('/dyx-manager/guestbook');
 }
 
 export function updateAdminGuestbookIntro(guestbookIntro: string) {
-  return http.put('/admin/guestbook/intro', { guestbookIntro });
+  return http.put('/dyx-manager/guestbook/intro', { guestbookIntro });
 }
 
 export function updateAdminGuestbookMessage(id: number, payload: Partial<GuestbookMessageData>) {
-  return http.put(`/admin/guestbook/messages/${id}`, payload);
+  return http.put(`/dyx-manager/guestbook/messages/${id}`, payload);
 }
 
 export function deleteAdminGuestbookMessage(id: number) {
-  return http.delete(`/admin/guestbook/messages/${id}`);
+  return http.delete(`/dyx-manager/guestbook/messages/${id}`);
 }
 
 /**
@@ -157,7 +157,7 @@ export interface MediaData {
 }
 
 export function getAdminMediaContentUrl(fileUrl: string) {
-  return `/api/admin/media/content?fileUrl=${encodeURIComponent(fileUrl)}`;
+  return `/api/dyx-manager/media/content?fileUrl=${encodeURIComponent(fileUrl)}`;
 }
 
 /**
@@ -178,14 +178,14 @@ export interface AdminListUserData {
  * 调用后台仪表盘摘要接口。
  */
 export function getDashboardSummary() {
-  return http.get('/admin/dashboard/summary');
+  return http.get('/dyx-manager/dashboard/summary');
 }
 
 /**
  * 调用后台文章列表接口。
  */
 export function getAdminPosts() {
-  return http.get('/admin/posts');
+  return http.get('/dyx-manager/posts');
 }
 
 /**
@@ -194,9 +194,9 @@ export function getAdminPosts() {
  */
 export function saveAdminPost(payload: Partial<PostData>) {
   if (payload.id) {
-    return http.put(`/admin/posts/${payload.id}`, payload);
+    return http.put(`/dyx-manager/posts/${payload.id}`, payload);
   }
-  return http.post('/admin/posts', payload);
+  return http.post('/dyx-manager/posts', payload);
 }
 
 /**
@@ -204,14 +204,14 @@ export function saveAdminPost(payload: Partial<PostData>) {
  * @param id 文章主键。
  */
 export function deleteAdminPost(id: number) {
-  return http.delete(`/admin/posts/${id}`);
+  return http.delete(`/dyx-manager/posts/${id}`);
 }
 
 /**
  * 调用后台动态列表接口。
  */
 export function getAdminMoments() {
-  return http.get('/admin/moments');
+  return http.get('/dyx-manager/moments');
 }
 
 /**
@@ -220,9 +220,9 @@ export function getAdminMoments() {
  */
 export function saveAdminMoment(payload: Partial<MomentData>) {
   if (payload.id) {
-    return http.put(`/admin/moments/${payload.id}`, payload);
+    return http.put(`/dyx-manager/moments/${payload.id}`, payload);
   }
-  return http.post('/admin/moments', payload);
+  return http.post('/dyx-manager/moments', payload);
 }
 
 /**
@@ -230,14 +230,14 @@ export function saveAdminMoment(payload: Partial<MomentData>) {
  * @param id 动态主键。
  */
 export function deleteAdminMoment(id: number) {
-  return http.delete(`/admin/moments/${id}`);
+  return http.delete(`/dyx-manager/moments/${id}`);
 }
 
 /**
  * 调用后台项目列表接口。
  */
 export function getAdminProjects() {
-  return http.get('/admin/projects');
+  return http.get('/dyx-manager/projects');
 }
 
 /**
@@ -246,9 +246,9 @@ export function getAdminProjects() {
  */
 export function saveAdminProject(payload: Partial<ProjectData>) {
   if (payload.id) {
-    return http.put(`/admin/projects/${payload.id}`, payload);
+    return http.put(`/dyx-manager/projects/${payload.id}`, payload);
   }
-  return http.post('/admin/projects', payload);
+  return http.post('/dyx-manager/projects', payload);
 }
 
 /**
@@ -256,14 +256,14 @@ export function saveAdminProject(payload: Partial<ProjectData>) {
  * @param id 项目主键。
  */
 export function deleteAdminProject(id: number) {
-  return http.delete(`/admin/projects/${id}`);
+  return http.delete(`/dyx-manager/projects/${id}`);
 }
 
 /**
  * 调用后台作品列表接口。
  */
 export function getAdminWorks() {
-  return http.get('/admin/works');
+  return http.get('/dyx-manager/works');
 }
 
 /**
@@ -272,9 +272,9 @@ export function getAdminWorks() {
  */
 export function saveAdminWork(payload: Partial<WorkData>) {
   if (payload.id) {
-    return http.put(`/admin/works/${payload.id}`, payload);
+    return http.put(`/dyx-manager/works/${payload.id}`, payload);
   }
-  return http.post('/admin/works', payload);
+  return http.post('/dyx-manager/works', payload);
 }
 
 /**
@@ -282,14 +282,14 @@ export function saveAdminWork(payload: Partial<WorkData>) {
  * @param id 作品主键。
  */
 export function deleteAdminWork(id: number) {
-  return http.delete(`/admin/works/${id}`);
+  return http.delete(`/dyx-manager/works/${id}`);
 }
 
 /**
  * 调用后台荣誉列表接口。
  */
 export function getAdminHonors() {
-  return http.get('/admin/honors');
+  return http.get('/dyx-manager/honors');
 }
 
 /**
@@ -298,9 +298,9 @@ export function getAdminHonors() {
  */
 export function saveAdminHonor(payload: Partial<HonorData>) {
   if (payload.id) {
-    return http.put(`/admin/honors/${payload.id}`, payload);
+    return http.put(`/dyx-manager/honors/${payload.id}`, payload);
   }
-  return http.post('/admin/honors', payload);
+  return http.post('/dyx-manager/honors', payload);
 }
 
 /**
@@ -308,14 +308,14 @@ export function saveAdminHonor(payload: Partial<HonorData>) {
  * @param id 荣誉主键。
  */
 export function deleteAdminHonor(id: number) {
-  return http.delete(`/admin/honors/${id}`);
+  return http.delete(`/dyx-manager/honors/${id}`);
 }
 
 /**
  * 调用后台足迹列表接口。
  */
 export function getAdminFootprints() {
-  return http.get('/admin/footprints');
+  return http.get('/dyx-manager/footprints');
 }
 
 /**
@@ -324,9 +324,9 @@ export function getAdminFootprints() {
  */
 export function saveAdminFootprint(payload: Partial<FootprintData>) {
   if (payload.id) {
-    return http.put(`/admin/footprints/${payload.id}`, payload);
+    return http.put(`/dyx-manager/footprints/${payload.id}`, payload);
   }
-  return http.post('/admin/footprints', payload);
+  return http.post('/dyx-manager/footprints', payload);
 }
 
 /**
@@ -334,14 +334,14 @@ export function saveAdminFootprint(payload: Partial<FootprintData>) {
  * @param id 足迹主键。
  */
 export function deleteAdminFootprint(id: number) {
-  return http.delete(`/admin/footprints/${id}`);
+  return http.delete(`/dyx-manager/footprints/${id}`);
 }
 
 /**
  * 调用后台首页横幅查询接口。
  */
 export function getAdminHeroProfile() {
-  return http.get('/admin/profile/hero');
+  return http.get('/dyx-manager/profile/hero');
 }
 
 /**
@@ -349,14 +349,14 @@ export function getAdminHeroProfile() {
  * @param payload 首页横幅表单数据。
  */
 export function updateAdminHeroProfile(payload: ProfileData) {
-  return http.put('/admin/profile/hero', payload);
+  return http.put('/dyx-manager/profile/hero', payload);
 }
 
 /**
  * 调用后台个人资料查询接口。
  */
 export function getAdminProfile() {
-  return http.get('/admin/profile');
+  return http.get('/dyx-manager/profile');
 }
 
 /**
@@ -364,14 +364,14 @@ export function getAdminProfile() {
  * @param payload 个人资料表单数据。
  */
 export function updateAdminProfile(payload: ProfileData) {
-  return http.put('/admin/profile', payload);
+  return http.put('/dyx-manager/profile', payload);
 }
 
 /**
  * 调用后台系统配置查询接口。
  */
 export function getAdminSystemConfig() {
-  return http.get('/admin/system-config');
+  return http.get('/dyx-manager/system-config');
 }
 
 /**
@@ -379,14 +379,14 @@ export function getAdminSystemConfig() {
  * @param payload 系统配置表单数据。
  */
 export function updateAdminSystemConfig(payload: SystemConfigData) {
-  return http.put('/admin/system-config', payload);
+  return http.put('/dyx-manager/system-config', payload);
 }
 
 /**
  * 调用后台媒体列表接口。
  */
 export function getAdminMedia() {
-  return http.get('/admin/media');
+  return http.get('/dyx-manager/media');
 }
 
 /**
@@ -394,21 +394,21 @@ export function getAdminMedia() {
  * @param id 媒体主键。
  */
 export function deleteAdminMedia(id: string | number) {
-  return http.delete(`/admin/media/${id}`);
+  return http.delete(`/dyx-manager/media/${id}`);
 }
 
 /**
  * 导入 uploads 目录下已存在文件。
  */
 export function importExistingAdminMedia() {
-  return http.post('/admin/media/import-existing');
+  return http.post('/dyx-manager/media/import-existing');
 }
 
 /**
  * 调用后台用户列表接口。
  */
 export function getAdminUsers() {
-  return http.get('/admin/users');
+  return http.get('/dyx-manager/users');
 }
 
 /**
@@ -417,9 +417,9 @@ export function getAdminUsers() {
  */
 export function saveAdminUser(payload: Partial<AdminListUserData>) {
   if (payload.id) {
-    return http.put(`/admin/users/${payload.id}`, payload);
+    return http.put(`/dyx-manager/users/${payload.id}`, payload);
   }
-  return http.post('/admin/users', payload);
+  return http.post('/dyx-manager/users', payload);
 }
 
 /**
@@ -427,7 +427,7 @@ export function saveAdminUser(payload: Partial<AdminListUserData>) {
  * @param id 用户主键。
  */
 export function deleteAdminUser(id: number) {
-  return http.delete(`/admin/users/${id}`);
+  return http.delete(`/dyx-manager/users/${id}`);
 }
 
 /**
@@ -437,7 +437,7 @@ export function deleteAdminUser(id: number) {
 export function uploadAdminMedia(file: File) {
   const formData = new FormData();
   formData.append('file', file);
-  return http.post('/admin/media/upload', formData, {
+  return http.post('/dyx-manager/media/upload', formData, {
     headers: {
       'Content-Type': 'multipart/form-data'
     }

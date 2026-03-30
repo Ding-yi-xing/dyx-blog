@@ -46,7 +46,7 @@ const layoutClass = computed(() =>
 const mainClass = computed(() =>
   isHomeRoute.value
     ? 'absolute inset-0 z-10 h-full overflow-hidden'
-    : 'relative z-10 pb-16 pt-4 sm:pb-20 sm:pt-6'
+    : 'relative z-10 pb-16 pt-24 sm:pb-20 sm:pt-28'
 );
 
 let scheduledThemeTimer: number | null = null;

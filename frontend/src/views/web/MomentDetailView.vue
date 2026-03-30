@@ -9,36 +9,48 @@
       <h1 class="mt-3 text-3xl font-semibold tracking-tight dyx-text-main md:text-4xl">
         {{ moment.title || `动态 ${route.params.id}` }}
       </h1>
-      <div class="mt-4 flex flex-wrap items-center gap-3 text-[12px] dyx-text-meta">
+      <div v-if="!errorMessage" class="mt-4 flex flex-wrap items-center gap-3 text-[12px] dyx-text-meta">
         <span>{{ formatDateYmd(moment.happenedAt) || '未设置时间' }}</span>
       </div>
     </article>
 
     <article class="dyx-page-card rounded-[36px] px-6 py-8 md:px-8 md:py-10">
-      <p class="whitespace-pre-line text-[15px] leading-8 dyx-text-muted">
-        {{ moment.content || '暂无正文内容。' }}
+      <p v-if="loading" class="text-[15px] leading-8 dyx-text-muted">
+        正在加载动态内容...
       </p>
+      <p v-else-if="errorMessage" class="text-[15px] leading-8 text-rose-500">
+        {{ errorMessage }}
+      </p>
+      <template v-else>
+        <p class="whitespace-pre-line text-[15px] leading-8 dyx-text-muted">
+          {{ moment.content || '暂无正文内容。' }}
+        </p>
 
-      <div v-if="mediaItems.length" class="mt-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        <template v-for="(url, index) in mediaItems" :key="`${url}-${index}`">
-          <el-image
-            v-if="isImageUrl(url)"
-            :src="url"
-            :preview-src-list="imageItems"
-            :initial-index="imageItems.indexOf(url)"
-            fit="cover"
-            preview-teleported
-            class="block h-56 w-full overflow-hidden rounded-[24px]"
-          />
-          <video
-            v-else-if="isVideoUrl(url)"
-            :src="url"
-            controls
-            preload="metadata"
-            class="block h-56 w-full rounded-[24px] bg-black object-cover"
-          ></video>
-        </template>
-      </div>
+        <div v-if="mediaItems.length" class="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <template v-for="(url, index) in mediaItems" :key="`${url}-${index}`">
+            <div
+              v-if="isImageUrl(url)"
+              class="flex aspect-[4/3] items-center justify-center overflow-hidden rounded-[24px]"
+            >
+              <el-image
+                :src="url"
+                :preview-src-list="imageItems"
+                :initial-index="imageItems.indexOf(url)"
+                fit="contain"
+                preview-teleported
+                class="h-full w-full"
+              />
+            </div>
+            <video
+              v-else-if="isVideoUrl(url)"
+              :src="url"
+              controls
+              preload="metadata"
+              class="block aspect-[4/3] w-full rounded-[24px] bg-black object-contain"
+            ></video>
+          </template>
+        </div>
+      </template>
     </article>
   </section>
 </template>
@@ -48,10 +60,13 @@ import { computed, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { getMomentDetail, recordSiteVisit, type MomentData } from '@/api/modules/site';
 import { formatDateYmd } from '@/utils/date';
+import { resolveErrorMessage } from '@/utils/error';
 import { isImageUrl, isVideoUrl, parseImageUrls } from '@/utils/media';
 
 const route = useRoute();
 const moment = ref<Partial<MomentData>>({});
+const loading = ref(false);
+const errorMessage = ref('');
 
 const mediaItems = computed(() => {
   const mediaUrls = parseImageUrls(moment.value.imageUrls);
@@ -64,8 +79,23 @@ const mediaItems = computed(() => {
 const imageItems = computed(() => mediaItems.value.filter((url) => isImageUrl(url)));
 
 async function loadMomentDetail(): Promise<void> {
-  const response = await getMomentDetail(String(route.params.id));
-  moment.value = response.data ?? {};
+  loading.value = true;
+  errorMessage.value = '';
+  try {
+    const response = await getMomentDetail(String(route.params.id));
+    const nextMoment = response.data ?? {};
+    if (!nextMoment.id) {
+      moment.value = {};
+      errorMessage.value = '动态不存在或未发布。';
+      return;
+    }
+    moment.value = nextMoment;
+  } catch (error) {
+    moment.value = {};
+    errorMessage.value = resolveErrorMessage(error, '动态加载失败，请稍后重试。');
+  } finally {
+    loading.value = false;
+  }
 }
 
 onMounted(() => {

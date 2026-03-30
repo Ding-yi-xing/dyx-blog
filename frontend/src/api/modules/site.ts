@@ -418,7 +418,7 @@ export function recordSiteVisit(pageKey: string) {
  * 获取博客列表。
  */
 export function getPosts() {
-  return http.get('/posts');
+  return http.get('/site/posts');
 }
 
 /**
@@ -426,5 +426,5 @@ export function getPosts() {
  * @param id 文章主键。
  */
 export function getPostDetail(id: string | number) {
-  return http.get(`/posts/${id}`);
+  return http.get(`/site/posts/${id}`);
 }
