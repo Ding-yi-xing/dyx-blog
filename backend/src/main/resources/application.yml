@@ -7,9 +7,9 @@ spring:
   application:
     name: dyx-blog
   datasource:
-    url: jdbc:mysql://localhost:3306/dyx_blog?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
-    username: root
-    password: 123456
+    url: jdbc:mysql://118.178.186.196:3306/dyx_blog?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    username: dyx_blog
+    password: Dyx@blog
     driver-class-name: com.mysql.cj.jdbc.Driver
   servlet:
     multipart:
@@ -38,3 +38,10 @@ jwt:
 file:
   upload-path: uploads/
   access-prefix: /media/
+
+dyx:
+  security:
+    cors-allowed-origins:
+      - http://118.178.186.196
+      - http://localhost:5173
+      - http://127.0.0.1:5173

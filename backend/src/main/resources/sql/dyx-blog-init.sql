@@ -137,6 +137,12 @@ CREATE TABLE IF NOT EXISTS dyx_site_visit_log (
     INDEX idx_site_visit_log_device_type (device_type)
 );
 
+CREATE TABLE IF NOT EXISTS dyx_site_visit_stat (
+    page_key VARCHAR(64) PRIMARY KEY,
+    visit_count BIGINT NOT NULL DEFAULT 0,
+    updated_at DATETIME NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS dyx_footprint (
     id BIGINT PRIMARY KEY,
     city_name VARCHAR(100) NOT NULL,
