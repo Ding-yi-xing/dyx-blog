@@ -11,8 +11,9 @@ public interface AuthService {
     /**
      * 管理员登录。
      *
-     * @param request 登录请求参数。
+     * @param request   登录请求参数。
+     * @param ipAddress 登录 IP。
      * @return 登录响应数据。
      */
-    LoginResponse login(LoginRequest request);
+    LoginResponse login(LoginRequest request, String ipAddress);
 }

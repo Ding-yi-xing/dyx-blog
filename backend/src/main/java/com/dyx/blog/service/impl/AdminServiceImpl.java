@@ -7,7 +7,9 @@ import com.dyx.blog.common.dto.DashboardSummaryDTO;
 import com.dyx.blog.common.dto.GuestbookAdminDTO;
 import com.dyx.blog.common.dto.PageResult;
 import com.dyx.blog.common.exception.BusinessException;
+import com.dyx.blog.common.util.AESUtil;
 import com.dyx.blog.common.util.HeroConfigUtil;
+import com.dyx.blog.common.util.XssUtil;
 import com.dyx.blog.entity.Footprint;
 import com.dyx.blog.entity.GuestbookMessage;
 import com.dyx.blog.entity.Honor;
@@ -33,8 +35,10 @@ import com.dyx.blog.service.AdminService;
 import com.dyx.blog.storage.OssMediaStorage;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -52,6 +56,7 @@ import java.util.Map;
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AdminServiceImpl implements AdminService {
 
     private static final DateTimeFormatter DAY_LABEL_FORMATTER = DateTimeFormatter.ofPattern("MM-dd");
@@ -70,6 +75,7 @@ public class AdminServiceImpl implements AdminService {
     private final SystemConfigMapper dyxSystemConfigMapper;
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
+    private final PasswordEncoder passwordEncoder;
 
     /**
      * 获取后台仪表盘摘要。
@@ -111,6 +117,9 @@ public class AdminServiceImpl implements AdminService {
      */
     @Override
     public void deleteVisitLog(Long id) {
+        if (!UserContext.isAdmin()) {
+            throw new BusinessException(403, "权限不足，仅超级管理员可删除访问日志");
+        }
         dyxSiteVisitLogMapper.deleteById(id);
     }
 
@@ -122,6 +131,9 @@ public class AdminServiceImpl implements AdminService {
     @Override
     @Transactional
     public void deleteVisitLogs(List<Long> ids) {
+        if (!UserContext.isAdmin()) {
+            throw new BusinessException(403, "权限不足，仅超级管理员可批量删除访问日志");
+        }
         if (ids == null || ids.isEmpty()) {
             throw new BusinessException("请选择需要删除的访问日志");
         }
@@ -179,7 +191,7 @@ public class AdminServiceImpl implements AdminService {
             if (content.length() > 2000) {
                 throw new BusinessException("留言内容不能超过 2000 个字符");
             }
-            existingMessage.setContent(content);
+            existingMessage.setContent(XssUtil.cleanText(content));
         }
         if (message != null && message.getPublished() != null) {
             existingMessage.setPublished(message.getPublished() == 1 ? 1 : 0);
@@ -218,6 +230,9 @@ public class AdminServiceImpl implements AdminService {
     @Override
     @CacheEvict(value = "site", key = "'posts'")
     public Post savePost(Post post) {
+        if (post.getContent() != null) {
+            post.setContent(XssUtil.cleanHtml(post.getContent()));
+        }
         LocalDateTime now = LocalDateTime.now();
         post.setUpdatedAt(now);
         if (post.getId() == null) {
@@ -259,6 +274,9 @@ public class AdminServiceImpl implements AdminService {
     @Override
     @CacheEvict(value = "site", key = "'moments'")
     public Moment saveMoment(Moment moment) {
+        if (moment.getContent() != null) {
+            moment.setContent(XssUtil.cleanHtml(moment.getContent()));
+        }
         LocalDateTime now = LocalDateTime.now();
         moment.setUpdatedAt(now);
         if (moment.getId() == null) {
@@ -544,6 +562,12 @@ public class AdminServiceImpl implements AdminService {
             systemConfig.setId(1L);
             systemConfig.setStorageType("local");
             systemConfig.setUpdatedAt(LocalDateTime.now());
+        } else {
+            // 解密敏感信息
+            systemConfig.setOssEndpoint(AESUtil.decrypt(systemConfig.getOssEndpoint()));
+            systemConfig.setOssRegion(AESUtil.decrypt(systemConfig.getOssRegion()));
+            systemConfig.setOssBucketName(AESUtil.decrypt(systemConfig.getOssBucketName()));
+            systemConfig.setOssPublicUrlPrefix(AESUtil.decrypt(systemConfig.getOssPublicUrlPrefix()));
         }
         return systemConfig;
     }
@@ -556,6 +580,11 @@ public class AdminServiceImpl implements AdminService {
      */
     @Override
     public SystemConfig saveSystemConfig(SystemConfig systemConfig) {
+        if (!UserContext.isAdmin()) {
+            log.warn("越权尝试: 用户 {} 尝试修改系统配置", UserContext.getUserId());
+            throw new BusinessException("权限不足，仅超级管理员可修改系统配置");
+        }
+        log.info("系统配置修改: 用户 {}", UserContext.getUserId());
         if (systemConfig == null) {
             throw new BusinessException("系统配置不能为空");
         }
@@ -563,10 +592,14 @@ public class AdminServiceImpl implements AdminService {
         SystemConfig targetConfig = existingConfig == null ? new SystemConfig() : existingConfig;
         targetConfig.setId(1L);
         targetConfig.setStorageType(normalizeStorageType(systemConfig.getStorageType()));
-        targetConfig.setOssEndpoint(normalizeNullableValue(systemConfig.getOssEndpoint()));
-        targetConfig.setOssRegion(normalizeNullableValue(systemConfig.getOssRegion()));
-        targetConfig.setOssBucketName(normalizeNullableValue(systemConfig.getOssBucketName()));
-        targetConfig.setOssPublicUrlPrefix(normalizeNullableValue(systemConfig.getOssPublicUrlPrefix()));
+
+        // 加密存储敏感信息
+        targetConfig.setOssEndpoint(AESUtil.encrypt(normalizeNullableValue(systemConfig.getOssEndpoint())));
+        targetConfig.setOssRegion(AESUtil.encrypt(normalizeNullableValue(systemConfig.getOssRegion())));
+        targetConfig.setOssBucketName(AESUtil.encrypt(normalizeNullableValue(systemConfig.getOssBucketName())));
+        targetConfig
+                .setOssPublicUrlPrefix(AESUtil.encrypt(normalizeNullableValue(systemConfig.getOssPublicUrlPrefix())));
+
         targetConfig.setOssBaseDir(normalizeNullableValue(systemConfig.getOssBaseDir()));
         targetConfig.setFootprintEyebrow(normalizeNullableValue(systemConfig.getFootprintEyebrow()));
         targetConfig.setFootprintTitle(normalizeNullableValue(systemConfig.getFootprintTitle()));
@@ -581,6 +614,13 @@ public class AdminServiceImpl implements AdminService {
         } else {
             dyxSystemConfigMapper.updateById(targetConfig);
         }
+
+        // 返回前解密，确保前端看到的是明文
+        targetConfig.setOssEndpoint(AESUtil.decrypt(targetConfig.getOssEndpoint()));
+        targetConfig.setOssRegion(AESUtil.decrypt(targetConfig.getOssRegion()));
+        targetConfig.setOssBucketName(AESUtil.decrypt(targetConfig.getOssBucketName()));
+        targetConfig.setOssPublicUrlPrefix(AESUtil.decrypt(targetConfig.getOssPublicUrlPrefix()));
+
         return targetConfig;
     }
 
@@ -602,19 +642,31 @@ public class AdminServiceImpl implements AdminService {
      */
     @Override
     public User saveUser(User user) {
+        if (!UserContext.isAdmin()) {
+            log.warn("越权尝试: 用户 {} 尝试管理用户", UserContext.getUserId());
+            throw new BusinessException("权限不足，仅超级管理员可管理用户");
+        }
         validateUser(user);
         LocalDateTime now = LocalDateTime.now();
         user.setUpdatedAt(now);
         if (user.getId() == null) {
+            log.info("创建新用户: operator={}, username={}", UserContext.getUserId(), user.getUsername());
             user.setCreatedAt(now);
+            // 新增用户必须加密密码
+            user.setPassword(passwordEncoder.encode(user.getPassword()));
             dyxUserMapper.insert(user);
         } else {
+            log.info("更新用户信息: operator={}, target_userId={}", UserContext.getUserId(), user.getId());
             User existingUser = dyxUserMapper.selectById(user.getId());
             if (existingUser == null) {
                 throw new BusinessException("用户不存在");
             }
+            // 如果密码没变，保留原密码（加密后的）
             if (isBlank(user.getPassword())) {
                 user.setPassword(existingUser.getPassword());
+            } else {
+                // 如果密码变了，加密新密码
+                user.setPassword(passwordEncoder.encode(user.getPassword()));
             }
             if (existingUser.getId().equals(UserContext.getUserId())
                     && !SystemConstant.ROLE_ADMIN.equals(user.getRole())) {
@@ -632,10 +684,15 @@ public class AdminServiceImpl implements AdminService {
      */
     @Override
     public void deleteUser(Long id) {
+        if (!UserContext.isAdmin()) {
+            log.warn("越权尝试: 用户 {} 尝试删除用户 {}", UserContext.getUserId(), id);
+            throw new BusinessException("权限不足，仅超级管理员可删除用户");
+        }
         User targetUser = dyxUserMapper.selectById(id);
         if (targetUser == null) {
             return;
         }
+        log.info("删除用户: operator={}, target_username={}", UserContext.getUserId(), targetUser.getUsername());
         if (targetUser.getId().equals(UserContext.getUserId())) {
             throw new BusinessException("不能删除当前登录账号");
         }

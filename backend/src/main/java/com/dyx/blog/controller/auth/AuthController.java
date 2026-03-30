@@ -4,6 +4,7 @@ import com.dyx.blog.common.dto.LoginRequest;
 import com.dyx.blog.common.response.Result;
 import com.dyx.blog.service.AuthService;
 import com.dyx.blog.vo.LoginResponse;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -26,10 +27,15 @@ public class AuthController {
      * 后台登录接口。
      *
      * @param request 登录请求参数。
+     * @param httpRequest HTTP 请求。
      * @return 登录结果。
      */
     @PostMapping("/login")
-    public Result<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
-        return Result.success(dyxAuthService.login(request));
+    public Result<LoginResponse> login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpRequest) {
+        String ipAddress = httpRequest.getHeader("X-Forwarded-For");
+        if (ipAddress == null || ipAddress.isEmpty() || "unknown".equalsIgnoreCase(ipAddress)) {
+            ipAddress = httpRequest.getRemoteAddr();
+        }
+        return Result.success(dyxAuthService.login(request, ipAddress));
     }
 }

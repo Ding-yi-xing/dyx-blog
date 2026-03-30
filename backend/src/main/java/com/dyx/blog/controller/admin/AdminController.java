@@ -40,7 +40,7 @@ import java.util.Map;
  */
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/admin")
+@RequestMapping("/api/dyx-manager")
 public class AdminController {
 
     private final AdminService dyxAdminService;

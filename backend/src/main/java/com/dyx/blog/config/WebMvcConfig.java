@@ -2,11 +2,17 @@ package com.dyx.blog.config;
 
 import com.dyx.blog.common.interceptor.JwtAuthInterceptor;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+import java.util.List;
 
 /**
  * Web MVC 配置类。
@@ -19,6 +25,19 @@ public class WebMvcConfig implements WebMvcConfigurer {
     private final JwtAuthInterceptor dyxJwtAuthInterceptor;
     private final FileProperties dyxFileProperties;
 
+    @Value("${dyx.security.cors-allowed-origins:}")
+    private List<String> dyxCorsAllowedOrigins;
+
+    /**
+     * 配置密码加密器。
+     *
+     * @return BCryptPasswordEncoder 实例。
+     */
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
     /**
      * 配置跨域规则。
      *
@@ -27,10 +46,10 @@ public class WebMvcConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
-                .allowedOriginPatterns("*")
+                .allowedOrigins(dyxCorsAllowedOrigins.toArray(String[]::new))
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-                .allowedHeaders("*")
-                .allowCredentials(true);
+                .allowedHeaders("Authorization", "Content-Type", "X-Requested-With")
+                .allowCredentials(false);
     }
 
     /**
@@ -41,8 +60,8 @@ public class WebMvcConfig implements WebMvcConfigurer {
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(dyxJwtAuthInterceptor)
-                .addPathPatterns("/api/admin/**")
-                .excludePathPatterns("/api/auth/login", "/api/admin/media/content");
+                .addPathPatterns("/api/dyx-manager/**")
+                .excludePathPatterns("/api/auth/login", "/api/dyx-manager/media/content");
     }
 
     /**

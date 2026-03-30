@@ -4,6 +4,7 @@ import com.dyx.blog.common.response.Result;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -24,10 +25,13 @@ public class GlobalExceptionHandler {
      * @param exception 业务异常对象。
      * @return 统一失败响应。
      */
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(BusinessException.class)
-    public Result<Void> handleBusinessException(BusinessException exception) {
-        return Result.failure(400, exception.getMessage());
+    public ResponseEntity<Result<Void>> handleBusinessException(BusinessException exception) {
+        HttpStatus status = HttpStatus.resolve(exception.getCode());
+        if (status == null) {
+            status = HttpStatus.BAD_REQUEST;
+        }
+        return ResponseEntity.status(status).body(Result.failure(exception.getCode(), exception.getMessage()));
     }
 
     /**

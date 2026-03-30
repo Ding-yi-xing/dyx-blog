@@ -27,17 +27,33 @@ public class JwtUtil {
      * 生成指定用户的 JWT 令牌。
      *
      * @param userId 用户主键。
+     * @param role   用户角色。
      * @return JWT 字符串。
      */
-    public String generateToken(Long userId) {
+    public String generateToken(Long userId, String role) {
         Instant now = Instant.now();
         Instant expireAt = now.plus(dyxJwtProperties.getExpireHours(), ChronoUnit.HOURS);
         return Jwts.builder()
                 .subject(String.valueOf(userId))
+                .claim("role", role)
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expireAt))
                 .signWith(getSecretKey())
                 .compact();
+    }
+
+    /**
+     * 从 JWT 中解析 Claim。
+     *
+     * @param token JWT 字符串。
+     * @return Claims 对象。
+     */
+    public Claims parseClaims(String token) {
+        return Jwts.parser()
+                .verifyWith(getSecretKey())
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
     }
 
     /**
@@ -47,12 +63,7 @@ public class JwtUtil {
      * @return 用户主键。
      */
     public Long parseUserId(String token) {
-        Claims claims = Jwts.parser()
-                .verifyWith(getSecretKey())
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
-        return Long.valueOf(claims.getSubject());
+        return Long.valueOf(parseClaims(token).getSubject());
     }
 
     /**

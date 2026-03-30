@@ -3,9 +3,12 @@ package com.dyx.blog.common.interceptor;
 import com.dyx.blog.common.context.UserContext;
 import com.dyx.blog.common.exception.BusinessException;
 import com.dyx.blog.common.util.JwtUtil;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
@@ -15,6 +18,7 @@ import org.springframework.web.servlet.HandlerInterceptor;
  */
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class JwtAuthInterceptor implements HandlerInterceptor {
 
     private final JwtUtil dyxJwtUtil;
@@ -31,12 +35,29 @@ public class JwtAuthInterceptor implements HandlerInterceptor {
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
         String authorization = request.getHeader("Authorization");
         if (authorization == null || !authorization.startsWith("Bearer ")) {
-            throw new BusinessException("请先登录");
+            throw new BusinessException(401, "请先登录");
         }
-        String token = authorization.substring(7);
-        Long userId = dyxJwtUtil.parseUserId(token);
-        UserContext.setUserId(userId);
-        return true;
+        String token = authorization.substring(7).trim();
+        if (token.isEmpty()) {
+            throw new BusinessException(401, "登录状态无效，请重新登录");
+        }
+        try {
+            Claims claims = dyxJwtUtil.parseClaims(token);
+            Long userId = Long.valueOf(claims.getSubject());
+            String role = claims.get("role", String.class);
+            if (role == null || role.isBlank()) {
+                log.warn("JWT 缺少角色信息，uri={}", request.getRequestURI());
+                throw new BusinessException(401, "登录状态无效，请重新登录");
+            }
+            UserContext.setUserId(userId);
+            UserContext.setUserRole(role);
+            return true;
+        } catch (BusinessException exception) {
+            throw exception;
+        } catch (JwtException | IllegalArgumentException exception) {
+            log.warn("JWT 校验失败，uri={}, message={}", request.getRequestURI(), exception.getMessage());
+            throw new BusinessException(401, "登录状态已失效，请重新登录");
+        }
     }
 
     /**

@@ -6,12 +6,29 @@ package com.dyx.blog.common.exception;
  */
 public class BusinessException extends RuntimeException {
 
+    private final int code;
+
     /**
      * 创建业务异常。
      *
      * @param message 异常消息。
      */
     public BusinessException(String message) {
+        this(400, message);
+    }
+
+    /**
+     * 创建带状态码的业务异常。
+     *
+     * @param code 状态码。
+     * @param message 异常消息。
+     */
+    public BusinessException(int code, String message) {
         super(message);
+        this.code = code;
+    }
+
+    public int getCode() {
+        return code;
     }
 }
