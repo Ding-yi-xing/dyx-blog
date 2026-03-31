@@ -31,11 +31,17 @@ public class AuthServiceImpl implements AuthService {
     private final LoginAttemptLimiter loginAttemptLimiter;
 
     /**
-     * 执行登录校验。
+     * 执行后台用户登录校验并生成 JWT。
+     * <p>
+     * 实现流程包括：清洗用户名输入、校验登录限流、按用户名查询用户、校验密码、校验账号启用状态、校验后台角色权限，
+     * 最终在校验通过后生成携带用户身份与角色信息的 Token。登录失败会记录失败日志并累计限流计数。
+     * </p>
      *
-     * @param request   登录请求参数。
-     * @param ipAddress 登录 IP。
-     * @return 登录结果。
+     * @param request 登录请求参数，包含用户名和密码。
+     * @param ipAddress 当前登录请求的客户端 IP。
+     * @return 包含 JWT 与当前登录用户信息的登录结果。
+     * @throws BusinessException 当登录频率超限、用户名或密码错误、账号已禁用或账号无后台登录权限时抛出。
+     * @author Dyx
      */
     @Override
     public LoginResponse login(LoginRequest request, String ipAddress) {

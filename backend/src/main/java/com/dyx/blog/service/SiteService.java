@@ -42,11 +42,13 @@ public interface SiteService {
     GuestbookDataDTO getGuestbookData();
 
     /**
-     * 提交留言。
+     * 保存公开留言并返回落库结果。
      *
-     * @param message 留言内容。
-     * @param request 当前请求。
-     * @return 保存后的留言。
+     * @param message 留言请求对象，包含留言内容等提交数据。
+     * @param request 当前 HTTP 请求，用于解析来源 IP 与请求上下文。
+     * @return 保存后的留言实体。
+     * @throws BusinessException 当留言内容为空、长度超限或留言保存不满足业务规则时抛出。
+     * @author Dyx
      */
     GuestbookMessage saveGuestbookMessage(GuestbookMessage message, HttpServletRequest request);
 

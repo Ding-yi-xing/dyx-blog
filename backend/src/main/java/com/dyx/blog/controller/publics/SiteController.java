@@ -67,11 +67,17 @@ public class SiteController {
     }
 
     /**
-     * 提交留言。
+     * 接收公开留言并保存到留言数据表。
+     * <p>
+     * 该方法会将留言内容与当前请求上下文一并传入站点服务，由服务层负责完成内容校验、文本清洗、IP 解析和默认状态填充。
+     * 若留言内容为空、超长或不满足业务约束，会由服务层抛出业务异常并交由全局异常处理器统一返回。
+     * </p>
      *
-     * @param message 留言对象。
-     * @param request 当前请求。
-     * @return 保存结果。
+     * @param message 留言请求对象，主要包含访客提交的留言内容。
+     * @param request 当前 HTTP 请求，用于提取来源 IP、请求头等上下文信息。
+     * @return 包含保存后留言数据的统一响应结果。
+     * @throws BusinessException 当留言内容为空、长度超限或保存过程不满足业务约束时抛出。
+     * @author Dyx
      */
     @PostMapping("/guestbook/messages")
     public Result<GuestbookMessage> createGuestbookMessage(@RequestBody GuestbookMessage message,
@@ -141,11 +147,17 @@ public class SiteController {
     }
 
     /**
-     * 记录页面访问。
+     * 记录公开页面访问行为。
+     * <p>
+     * 前端在页面展示阶段主动调用该接口上报访问事件，服务端会结合页面标识与请求头信息统计页面访问量，并写入访问日志。
+     * 该接口本身不返回业务数据，仅返回统一成功结果。
+     * </p>
      *
-     * @param pageKey 页面标识。
-     * @param request 当前请求。
-     * @return 成功结果。
+     * @param pageKey 页面标识，用于区分首页、关于我、简历、博客详情等访问来源。
+     * @param request 当前 HTTP 请求，用于解析 IP、设备类型与 User-Agent 等访问信息。
+     * @return 空数据的统一成功响应结果。
+     * @throws BusinessException 当页面标识非法或访问记录处理过程中触发业务校验时抛出。
+     * @author Dyx
      */
     @PostMapping("/visit/{pageKey}")
     public Result<Void> recordSiteVisit(@PathVariable String pageKey, HttpServletRequest request) {
