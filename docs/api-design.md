@@ -545,3 +545,8 @@ Authorization: Bearer <token>
 - 按当前前端路由补齐 `/guestbook`、`/moments/:id`、`/dyx-manager/home/*` 等页面与接口映射
 - 明确前端 Axios 基础路径、401/403 行为与 Bearer Token 注入逻辑
 - 删除过期接口描述，统一以当前代码实现为准
+
+### 2026-03-31
+- 复核公开站点与后台管理路由，确认当前前端管理入口仍为 `/dyx-manager` 体系
+- 复核前后端接口前缀与统一返回体约定，确认 `frontend/src/api/http.ts` 与三类后端控制器路径保持一致
+- 复核公开访问统计、登录鉴权与页面映射说明，确保文档与当前代码实现一致

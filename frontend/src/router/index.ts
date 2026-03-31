@@ -70,7 +70,11 @@ const adminRoutes: RouteRecordRaw[] = [
 ];
 
 /**
- * 创建全局路由实例。
+ * 创建前后台共用的全局路由实例。
+ *
+ * @returns 返回挂载了公开站点与后台管理路由树的 Vue Router 实例。
+ * @throws 该初始化过程不会主动抛出业务异常；若路由配置非法，则由 Vue Router 在运行时给出错误。
+ * @author Dyx
  */
 const router = createRouter({
   history: createWebHistory(),
@@ -78,8 +82,16 @@ const router = createRouter({
 });
 
 /**
- * 路由守卫。
- * 若访问后台受保护路由且未登录，则跳转到登录页。
+ * 全局前置路由守卫。
+ * <p>
+ * 该守卫用于控制后台受保护路由的访问权限：未登录时跳转到后台登录页并附带原始目标地址，
+ * 已登录时访问登录页则直接重定向到后台仪表盘。
+ * </p>
+ *
+ * @param to 即将进入的目标路由对象。
+ * @returns 返回允许放行、重定向地址或重定向配置对象。
+ * @throws 该守卫不会主动抛出业务异常；鉴权失败时通过返回重定向结果完成处理。
+ * @author Dyx
  */
 router.beforeEach((to) => {
   const authStore = useAuthStore();

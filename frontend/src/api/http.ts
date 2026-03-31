@@ -3,8 +3,11 @@ import { ElMessage } from 'element-plus';
 import { useAuthStore } from '@/stores/auth';
 
 /**
- * 创建 Axios 实例。
- * 用于统一处理基础地址、超时和请求头注入。
+ * 创建基础 Axios 客户端实例。
+ *
+ * @returns 返回统一配置了基础路径和超时时间的 Axios 实例。
+ * @throws 该函数不会主动抛出业务异常；若 Axios 初始化参数非法，则会由运行时抛出对应错误。
+ * @author Dyx
  */
 function createBaseClient(): AxiosInstance {
   return axios.create({
@@ -18,6 +21,13 @@ const adminHttp: AxiosInstance = createBaseClient();
 
 let authRedirecting = false;
 
+/**
+ * 清理后台登录态并重定向到登录页。
+ *
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出业务异常；若浏览器跳转或存储访问受限，则由运行时环境处理。
+ * @author Dyx
+ */
 function redirectToLogin(): void {
   if (authRedirecting) {
     return;
@@ -32,6 +42,14 @@ function redirectToLogin(): void {
   window.location.href = `/dyx-manager/login${redirectQuery}`;
 }
 
+/**
+ * 为指定客户端挂载统一返回体解析拦截器。
+ *
+ * @param client 需要挂载统一响应解析逻辑的 Axios 实例。
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出同步异常；当响应体中的业务状态码非成功时，会以 Promise reject 形式向调用方透出。
+ * @author Dyx
+ */
 function applyResultInterceptor(client: AxiosInstance): void {
   client.interceptors.response.use(
     (response) => {

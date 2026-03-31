@@ -26,30 +26,36 @@ import java.util.Map;
 public interface AdminService {
 
     /**
-     * 获取后台仪表盘摘要。
+     * 获取后台仪表盘摘要数据。
      *
-     * @return 统计摘要。
+     * @return 用于仪表盘展示的统计摘要对象。
+     * @throws BusinessException 当前方法一般不会主动抛出业务异常；若底层统计查询失败，则由统一异常处理流程接管。
+     * @author Dyx
      */
     DashboardSummaryDTO getDashboardSummary();
 
     /**
-     * 获取访问日志列表（分页）。
+     * 按条件分页查询访问日志列表。
      *
-     * @param startTime 开始时间。
-     * @param endTime 结束时间。
-     * @param pageKey 页面标识。
-     * @param deviceType 设备类型。
-     * @param ipAddress IP 地址。
-     * @param page 页码（从 1 开始）。
-     * @param pageSize 每页数量。
-     * @return 包含访问日志记录及分页信息的结果。
+     * @param startTime 查询起始时间，为空时不限制开始边界。
+     * @param endTime 查询结束时间，为空时不限制结束边界。
+     * @param pageKey 页面标识，为空时不过滤页面。
+     * @param deviceType 设备类型，为空时不过滤设备。
+     * @param ipAddress IP 地址，为空时不过滤来源地址。
+     * @param page 页码（从 1 开始），为空时由实现层按默认值处理。
+     * @param pageSize 每页数量，为空时由实现层按默认值处理。
+     * @return 包含访问日志记录及分页信息的分页结果。
+     * @throws BusinessException 当分页参数不合法或日志查询过程触发业务校验时抛出。
+     * @author Dyx
      */
     PageResult<Map<String, Object>> listVisitLogs(LocalDateTime startTime, LocalDateTime endTime, String pageKey, String deviceType, String ipAddress, Integer page, Integer pageSize);
 
     /**
-     * 删除访问日志。
+     * 删除指定访问日志记录。
      *
      * @param id 访问日志主键。
+     * @throws BusinessException 当当前用户无删除权限或目标日志不满足删除条件时抛出。
+     * @author Dyx
      */
     void deleteVisitLog(Long id);
 
