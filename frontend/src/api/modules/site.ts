@@ -271,6 +271,14 @@ export function parseHeroConfig(profile?: Pick<ProfileData, 'heroConfig' | 'site
   }
 }
 
+/**
+ * 解析资料中的联系方式配置并过滤无效项。
+ *
+ * @param value 联系方式原始值，既可能是 JSON 字符串，也可能已经是对象数组。
+ * @returns 返回可用于页面渲染的联系方式数组；解析失败或值为空时返回空数组。
+ * @throws 该函数不会向外抛出 JSON 解析异常；解析失败时会捕获异常并返回空数组。
+ * @author Dyx
+ */
 export function parseContactMethods(value?: string | ContactMethodData[] | null): ContactMethodData[] {
   if (Array.isArray(value)) {
     return value.filter((item) => item?.value);
@@ -286,6 +294,14 @@ export function parseContactMethods(value?: string | ContactMethodData[] | null)
   }
 }
 
+/**
+ * 将联系方式数组序列化为可持久化保存的 JSON 字符串。
+ *
+ * @param items 联系方式数组，通常来源于后台编辑表单。
+ * @returns 返回去除首尾空白并过滤无效值后的 JSON 字符串。
+ * @throws 该函数不会主动抛出业务异常；若序列化过程中出现运行时异常，将由 JavaScript 引擎抛出。
+ * @author Dyx
+ */
 export function stringifyContactMethods(items: ContactMethodData[]): string {
   return JSON.stringify(
     items
@@ -298,6 +314,14 @@ export function stringifyContactMethods(items: ContactMethodData[]): string {
   );
 }
 
+/**
+ * 根据资料对象计算页面实际可展示的联系方式列表。
+ *
+ * @param profile 资料对象，优先使用结构化 contactMethods，缺失时再回退到 email/phone/wechat/githubUrl 等旧字段。
+ * @returns 返回已标准化标签与类型的联系方式数组。
+ * @throws 该函数不会主动抛出业务异常；内部若结构化联系方式解析失败，会回退到兼容字段方案。
+ * @author Dyx
+ */
 export function resolveProfileContactMethods(
   profile?: Pick<ProfileData, 'contactMethods' | 'email' | 'phone' | 'wechat' | 'githubUrl'> | null
 ): ContactMethodData[] {
@@ -320,6 +344,14 @@ export function resolveProfileContactMethods(
   return fallbackContacts.filter((item): item is ContactMethodData => !!item?.value);
 }
 
+/**
+ * 根据联系方式项推导可点击跳转的链接地址。
+ *
+ * @param item 单条联系方式配置。
+ * @returns 返回 mailto、tel、GitHub 或普通外链地址；若无法生成有效链接则返回空字符串。
+ * @throws 该函数不会主动抛出业务异常；无法识别的联系方式类型会按空链接处理。
+ * @author Dyx
+ */
 export function resolveContactHref(item?: ContactMethodData | null): string {
   const value = item?.value?.trim();
   if (!value) {
@@ -352,94 +384,160 @@ export function resolveContactHref(item?: ContactMethodData | null): string {
   return '';
 }
 
+/**
+ * 判断联系方式链接是否属于浏览器外部跳转地址。
+ *
+ * @param href 待判断的联系方式链接。
+ * @returns 当链接既存在且不是 mailto/tel 协议时返回 true。
+ * @throws 该函数不会主动抛出异常。
+ * @author Dyx
+ */
 export function isExternalContactHref(href?: string): boolean {
   return !!href && !href.startsWith('mailto:') && !href.startsWith('tel:');
 }
 
 /**
- * 获取前台首页聚合数据。
+ * 获取公开首页聚合数据。
+ *
+ * @returns 返回首页资料、最新内容、精选项目、足迹与系统配置等聚合数据。
+ * @throws 该函数不会主动抛出同步异常；接口失败时会以 Promise reject 形式返回。
+ * @author Dyx
  */
 export function getHomeData() {
   return publicHttp.get('/site/home');
 }
 
 /**
- * 获取个人资料信息。
+ * 获取公开展示所需的个人资料信息。
+ *
+ * @returns 返回 About、Resume 等页面复用的资料数据。
+ * @throws 该函数不会主动抛出同步异常；接口失败时会以 Promise reject 形式返回。
+ * @author Dyx
  */
 export function getProfile() {
   return publicHttp.get('/site/profile');
 }
 
 /**
- * 获取留言页数据。
+ * 获取留言页展示数据。
+ *
+ * @returns 返回留言页介绍文案与已发布留言列表。
+ * @throws 该函数不会主动抛出同步异常；接口失败时会以 Promise reject 形式返回。
+ * @author Dyx
  */
 export function getGuestbookData() {
   return publicHttp.get('/site/guestbook');
 }
 
 /**
- * 提交留言。
+ * 提交公开留言。
+ *
+ * @param payload 留言请求体，通常只包含留言内容等可提交字段。
+ * @returns 返回保存后的留言数据。
+ * @throws 该函数不会主动抛出同步异常；留言校验失败或接口调用失败时会以 Promise reject 形式返回。
+ * @author Dyx
  */
 export function createGuestbookMessage(payload: Partial<GuestbookMessageData>) {
   return publicHttp.post('/site/guestbook/messages', payload);
 }
 
 /**
- * 获取动态列表。
+ * 获取公开动态列表。
+ *
+ * @returns 返回已发布动态列表。
+ * @throws 该函数不会主动抛出同步异常；接口失败时会以 Promise reject 形式返回。
+ * @author Dyx
  */
 export function getMoments() {
   return publicHttp.get('/site/moments');
 }
 
+/**
+ * 获取单条动态详情。
+ *
+ * @param id 动态主键。
+ * @returns 返回指定动态详情数据。
+ * @throws 该函数不会主动抛出同步异常；目标不存在或接口失败时会以 Promise reject 形式返回。
+ * @author Dyx
+ */
 export function getMomentDetail(id: string | number) {
   return publicHttp.get(`/site/moments/${id}`);
 }
 
 /**
- * 获取项目经历列表。
+ * 获取公开项目经历列表。
+ *
+ * @returns 返回已发布项目经历列表。
+ * @throws 该函数不会主动抛出同步异常；接口失败时会以 Promise reject 形式返回。
+ * @author Dyx
  */
 export function getProjects() {
   return publicHttp.get('/site/projects');
 }
 
 /**
- * 获取个人作品列表。
+ * 获取公开个人作品列表。
+ *
+ * @returns 返回已发布作品列表。
+ * @throws 该函数不会主动抛出同步异常；接口失败时会以 Promise reject 形式返回。
+ * @author Dyx
  */
 export function getWorks() {
   return publicHttp.get('/site/works');
 }
 
 /**
- * 获取荣誉列表。
+ * 获取公开荣誉列表。
+ *
+ * @returns 返回已发布荣誉列表。
+ * @throws 该函数不会主动抛出同步异常；接口失败时会以 Promise reject 形式返回。
+ * @author Dyx
  */
 export function getHonors() {
   return publicHttp.get('/site/honors');
 }
 
 /**
- * 获取已发布足迹列表。
+ * 获取已发布首页足迹列表。
+ *
+ * @returns 返回已发布足迹列表数据。
+ * @throws 该函数不会主动抛出同步异常；接口失败时会以 Promise reject 形式返回。
+ * @author Dyx
  */
 export function getFootprints() {
   return publicHttp.get('/site/footprints');
 }
 
 /**
- * 记录页面访问。
+ * 主动上报公开页面访问事件。
+ *
+ * @param pageKey 页面标识，用于区分首页、关于我、简历、博客详情等统计维度。
+ * @returns 返回访问记录接口的调用结果。
+ * @throws 该函数不会主动抛出同步异常；统计接口失败时会以 Promise reject 形式返回。
+ * @author Dyx
  */
 export function recordSiteVisit(pageKey: string) {
   return publicHttp.post(`/site/visit/${pageKey}`);
 }
 
 /**
- * 获取博客列表。
+ * 获取公开博客列表。
+ *
+ * @returns 返回已发布博客列表数据。
+ * @throws 该函数不会主动抛出同步异常；接口失败时会以 Promise reject 形式返回。
+ * @author Dyx
  */
 export function getPosts() {
   return publicHttp.get('/site/posts');
 }
 
 /**
- * 获取博客详情。
+ * 获取公开博客详情。
+ *
  * @param id 文章主键。
+ * @returns 返回指定文章详情数据。
+ * @throws 该函数不会主动抛出同步异常；目标不存在或接口失败时会以 Promise reject 形式返回。
+ * @author Dyx
  */
 export function getPostDetail(id: string | number) {
   return publicHttp.get(`/site/posts/${id}`);

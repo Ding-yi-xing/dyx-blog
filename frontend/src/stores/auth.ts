@@ -15,6 +15,13 @@ interface AuthState {
 const TOKEN_KEY = 'dyx-admin-token';
 const USER_KEY = 'dyx-admin-user';
 
+/**
+ * 从会话存储中读取当前后台登录用户信息。
+ *
+ * @returns 返回已缓存的后台用户信息；若当前会话不存在登录用户，则返回 null。
+ * @throws 该函数不会主动处理 JSON 解析异常；若会话存储中的用户数据被破坏，将由运行时抛出异常。
+ * @author Dyx
+ */
 function readSessionUser(): AdminUser | null {
   const raw = sessionStorage.getItem(USER_KEY);
   return raw ? (JSON.parse(raw) as AdminUser) : null;

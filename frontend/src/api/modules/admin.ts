@@ -109,40 +109,85 @@ export interface SystemConfigData {
 }
 
 /**
- * 调用后台访问日志列表接口。
+ * 获取后台访问日志分页列表。
+ *
+ * @param params 访问日志筛选与分页参数。
+ * @returns 返回包含日志列表与分页信息的 Promise 结果。
+ * @throws 该函数不会主动抛出同步异常；接口失败时会以 Promise reject 形式返回。
+ * @author Dyx
  */
 export function getAdminVisitLogs(params?: AdminVisitLogQuery) {
   return adminHttp.get('/dyx-manager/visit-logs', { params });
 }
 
 /**
- * 调用后台访问日志删除接口。
+ * 删除单条后台访问日志。
+ *
  * @param id 访问日志主键。
+ * @returns 返回删除接口的 Promise 结果。
+ * @throws 该函数不会主动抛出同步异常；删除失败或权限不足时会以 Promise reject 形式返回。
+ * @author Dyx
  */
 export function deleteAdminVisitLog(id: number) {
   return adminHttp.delete(`/dyx-manager/visit-logs/${id}`);
 }
 
 /**
- * 调用后台访问日志批量删除接口。
+ * 批量删除后台访问日志。
+ *
  * @param ids 访问日志主键列表。
+ * @returns 返回批量删除接口的 Promise 结果。
+ * @throws 该函数不会主动抛出同步异常；删除失败或权限不足时会以 Promise reject 形式返回。
+ * @author Dyx
  */
 export function deleteAdminVisitLogs(ids: number[]) {
   return adminHttp.post('/dyx-manager/visit-logs/batch-delete', ids);
 }
 
+/**
+ * 获取后台留言管理页数据。
+ *
+ * @returns 返回留言介绍文案与留言列表等后台管理数据。
+ * @throws 该函数不会主动抛出同步异常；接口失败时会以 Promise reject 形式返回。
+ * @author Dyx
+ */
 export function getAdminGuestbook() {
   return adminHttp.get('/dyx-manager/guestbook');
 }
 
+/**
+ * 更新留言页介绍文案。
+ *
+ * @param guestbookIntro 最新留言页介绍文案。
+ * @returns 返回更新后的留言页介绍相关数据。
+ * @throws 该函数不会主动抛出同步异常；保存失败时会以 Promise reject 形式返回。
+ * @author Dyx
+ */
 export function updateAdminGuestbookIntro(guestbookIntro: string) {
   return adminHttp.put('/dyx-manager/guestbook/intro', { guestbookIntro });
 }
 
+/**
+ * 更新单条后台留言记录。
+ *
+ * @param id 留言主键。
+ * @param payload 留言更新数据。
+ * @returns 返回更新后的留言数据。
+ * @throws 该函数不会主动抛出同步异常；保存失败时会以 Promise reject 形式返回。
+ * @author Dyx
+ */
 export function updateAdminGuestbookMessage(id: number, payload: Partial<GuestbookMessageData>) {
   return adminHttp.put(`/dyx-manager/guestbook/messages/${id}`, payload);
 }
 
+/**
+ * 删除单条后台留言记录。
+ *
+ * @param id 留言主键。
+ * @returns 返回删除接口的 Promise 结果。
+ * @throws 该函数不会主动抛出同步异常；删除失败时会以 Promise reject 形式返回。
+ * @author Dyx
+ */
 export function deleteAdminGuestbookMessage(id: number) {
   return adminHttp.delete(`/dyx-manager/guestbook/messages/${id}`);
 }
@@ -409,15 +454,23 @@ export function importExistingAdminMedia() {
 }
 
 /**
- * 调用后台用户列表接口。
+ * 获取后台用户列表。
+ *
+ * @returns 返回后台用户列表数据。
+ * @throws 该函数不会主动抛出同步异常；接口失败时会以 Promise reject 形式返回。
+ * @author Dyx
  */
 export function getAdminUsers() {
   return adminHttp.get('/dyx-manager/users');
 }
 
 /**
- * 调用后台用户保存接口。
- * @param payload 用户表单数据。
+ * 保存后台用户数据。
+ *
+ * @param payload 用户表单数据；带有 id 时更新现有用户，否则创建新用户。
+ * @returns 返回保存后的用户数据。
+ * @throws 该函数不会主动抛出同步异常；保存失败、校验不通过或权限不足时会以 Promise reject 形式返回。
+ * @author Dyx
  */
 export function saveAdminUser(payload: Partial<AdminListUserData>) {
   if (payload.id) {
@@ -427,16 +480,24 @@ export function saveAdminUser(payload: Partial<AdminListUserData>) {
 }
 
 /**
- * 调用后台用户删除接口。
+ * 删除后台用户。
+ *
  * @param id 用户主键。
+ * @returns 返回删除接口的 Promise 结果。
+ * @throws 该函数不会主动抛出同步异常；删除失败或权限不足时会以 Promise reject 形式返回。
+ * @author Dyx
  */
 export function deleteAdminUser(id: number) {
   return adminHttp.delete(`/dyx-manager/users/${id}`);
 }
 
 /**
- * 调用后台媒体上传接口。
+ * 上传后台媒体文件。
+ *
  * @param file 待上传文件。
+ * @returns 返回媒体上传接口的 Promise 结果。
+ * @throws 该函数不会主动抛出同步异常；上传失败时会以 Promise reject 形式返回。
+ * @author Dyx
  */
 export function uploadAdminMedia(file: File) {
   const formData = new FormData();
@@ -450,7 +511,11 @@ export function uploadAdminMedia(file: File) {
 
 /**
  * 调用后台登录接口。
- * @param payload 登录表单数据。
+ *
+ * @param payload 登录表单数据，包含用户名和密码。
+ * @returns 返回包含 JWT 与后台用户信息的 Promise 结果。
+ * @throws 该函数不会主动抛出同步异常；登录失败时会以 Promise reject 形式返回。
+ * @author Dyx
  */
 export function adminLogin(payload: { username: string; password: string }) {
   return publicHttp.post('/auth/login', payload);
