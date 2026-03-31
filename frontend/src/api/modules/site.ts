@@ -1,4 +1,4 @@
-import http from '@/api/http';
+import { publicHttp } from '@/api/http';
 
 export type HeroBlockType = 'eyebrow' | 'title' | 'subtitle' | 'tags' | 'image';
 export type HeroBlockColumn = 'left' | 'right';
@@ -344,81 +344,81 @@ export function isExternalContactHref(href?: string): boolean {
  * 获取前台首页聚合数据。
  */
 export function getHomeData() {
-  return http.get('/site/home');
+  return publicHttp.get('/site/home');
 }
 
 /**
  * 获取个人资料信息。
  */
 export function getProfile() {
-  return http.get('/site/profile');
+  return publicHttp.get('/site/profile');
 }
 
 /**
  * 获取留言页数据。
  */
 export function getGuestbookData() {
-  return http.get('/site/guestbook');
+  return publicHttp.get('/site/guestbook');
 }
 
 /**
  * 提交留言。
  */
 export function createGuestbookMessage(payload: Partial<GuestbookMessageData>) {
-  return http.post('/site/guestbook/messages', payload);
+  return publicHttp.post('/site/guestbook/messages', payload);
 }
 
 /**
  * 获取动态列表。
  */
 export function getMoments() {
-  return http.get('/site/moments');
+  return publicHttp.get('/site/moments');
 }
 
 export function getMomentDetail(id: string | number) {
-  return http.get(`/site/moments/${id}`);
+  return publicHttp.get(`/site/moments/${id}`);
 }
 
 /**
  * 获取项目经历列表。
  */
 export function getProjects() {
-  return http.get('/site/projects');
+  return publicHttp.get('/site/projects');
 }
 
 /**
  * 获取个人作品列表。
  */
 export function getWorks() {
-  return http.get('/site/works');
+  return publicHttp.get('/site/works');
 }
 
 /**
  * 获取荣誉列表。
  */
 export function getHonors() {
-  return http.get('/site/honors');
+  return publicHttp.get('/site/honors');
 }
 
 /**
  * 获取已发布足迹列表。
  */
 export function getFootprints() {
-  return http.get('/site/footprints');
+  return publicHttp.get('/site/footprints');
 }
 
 /**
  * 记录页面访问。
  */
 export function recordSiteVisit(pageKey: string) {
-  return http.post(`/site/visit/${pageKey}`);
+  return publicHttp.post(`/site/visit/${pageKey}`);
 }
 
 /**
  * 获取博客列表。
  */
 export function getPosts() {
-  return http.get('/site/posts');
+  return publicHttp.get('/site/posts');
 }
 
 /**
@@ -426,5 +426,5 @@ export function getPosts() {
  * @param id 文章主键。
  */
 export function getPostDetail(id: string | number) {
-  return http.get(`/site/posts/${id}`);
+  return publicHttp.get(`/site/posts/${id}`);
 }

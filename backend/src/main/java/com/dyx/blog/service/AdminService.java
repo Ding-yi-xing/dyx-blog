@@ -13,6 +13,8 @@ import com.dyx.blog.entity.Project;
 import com.dyx.blog.entity.SystemConfig;
 import com.dyx.blog.entity.User;
 import com.dyx.blog.entity.Work;
+import com.dyx.blog.vo.AdminSystemConfigVo;
+import com.dyx.blog.vo.AdminUserVo;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -259,19 +261,26 @@ public interface AdminService {
     SystemConfig getSystemConfig();
 
     /**
+     * 获取前端安全可见的系统配置。
+     *
+     * @return 系统配置返回对象。
+     */
+    AdminSystemConfigVo getAdminSystemConfig();
+
+    /**
      * 保存系统配置。
      *
      * @param systemConfig 系统配置对象。
      * @return 保存后的系统配置。
      */
-    SystemConfig saveSystemConfig(SystemConfig systemConfig);
+    AdminSystemConfigVo saveSystemConfig(SystemConfig systemConfig);
 
     /**
      * 查询后台用户列表。
      *
      * @return 用户列表。
      */
-    List<User> listUsers();
+    List<AdminUserVo> listUsers();
 
     /**
      * 保存后台用户。
@@ -279,7 +288,7 @@ public interface AdminService {
      * @param user 用户对象。
      * @return 保存后的用户。
      */
-    User saveUser(User user);
+    AdminUserVo saveUser(User user);
 
     /**
      * 删除后台用户。

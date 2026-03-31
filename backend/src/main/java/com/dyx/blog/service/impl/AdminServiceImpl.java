@@ -33,6 +33,8 @@ import com.dyx.blog.mapper.UserMapper;
 import com.dyx.blog.mapper.WorkMapper;
 import com.dyx.blog.service.AdminService;
 import com.dyx.blog.storage.OssMediaStorage;
+import com.dyx.blog.vo.AdminSystemConfigVo;
+import com.dyx.blog.vo.AdminUserVo;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -105,8 +107,8 @@ public class AdminServiceImpl implements AdminService {
     @Override
     public PageResult<Map<String, Object>> listVisitLogs(LocalDateTime startTime, LocalDateTime endTime, String pageKey,
             String deviceType, String ipAddress, Integer page, Integer pageSize) {
-        int pageNo = (page == null || page < 1) ? 1 : page;
-        int size = (pageSize == null || pageSize <= 0) ? 20 : pageSize;
+        int pageNo = normalizePage(page);
+        int size = normalizePageSize(pageSize, 100);
         return queryVisitLogs(startTime, endTime, pageKey, deviceType, ipAddress, pageNo, size);
     }
 
@@ -230,18 +232,39 @@ public class AdminServiceImpl implements AdminService {
     @Override
     @CacheEvict(value = "site", key = "'posts'")
     public Post savePost(Post post) {
-        if (post.getContent() != null) {
-            post.setContent(XssUtil.cleanHtml(post.getContent()));
+        if (post == null) {
+            throw new BusinessException("文章数据不能为空");
         }
         LocalDateTime now = LocalDateTime.now();
-        post.setUpdatedAt(now);
         if (post.getId() == null) {
+            if (post.getContent() != null) {
+                post.setContent(XssUtil.cleanHtml(post.getContent()));
+            }
+            post.setTitle(normalizeNullableValue(post.getTitle()));
+            post.setSummary(normalizeNullableValue(post.getSummary()));
+            post.setCategory(normalizeNullableValue(post.getCategory()));
+            post.setTags(normalizeNullableValue(post.getTags()));
+            post.setCoverImage(normalizeNullableValue(post.getCoverImage()));
+            post.setUpdatedAt(now);
             post.setCreatedAt(now);
             dyxPostMapper.insert(post);
-        } else {
-            dyxPostMapper.updateById(post);
+            return post;
         }
-        return post;
+
+        Post existingPost = dyxPostMapper.selectById(post.getId());
+        if (existingPost == null) {
+            throw new BusinessException(404, "文章不存在");
+        }
+        existingPost.setTitle(normalizeNullableValue(post.getTitle()));
+        existingPost.setSummary(normalizeNullableValue(post.getSummary()));
+        existingPost.setCategory(normalizeNullableValue(post.getCategory()));
+        existingPost.setTags(normalizeNullableValue(post.getTags()));
+        existingPost.setCoverImage(normalizeNullableValue(post.getCoverImage()));
+        existingPost.setPublished(post.getPublished());
+        existingPost.setContent(post.getContent() == null ? null : XssUtil.cleanHtml(post.getContent()));
+        existingPost.setUpdatedAt(now);
+        dyxPostMapper.updateById(existingPost);
+        return existingPost;
     }
 
     /**
@@ -321,6 +344,7 @@ public class AdminServiceImpl implements AdminService {
     @CacheEvict(value = "site", key = "'projects'")
     public Project saveProject(Project project) {
         LocalDateTime now = LocalDateTime.now();
+        project.setProjectLink(normalizeExternalUrl(project.getProjectLink()));
         project.setUpdatedAt(now);
         if (project.getId() == null) {
             project.setCreatedAt(now);
@@ -349,9 +373,14 @@ public class AdminServiceImpl implements AdminService {
      */
     @Override
     public List<Work> listWorks() {
-        return dyxWorkMapper.selectList(new LambdaQueryWrapper<Work>()
+        List<Work> works = dyxWorkMapper.selectList(new LambdaQueryWrapper<Work>()
                 .orderByAsc(Work::getSortOrder)
                 .orderByDesc(Work::getUpdatedAt));
+        works.forEach(work -> {
+            work.setWorkLink(normalizeExternalUrl(work.getWorkLink()));
+            work.setVideoUrl(normalizeVideoUrl(work.getVideoUrl()));
+        });
+        return works;
     }
 
     /**
@@ -364,6 +393,8 @@ public class AdminServiceImpl implements AdminService {
     @CacheEvict(value = "site", key = "'works'")
     public Work saveWork(Work work) {
         LocalDateTime now = LocalDateTime.now();
+        work.setWorkLink(normalizeExternalUrl(work.getWorkLink()));
+        work.setVideoUrl(normalizeVideoUrl(work.getVideoUrl()));
         work.setUpdatedAt(now);
         if (work.getId() == null) {
             work.setCreatedAt(now);
@@ -537,6 +568,7 @@ public class AdminServiceImpl implements AdminService {
     public Profile saveProfile(Profile profile) {
         HeroConfigUtil.ensureHeroConfig(profile, objectMapper);
         HeroConfigUtil.syncLegacyFields(profile, objectMapper);
+        profile.setGithubUrl(normalizeExternalUrl(profile.getGithubUrl()));
         profile.setUpdatedAt(LocalDateTime.now());
         if (profile.getId() == null) {
             profile.setId(1L);
@@ -572,6 +604,11 @@ public class AdminServiceImpl implements AdminService {
         return systemConfig;
     }
 
+    @Override
+    public AdminSystemConfigVo getAdminSystemConfig() {
+        return toAdminSystemConfigVo(getSystemConfig());
+    }
+
     /**
      * 保存系统配置。
      *
@@ -579,7 +616,7 @@ public class AdminServiceImpl implements AdminService {
      * @return 保存后的系统配置。
      */
     @Override
-    public SystemConfig saveSystemConfig(SystemConfig systemConfig) {
+    public AdminSystemConfigVo saveSystemConfig(SystemConfig systemConfig) {
         if (!UserContext.isAdmin()) {
             log.warn("越权尝试: 用户 {} 尝试修改系统配置", UserContext.getUserId());
             throw new BusinessException("权限不足，仅超级管理员可修改系统配置");
@@ -591,14 +628,28 @@ public class AdminServiceImpl implements AdminService {
         SystemConfig existingConfig = dyxSystemConfigMapper.selectById(1L);
         SystemConfig targetConfig = existingConfig == null ? new SystemConfig() : existingConfig;
         targetConfig.setId(1L);
-        targetConfig.setStorageType(normalizeStorageType(systemConfig.getStorageType()));
+        String nextStorageType = systemConfig.getStorageType() == null
+                ? (existingConfig == null ? "local" : existingConfig.getStorageType())
+                : normalizeStorageType(systemConfig.getStorageType());
+        targetConfig.setStorageType(nextStorageType);
 
-        // 加密存储敏感信息
-        targetConfig.setOssEndpoint(AESUtil.encrypt(normalizeNullableValue(systemConfig.getOssEndpoint())));
-        targetConfig.setOssRegion(AESUtil.encrypt(normalizeNullableValue(systemConfig.getOssRegion())));
-        targetConfig.setOssBucketName(AESUtil.encrypt(normalizeNullableValue(systemConfig.getOssBucketName())));
-        targetConfig
-                .setOssPublicUrlPrefix(AESUtil.encrypt(normalizeNullableValue(systemConfig.getOssPublicUrlPrefix())));
+        String ossEndpoint = systemConfig.getOssEndpoint() == null ? null : normalizeNullableValue(systemConfig.getOssEndpoint());
+        String ossRegion = systemConfig.getOssRegion() == null ? null : normalizeNullableValue(systemConfig.getOssRegion());
+        String ossBucketName = systemConfig.getOssBucketName() == null ? null : normalizeNullableValue(systemConfig.getOssBucketName());
+        String ossPublicUrlPrefix = systemConfig.getOssPublicUrlPrefix() == null ? null : normalizeNullableValue(systemConfig.getOssPublicUrlPrefix());
+
+        if (systemConfig.getOssEndpoint() != null || existingConfig == null) {
+            targetConfig.setOssEndpoint(AESUtil.encrypt(ossEndpoint));
+        }
+        if (systemConfig.getOssRegion() != null || existingConfig == null) {
+            targetConfig.setOssRegion(AESUtil.encrypt(ossRegion));
+        }
+        if (systemConfig.getOssBucketName() != null || existingConfig == null) {
+            targetConfig.setOssBucketName(AESUtil.encrypt(ossBucketName));
+        }
+        if (systemConfig.getOssPublicUrlPrefix() != null || existingConfig == null) {
+            targetConfig.setOssPublicUrlPrefix(AESUtil.encrypt(ossPublicUrlPrefix));
+        }
 
         targetConfig.setOssBaseDir(normalizeNullableValue(systemConfig.getOssBaseDir()));
         targetConfig.setFootprintEyebrow(normalizeNullableValue(systemConfig.getFootprintEyebrow()));
@@ -621,7 +672,7 @@ public class AdminServiceImpl implements AdminService {
         targetConfig.setOssBucketName(AESUtil.decrypt(targetConfig.getOssBucketName()));
         targetConfig.setOssPublicUrlPrefix(AESUtil.decrypt(targetConfig.getOssPublicUrlPrefix()));
 
-        return targetConfig;
+        return toAdminSystemConfigVo(targetConfig);
     }
 
     /**
@@ -630,8 +681,10 @@ public class AdminServiceImpl implements AdminService {
      * @return 用户列表。
      */
     @Override
-    public List<User> listUsers() {
-        return dyxUserMapper.selectList(new LambdaQueryWrapper<User>().orderByDesc(User::getUpdatedAt));
+    public List<AdminUserVo> listUsers() {
+        return dyxUserMapper.selectList(new LambdaQueryWrapper<User>().orderByDesc(User::getUpdatedAt)).stream()
+                .map(this::toAdminUserVo)
+                .toList();
     }
 
     /**
@@ -641,7 +694,7 @@ public class AdminServiceImpl implements AdminService {
      * @return 保存后的用户。
      */
     @Override
-    public User saveUser(User user) {
+    public AdminUserVo saveUser(User user) {
         if (!UserContext.isAdmin()) {
             log.warn("越权尝试: 用户 {} 尝试管理用户", UserContext.getUserId());
             throw new BusinessException("权限不足，仅超级管理员可管理用户");
@@ -651,30 +704,38 @@ public class AdminServiceImpl implements AdminService {
         user.setUpdatedAt(now);
         if (user.getId() == null) {
             log.info("创建新用户: operator={}, username={}", UserContext.getUserId(), user.getUsername());
+            user.setUsername(user.getUsername().trim());
+            user.setDisplayName(user.getDisplayName().trim());
+            user.setRole(user.getRole().trim());
             user.setCreatedAt(now);
-            // 新增用户必须加密密码
             user.setPassword(passwordEncoder.encode(user.getPassword()));
             dyxUserMapper.insert(user);
-        } else {
-            log.info("更新用户信息: operator={}, target_userId={}", UserContext.getUserId(), user.getId());
-            User existingUser = dyxUserMapper.selectById(user.getId());
-            if (existingUser == null) {
-                throw new BusinessException("用户不存在");
-            }
-            // 如果密码没变，保留原密码（加密后的）
-            if (isBlank(user.getPassword())) {
-                user.setPassword(existingUser.getPassword());
-            } else {
-                // 如果密码变了，加密新密码
-                user.setPassword(passwordEncoder.encode(user.getPassword()));
-            }
-            if (existingUser.getId().equals(UserContext.getUserId())
-                    && !SystemConstant.ROLE_ADMIN.equals(user.getRole())) {
-                throw new BusinessException("当前登录账号必须保留管理员权限");
-            }
-            dyxUserMapper.updateById(user);
+            return toAdminUserVo(user);
         }
-        return user;
+
+        log.info("更新用户信息: operator={}, target_userId={}", UserContext.getUserId(), user.getId());
+        User existingUser = dyxUserMapper.selectById(user.getId());
+        if (existingUser == null) {
+            throw new BusinessException(404, "用户不存在");
+        }
+        existingUser.setUsername(user.getUsername().trim());
+        existingUser.setDisplayName(user.getDisplayName().trim());
+        existingUser.setRole(user.getRole().trim());
+        existingUser.setEnabled(user.getEnabled());
+        existingUser.setUpdatedAt(now);
+        if (isBlank(user.getPassword())) {
+            existingUser.setPassword(existingUser.getPassword());
+        } else if (looksLikeBcrypt(user.getPassword())) {
+            existingUser.setPassword(user.getPassword());
+        } else {
+            existingUser.setPassword(passwordEncoder.encode(user.getPassword()));
+        }
+        if (existingUser.getId().equals(UserContext.getUserId())
+                && !SystemConstant.ROLE_ADMIN.equals(existingUser.getRole())) {
+            throw new BusinessException("当前登录账号必须保留管理员权限");
+        }
+        dyxUserMapper.updateById(existingUser);
+        return toAdminUserVo(existingUser);
     }
 
     /**
@@ -863,6 +924,46 @@ public class AdminServiceImpl implements AdminService {
         };
     }
 
+    private AdminSystemConfigVo toAdminSystemConfigVo(SystemConfig systemConfig) {
+        AdminSystemConfigVo target = new AdminSystemConfigVo();
+        if (systemConfig == null) {
+            target.setId(1L);
+            target.setStorageType("local");
+            target.setOssEndpointConfigured(false);
+            target.setOssRegionConfigured(false);
+            target.setOssBucketNameConfigured(false);
+            target.setOssPublicUrlPrefixConfigured(false);
+            return target;
+        }
+        target.setId(systemConfig.getId());
+        target.setStorageType(systemConfig.getStorageType());
+        target.setOssBaseDir(systemConfig.getOssBaseDir());
+        target.setFootprintEyebrow(systemConfig.getFootprintEyebrow());
+        target.setFootprintTitle(systemConfig.getFootprintTitle());
+        target.setFootprintSubtitle(systemConfig.getFootprintSubtitle());
+        target.setFootprintDescription(systemConfig.getFootprintDescription());
+        target.setCopyrightText(systemConfig.getCopyrightText());
+        target.setTechSupportText(systemConfig.getTechSupportText());
+        target.setUpdatedAt(systemConfig.getUpdatedAt());
+        target.setOssEndpointConfigured(!isBlank(systemConfig.getOssEndpoint()));
+        target.setOssRegionConfigured(!isBlank(systemConfig.getOssRegion()));
+        target.setOssBucketNameConfigured(!isBlank(systemConfig.getOssBucketName()));
+        target.setOssPublicUrlPrefixConfigured(!isBlank(systemConfig.getOssPublicUrlPrefix()));
+        return target;
+    }
+
+    private AdminUserVo toAdminUserVo(User user) {
+        AdminUserVo target = new AdminUserVo();
+        target.setId(user.getId());
+        target.setUsername(user.getUsername());
+        target.setDisplayName(user.getDisplayName());
+        target.setRole(user.getRole());
+        target.setEnabled(user.getEnabled());
+        target.setCreatedAt(user.getCreatedAt());
+        target.setUpdatedAt(user.getUpdatedAt());
+        return target;
+    }
+
     private void validateSystemConfig(SystemConfig systemConfig) {
         if (!"local".equals(systemConfig.getStorageType()) && !"oss".equals(systemConfig.getStorageType())) {
             throw new BusinessException("存储方式仅支持 local 或 oss");
@@ -891,6 +992,32 @@ public class AdminServiceImpl implements AdminService {
         }
         String normalized = value.trim();
         return normalized.isEmpty() ? null : normalized;
+    }
+
+    private String normalizeExternalUrl(String value) {
+        String normalized = normalizeNullableValue(value);
+        if (normalized == null) {
+            return null;
+        }
+        if (normalized.startsWith("http://") || normalized.startsWith("https://")) {
+            return normalized;
+        }
+        if (normalized.startsWith("//")) {
+            return "https:" + normalized;
+        }
+        return "https://" + normalized;
+    }
+
+    private String normalizeVideoUrl(String value) {
+        String normalized = normalizeNullableValue(value);
+        if (normalized == null) {
+            return null;
+        }
+        String lowerCase = normalized.toLowerCase();
+        if (lowerCase.matches(".*\\.(mp4|webm|mov|m4v)(?:\\?.*)?$")) {
+            return normalized;
+        }
+        return null;
     }
 
     private void validateFootprint(Footprint footprint) {
@@ -957,6 +1084,30 @@ public class AdminServiceImpl implements AdminService {
         if (user.getId() != null && user.getId().equals(UserContext.getUserId()) && user.getEnabled() != 1) {
             throw new BusinessException("不能停用当前登录账号");
         }
+    }
+
+    private int normalizePage(Integer page) {
+        if (page == null) {
+            return 1;
+        }
+        if (page < 1) {
+            throw new BusinessException("page 必须大于等于 1");
+        }
+        return page;
+    }
+
+    private int normalizePageSize(Integer pageSize, int maxPageSize) {
+        if (pageSize == null) {
+            return 20;
+        }
+        if (pageSize < 1 || pageSize > maxPageSize) {
+            throw new BusinessException("pageSize 需在 1 到 " + maxPageSize + " 之间");
+        }
+        return pageSize;
+    }
+
+    private boolean looksLikeBcrypt(String value) {
+        return value != null && value.matches("^\\$2[aby]\\$.{56}$");
     }
 
     private boolean isBlank(String value) {

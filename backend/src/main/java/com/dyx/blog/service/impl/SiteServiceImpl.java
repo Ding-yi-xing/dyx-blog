@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.dyx.blog.common.dto.GuestbookDataDTO;
 import com.dyx.blog.common.dto.HomeDataDTO;
 import com.dyx.blog.common.exception.BusinessException;
+import com.dyx.blog.common.util.ClientIpUtil;
 import com.dyx.blog.common.util.HeroConfigUtil;
 import com.dyx.blog.common.util.XssUtil;
 import com.dyx.blog.entity.Footprint;
@@ -35,8 +36,9 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -77,7 +79,7 @@ public class SiteServiceImpl implements SiteService {
     public HomeDataDTO getHomeData() {
         return HomeDataDTO.builder()
                 .profile(getProfile())
-                .latestPosts(listPosts().stream().limit(3).toList())
+                .latestPosts(listPosts(1, 3))
                 .latestMoments(listMoments().stream().limit(3).toList())
                 .featuredProjects(listProjects().stream().limit(3).toList())
                 .latestHonors(listHonors().stream().limit(3).toList())
@@ -101,6 +103,7 @@ public class SiteServiceImpl implements SiteService {
         }
         HeroConfigUtil.ensureHeroConfig(profile, objectMapper);
         HeroConfigUtil.syncLegacyFields(profile, objectMapper);
+        profile.setResumePdfUrl(resolvePublicResumePdfUrl(profile.getResumePdfUrl()));
         return profile;
     }
 
@@ -143,7 +146,7 @@ public class SiteServiceImpl implements SiteService {
         GuestbookMessage nextMessage = new GuestbookMessage();
         nextMessage.setContent(XssUtil.cleanText(content));
         nextMessage.setPublished(message.getPublished() != null && message.getPublished() == 1 ? 1 : 0);
-        nextMessage.setIpAddress(resolveClientIp(request));
+        nextMessage.setIpAddress(ClientIpUtil.resolveClientIp(request));
         nextMessage.setCreatedAt(LocalDateTime.now());
         nextMessage.setUpdatedAt(nextMessage.getCreatedAt());
         dyxGuestbookMessageMapper.insert(nextMessage);
@@ -157,10 +160,18 @@ public class SiteServiceImpl implements SiteService {
      */
     @Override
     @Cacheable(value = "site", key = "'posts'")
-    public List<Post> listPosts() {
-        return dyxPostMapper.selectList(new LambdaQueryWrapper<Post>()
+    public List<Post> listPosts(Integer page, Integer pageSize) {
+        int pageNo = normalizePage(page);
+        int size = normalizePageSize(pageSize);
+        List<Post> posts = dyxPostMapper.selectList(new LambdaQueryWrapper<Post>()
                 .eq(Post::getPublished, 1)
                 .orderByDesc(Post::getUpdatedAt));
+        int fromIndex = (pageNo - 1) * size;
+        if (fromIndex >= posts.size()) {
+            return List.of();
+        }
+        int toIndex = Math.min(fromIndex + size, posts.size());
+        return posts.subList(fromIndex, toIndex);
     }
 
     /**
@@ -173,7 +184,7 @@ public class SiteServiceImpl implements SiteService {
     public Post getPostDetail(Long id) {
         Post post = dyxPostMapper.selectById(id);
         if (post == null || post.getPublished() == null || post.getPublished() != 1) {
-            return post;
+            throw new BusinessException("文章不存在或未发布");
         }
         jdbcTemplate.update("UPDATE dyx_post SET view_count = COALESCE(view_count, 0) + 1 WHERE id = ?", id);
         post.setViewCount((post.getViewCount() == null ? 0 : post.getViewCount()) + 1);
@@ -219,10 +230,12 @@ public class SiteServiceImpl implements SiteService {
     @Override
     @Cacheable(value = "site", key = "'projects'")
     public List<Project> listProjects() {
-        return dyxProjectMapper.selectList(new LambdaQueryWrapper<Project>()
+        List<Project> projects = dyxProjectMapper.selectList(new LambdaQueryWrapper<Project>()
                 .eq(Project::getPublished, 1)
                 .orderByAsc(Project::getSortOrder)
                 .orderByDesc(Project::getUpdatedAt));
+        projects.forEach(project -> project.setProjectLink(normalizeExternalUrl(project.getProjectLink())));
+        return projects;
     }
 
     /**
@@ -233,10 +246,15 @@ public class SiteServiceImpl implements SiteService {
     @Override
     @Cacheable(value = "site", key = "'works'")
     public List<Work> listWorks() {
-        return dyxWorkMapper.selectList(new LambdaQueryWrapper<Work>()
+        List<Work> works = dyxWorkMapper.selectList(new LambdaQueryWrapper<Work>()
                 .eq(Work::getPublished, 1)
                 .orderByAsc(Work::getSortOrder)
                 .orderByDesc(Work::getUpdatedAt));
+        works.forEach(work -> {
+            work.setWorkLink(normalizeExternalUrl(work.getWorkLink()));
+            work.setVideoUrl(normalizeVideoUrl(work.getVideoUrl()));
+        });
+        return works;
     }
 
     /**
@@ -270,6 +288,63 @@ public class SiteServiceImpl implements SiteService {
                 .orderByDesc(Footprint::getUpdatedAt));
     }
 
+    private String resolvePublicResumePdfUrl(String resumePdfUrl) {
+        if (isBlank(resumePdfUrl)) {
+            return resumePdfUrl;
+        }
+        if (resumePdfUrl.startsWith("/api/dyx-manager/media/content")) {
+            return resumePdfUrl;
+        }
+        return "/api/dyx-manager/media/content?fileUrl="
+                + URLEncoder.encode(resumePdfUrl, StandardCharsets.UTF_8);
+    }
+
+    private String normalizeExternalUrl(String value) {
+        if (isBlank(value)) {
+            return value;
+        }
+        String normalized = value.trim();
+        if (normalized.startsWith("http://") || normalized.startsWith("https://")) {
+            return normalized;
+        }
+        if (normalized.startsWith("//")) {
+            return "https:" + normalized;
+        }
+        return "https://" + normalized;
+    }
+
+    private String normalizeVideoUrl(String value) {
+        if (isBlank(value)) {
+            return value;
+        }
+        String normalized = value.trim();
+        String lowerCase = normalized.toLowerCase(Locale.ROOT);
+        if (lowerCase.matches(".*\\.(mp4|webm|mov|m4v)(?:\\?.*)?$")) {
+            return normalized;
+        }
+        return null;
+    }
+
+    private int normalizePage(Integer page) {
+        if (page == null) {
+            return 1;
+        }
+        if (page < 1) {
+            throw new BusinessException("page 必须大于等于 1");
+        }
+        return page;
+    }
+
+    private int normalizePageSize(Integer pageSize) {
+        if (pageSize == null) {
+            return 20;
+        }
+        if (pageSize < 1 || pageSize > 100) {
+            throw new BusinessException("pageSize 需在 1 到 100 之间");
+        }
+        return pageSize;
+    }
+
     private Map<String, Object> getHomeSystemConfig() {
         SystemConfig systemConfig = dyxSystemConfigMapper.selectById(1L);
         Map<String, Object> result = new HashMap<>();
@@ -292,7 +367,7 @@ public class SiteServiceImpl implements SiteService {
     public void recordSiteVisit(String pageKey, HttpServletRequest request) {
         try {
             String normalizedPageKey = normalizePageKey(pageKey);
-            String clientIp = resolveClientIp(request);
+            String clientIp = ClientIpUtil.resolveClientIp(request);
             String userAgent = resolveUserAgent(request);
 
             SiteVisitLog visitLog = new SiteVisitLog();
@@ -323,58 +398,6 @@ public class SiteServiceImpl implements SiteService {
         }
         if (normalized.length() > 64) {
             throw new BusinessException("页面标识长度不能超过 64 个字符");
-        }
-        return normalized;
-    }
-
-    private String resolveClientIp(HttpServletRequest request) {
-        if (request == null) {
-            return "unknown";
-        }
-        String forwardedIp = extractForwardedClientIp(request.getHeader("X-Forwarded-For"));
-        if (!isBlank(forwardedIp)) {
-            return truncate(forwardedIp, 45);
-        }
-        String realIp = normalizeClientIp(request.getHeader("X-Real-IP"));
-        if (!isBlank(realIp)) {
-            return truncate(realIp, 45);
-        }
-        String remoteAddr = normalizeClientIp(request.getRemoteAddr());
-        return isBlank(remoteAddr) ? "unknown" : truncate(remoteAddr, 45);
-    }
-
-    private String extractForwardedClientIp(String value) {
-        if (isBlank(value)) {
-            return null;
-        }
-        List<String> candidates = new ArrayList<>();
-        for (String item : value.split(",")) {
-            String candidate = normalizeClientIp(item);
-            if (!isBlank(candidate) && !"unknown".equalsIgnoreCase(candidate)) {
-                candidates.add(candidate);
-            }
-        }
-        return candidates.isEmpty() ? null : candidates.get(0);
-    }
-
-    private String normalizeClientIp(String value) {
-        if (isBlank(value)) {
-            return null;
-        }
-        String normalized = value.trim();
-        if (normalized.startsWith("[") && normalized.endsWith("]")) {
-            normalized = normalized.substring(1, normalized.length() - 1).trim();
-        }
-        if ("unknown".equalsIgnoreCase(normalized)) {
-            return null;
-        }
-        if (normalized.startsWith("::ffff:")) {
-            normalized = normalized.substring(7);
-        }
-        if ("::1".equals(normalized)
-                || "0:0:0:0:0:0:0:1".equals(normalized)
-                || "127.0.0.1".equals(normalized)) {
-            return "127.0.0.1";
         }
         return normalized;
     }

@@ -3,13 +3,13 @@ server:
 
 spring:
   profiles:
-    active: prod # 默认激活开发环境配置
+    active: # 默认激活开发环境配置
   application:
     name: dyx-blog
   datasource:
-    url: jdbc:mysql://118.178.186.196:3306/dyx_blog?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
-    username: dyx_blog
-    password: Dyx@blog
+    url: ${MYSQL_URL:jdbc:mysql://118.178.186.196:3306/dyx_blog?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai}
+    username: ${MYSQL_USER:dyx_blog}
+    password: ${MYSQL_PWD:Dyx@blog}
     driver-class-name: com.mysql.cj.jdbc.Driver
   servlet:
     multipart:
@@ -32,7 +32,7 @@ logging:
     com.dyx.blog: info
 
 jwt:
-  secret: dyx-blog-secret-key-dyx-blog-secret-key
+  secret: ${JWT_SECRET:dyx-blog-prod-secret-key-at-least-32-chars-long!!!}
   expire-hours: 24
 
 file:
@@ -41,7 +41,16 @@ file:
 
 dyx:
   security:
+    encrypt-key: dyx-blog-prod-encrypt-key-32chars!!!
     cors-allowed-origins:
       - http://118.178.186.196
-      - http://localhost:5173
-      - http://127.0.0.1:5173
+      - http://localhost:*
+      - http://127.0.0.1:*
+      - http://[::1]:*
+      - http://192.168.*:*
+      - http://10.*:*
+      - http://172.*:*
+      - http://www.dyx.company:*
+      - https://www.dyx.company:*
+      - https://dyx.company:*
+      - http://dyx.company:*

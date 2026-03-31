@@ -2,11 +2,21 @@
   <div class="dyx-footprint-map relative h-full w-full overflow-hidden">
     <div
       class="pointer-events-none absolute inset-0 z-0"
+      :class="mapBaseUnderlayClass"
+    ></div>
+    <div
+      class="pointer-events-none absolute inset-0 z-[1]"
       :class="mapGlowClass"
     ></div>
     <div
+      v-if="showMapBackdrop"
+      class="pointer-events-none absolute inset-0 z-[2]"
+      :style="getMapContainerStyle()"
+    ></div>
+    <div
       ref="mapRoot"
-      class="dyx-footprint-map--interactive relative z-[1] h-full w-full"
+      class="dyx-footprint-map--interactive relative z-[3] h-full w-full"
+      :style="getMapContainerStyle()"
     ></div>
     <div
       v-if="statusMessage"
@@ -41,22 +51,30 @@
         :class="overlayPanelClass"
       >
         <span class="flex items-center gap-1.5">
-          <kbd class="rounded border border-current/20 px-1 py-0.5 font-sans">双指</kbd>
+          <kbd class="rounded border border-current/20 px-1 py-0.5 font-sans"
+            >双指</kbd
+          >
           <span>缩放</span>
         </span>
         <span class="h-2.5 w-[1px] bg-current/20"></span>
         <span class="flex items-center gap-1.5">
-          <kbd class="rounded border border-current/20 px-1 py-0.5 font-sans">单指</kbd>
+          <kbd class="rounded border border-current/20 px-1 py-0.5 font-sans"
+            >单指</kbd
+          >
           <span>移动</span>
         </span>
         <span class="h-2.5 w-[1px] bg-current/20"></span>
         <span class="flex items-center gap-1.5">
-          <kbd class="rounded border border-current/20 px-1 py-0.5 font-sans">双击</kbd>
+          <kbd class="rounded border border-current/20 px-1 py-0.5 font-sans"
+            >双击</kbd
+          >
           <span>放大</span>
         </span>
         <span class="h-2.5 w-[1px] bg-current/20"></span>
         <span class="flex items-center gap-1.5">
-          <kbd class="rounded border border-current/20 px-1 py-0.5 font-sans">侧边</kbd>
+          <kbd class="rounded border border-current/20 px-1 py-0.5 font-sans"
+            >侧边</kbd
+          >
           <span>翻页</span>
         </span>
       </div>
@@ -94,13 +112,17 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import type { FootprintMapItem } from "@/utils/footprintGeo";
 import {
   featureToPolygonPaths,
   getAllProvinceFeatures,
   getCityFeatureByName,
   getMapBoundaryItems,
   getMapLabelItems,
+  getWorldCountryBoundaryItems,
+  getWorldCountryLabelItems,
+  getWorldCityLabelItems,
+  normalizeProvinceName,
+  type FootprintMapItem,
 } from "@/utils/footprintGeo";
 import { getAmapApiKeyConfigured, loadAmapSdk } from "@/utils/amapLoader";
 
@@ -115,6 +137,7 @@ const mapRoot = ref<HTMLElement | null>(null);
 const statusMessage = ref("");
 const showInteractionTip = ref(false);
 const isMobile = ref(false);
+const showMapBackdrop = ref(true);
 
 const checkIsMobile = (): void => {
   isMobile.value = window.innerWidth < 768 || "ontouchstart" in window;
@@ -128,6 +151,11 @@ const overlayPanelClass = computed(() =>
 const overlayTextClass = computed(() =>
   props.theme === "dark" ? "text-slate-200" : "text-slate-700"
 );
+const mapBaseUnderlayClass = computed(() =>
+  props.theme === "dark"
+    ? "bg-[radial-gradient(circle_at_50%_42%,rgba(15,23,42,0.96),rgba(2,6,23,0.98)_52%,rgba(1,4,18,1)_100%)]"
+    : "bg-[radial-gradient(circle_at_50%_42%,rgba(255,255,255,0.98),rgba(248,250,252,0.98)_56%,rgba(241,245,249,1)_100%)]"
+);
 const mapGlowClass = computed(() =>
   props.theme === "dark"
     ? "bg-[radial-gradient(circle_at_50%_42%,rgba(34,211,238,0.24),rgba(15,23,42,0.08)_34%,rgba(2,6,23,0)_66%),radial-gradient(circle_at_50%_88%,rgba(8,145,178,0.26),rgba(2,6,23,0)_52%)]"
@@ -140,31 +168,48 @@ const mapBottomFadeClass = computed(() =>
 );
 
 let mapInstance: AMapMap | null = null;
-let hasUserMoved = false;
-let provinceOverlays: AMapPolygon[] = [];
-let cityBoundaryOverlays: AMapPolygon[] = [];
-let cityOverlays: AMapPolygon[] = [];
+let worldLayer: AMapDistrictLayerInstance | null = null;
+let provinceOutlineOverlays: AMapPolygon[] = [];
+let worldCountryBoundaryOverlays: AMapPolygon[] = [];
 let markerOverlays: AMapMarker[] = [];
+let markerCache = new Map<string, AMapMarker>();
+let visitedCityOverlays: AMapPolygon[] = [];
+let cityBoundaryOverlays: AMapPolygon[] = [];
+let worldCountryLabelOverlays: AMapText[] = [];
+let worldCityLabelOverlays: AMapText[] = [];
+let cityNameLabelOverlays: AMapText[] = [];
 let labelOverlays: AMapText[] = [];
+let hasUserMoved = false;
 let latestRenderToken = 0;
 let renderTimer: ReturnType<typeof setTimeout> | null = null;
 let tipTimer: ReturnType<typeof setTimeout> | null = null;
-let isOverlaysInitialized = false; // 记录是否已经初始化了持久化覆盖物
 let moveHandler: (() => void) | null = null;
 let zoomEndHandler: (() => void) | null = null;
 let rootClickHandler: ((event: MouseEvent) => void) | null = null;
 let rootContextMenuHandler: ((event: MouseEvent) => void) | null = null;
+let worldCountryBoundariesReady = false;
+let provinceOutlinesReady = false;
+let visitedCityOverlaysKey = "";
+let cityBoundariesReady = false;
+let worldCountryLabelsReady = false;
+let worldCityLabelsReady = false;
+let cityNameLabelsReady = false;
 
 const INITIAL_CENTER: [number, number] = [104.195397, 35.86166];
 const INITIAL_ZOOM = 4.2;
-const MIN_ZOOM = 3;
+const INITIAL_FIT_MAX_ZOOM = 5.6;
+const MIN_ZOOM = 4.2;
 const MAX_ZOOM = 9;
 const LABEL_ZOOM_THRESHOLD = 4.8;
-const CITY_NAME_ZOOM_THRESHOLD = 5.05;
+const COUNTRY_LABEL_MAX_ZOOM = 4.3;
+const WORLD_CITY_LABEL_ZOOM_THRESHOLD = 4.5;
 const CITY_BOUNDARY_ZOOM_THRESHOLD = 5.05;
-const allProvinceNames = getAllProvinceFeatures()
-  .map((feature) => String(feature.properties?.name ?? "").trim())
-  .filter((name): name is string => !!name);
+const CITY_NAME_ZOOM_THRESHOLD = 4.8;
+const ALL_PROVINCE_NAMES = getAllProvinceFeatures()
+  .map((feature) =>
+    normalizeProvinceName(String(feature.properties?.name ?? ""))
+  )
+  .filter((provinceName): provinceName is string => !!provinceName);
 
 function escapeHtml(value: string): string {
   return value
@@ -175,16 +220,35 @@ function escapeHtml(value: string): string {
     .replace(/'/g, "&#39;");
 }
 
+function shouldShowVisitedCityLabels(): boolean {
+  return (mapInstance?.getZoom() ?? INITIAL_ZOOM) < CITY_NAME_ZOOM_THRESHOLD;
+}
+
+function getVisitedCityLabelStyle(isLatest: boolean): string {
+  if (props.theme === "dark") {
+    return isLatest
+      ? "margin-top:8px;white-space:nowrap;font-size:12px;line-height:1;color:rgba(255,255,255,0.98);text-shadow:0 2px 12px rgba(0,0,0,0.48);letter-spacing:0.02em;font-weight:600;"
+      : "margin-top:8px;white-space:nowrap;font-size:12px;line-height:1;color:rgba(226,232,240,0.94);text-shadow:0 2px 12px rgba(0,0,0,0.48);letter-spacing:0.02em;";
+  }
+
+  return isLatest
+    ? "margin-top:8px;white-space:nowrap;font-size:12px;line-height:1;color:#0f172a;text-shadow:0 1px 8px rgba(255,255,255,0.82);letter-spacing:0.02em;font-weight:600;"
+    : "margin-top:8px;white-space:nowrap;font-size:12px;line-height:1;color:#334155;text-shadow:0 1px 8px rgba(255,255,255,0.82);letter-spacing:0.02em;";
+}
+
 function buildMarkerContent(item: FootprintMapItem): string {
   const dotSize = item.isLatest ? 10 : 7;
   const labelText = escapeHtml(item.cityName || item.name);
-  const labelDisplay = shouldShowLabels() ? "block" : "none";
+  const labelDisplay =
+    shouldShowLabels() || shouldShowVisitedCityLabels() ? "block" : "none";
 
   if (props.theme === "dark") {
     return `
       <div style="position:relative;display:flex;flex-direction:column;align-items:center;pointer-events:none;">
         <span style="display:block;width:${dotSize}px;height:${dotSize}px;border-radius:9999px;background:#ffffff;border:1.5px solid rgba(34,211,238,0.92);box-sizing:border-box;"></span>
-        <span style="display:${labelDisplay};margin-top:8px;white-space:nowrap;font-size:12px;line-height:1;color:rgba(255,255,255,0.94);text-shadow:0 2px 12px rgba(0,0,0,0.48);letter-spacing:0.02em;">${labelText}</span>
+        <span style="display:${labelDisplay};${getVisitedCityLabelStyle(
+      item.isLatest
+    )}">${labelText}</span>
       </div>
     `;
   }
@@ -192,95 +256,89 @@ function buildMarkerContent(item: FootprintMapItem): string {
   return `
     <div style="position:relative;display:flex;flex-direction:column;align-items:center;pointer-events:none;">
       <span style="display:block;width:${dotSize}px;height:${dotSize}px;border-radius:9999px;background:#2563eb;border:1.5px solid rgba(255,255,255,0.96);box-sizing:border-box;"></span>
-      <span style="display:${labelDisplay};margin-top:8px;white-space:nowrap;font-size:12px;line-height:1;color:#0f172a;text-shadow:0 1px 8px rgba(255,255,255,0.82);letter-spacing:0.02em;">${labelText}</span>
+      <span style="display:${labelDisplay};${getVisitedCityLabelStyle(
+    item.isLatest
+  )}">${labelText}</span>
     </div>
   `;
 }
 
-function getProvincePolygonStyle(visited: boolean) {
-  if (props.theme === "dark") {
-    return visited
-      ? {
-          strokeColor: "rgba(203, 213, 225, 0.5)",
-          strokeOpacity: 1,
-          strokeWeight: 1,
-          fillColor: "rgba(8, 145, 178, 0.3)",
-          fillOpacity: 0.3,
-        }
-      : {
-          strokeColor: "rgba(148, 163, 184, 0.42)",
-          strokeOpacity: 1,
-          strokeWeight: 1,
-          fillColor: "rgba(17, 24, 39, 0.88)",
-          fillOpacity: 0.96,
-        };
-  }
-  return visited
-    ? {
-        strokeColor: "rgba(203, 213, 225, 0.72)",
-        strokeOpacity: 1,
-        strokeWeight: 1,
-        fillColor: "rgba(56, 189, 248, 0.3)",
-        fillOpacity: 0.3,
-      }
-    : {
-        strokeColor: "rgba(148, 163, 184, 0.58)",
-        strokeOpacity: 1,
-        strokeWeight: 1,
-        fillColor: "rgba(203, 213, 225, 0.72)",
-        fillOpacity: 0.9,
-      };
-}
-
-function getCityPolygonStyle() {
-  if (props.theme === "dark") {
-    return {
-      strokeColor: "rgba(255, 255, 255, 0.92)",
-      strokeOpacity: 1,
-      strokeWeight: 1,
-      fillColor: "rgba(34, 211, 238, 0.3)",
-      fillOpacity: 0.3,
-    };
-  }
-  return {
-    strokeColor: "rgba(255, 255, 255, 0.96)",
-    strokeOpacity: 1,
-    strokeWeight: 1,
-    fillColor: "rgba(14, 165, 233, 0.3)",
-    fillOpacity: 0.3,
-  };
-}
-
-function getCityBoundaryStyle() {
-  return props.theme === "dark"
-    ? {
-        strokeColor: "rgba(203, 213, 225, 0.34)",
-        strokeOpacity: 1,
-        strokeWeight: 1,
-        fillOpacity: 0,
-        fillColor: "rgba(0,0,0,0)",
-      }
-    : {
-        strokeColor: "rgba(148, 163, 184, 0.46)",
-        strokeOpacity: 1,
-        strokeWeight: 1,
-        fillOpacity: 0,
-        fillColor: "rgba(0,0,0,0)",
-      };
-}
-
 function getMapStyle(): string {
+  return props.theme === "dark" ? "amap://styles/dark" : "amap://styles/light";
+}
+
+function getMapFeatures(): string[] {
+  return ["bg"];
+}
+
+function getMapContainerStyle() {
   return props.theme === "dark"
-    ? "amap://styles/darkblue"
-    : "amap://styles/whitesmoke";
+    ? { backgroundColor: "#0a0a0f" }
+    : { backgroundColor: "#f8fafc" };
 }
 
-function shouldShowLabels(): boolean {
-  return (mapInstance?.getZoom() ?? INITIAL_ZOOM) >= LABEL_ZOOM_THRESHOLD;
+function getWorldLayerStyles(): AMapDistrictLayerStyleOptions {
+  return props.theme === "dark"
+    ? {
+        "stroke-width": 0,
+        "stroke-color": "rgba(0,0,0,0)",
+        "nation-stroke": "rgba(0,0,0,0)",
+        "coastline-stroke": "rgba(0,0,0,0)",
+        "province-stroke": "rgba(0,0,0,0)",
+        "city-stroke": "rgba(0,0,0,0)",
+        "county-stroke": "rgba(0,0,0,0)",
+        fill: "rgba(15, 23, 42, 0.95)",
+      }
+    : {
+        "stroke-width": 0,
+        "stroke-color": "rgba(0,0,0,0)",
+        "nation-stroke": "rgba(0,0,0,0)",
+        "coastline-stroke": "rgba(0,0,0,0)",
+        "province-stroke": "rgba(0,0,0,0)",
+        fill: "rgba(241, 245, 249, 0.98)",
+      };
 }
 
-function shouldShowCityNameLabels(): boolean {
-  return (mapInstance?.getZoom() ?? INITIAL_ZOOM) >= CITY_NAME_ZOOM_THRESHOLD;
+function getProvinceOutlineStyle() {
+  return props.theme === "dark"
+    ? {
+        strokeColor: "rgba(71, 85, 105, 0.15)",
+        strokeOpacity: 0.15,
+        strokeWeight: 0.8,
+        fillOpacity: 0,
+        fillColor: "rgba(0,0,0,0)",
+      }
+    : {
+        strokeColor: "rgba(148, 163, 184, 0.12)",
+        strokeOpacity: 0.12,
+        strokeWeight: 0.7,
+        fillOpacity: 0,
+        fillColor: "rgba(0,0,0,0)",
+      };
+}
+
+function ensureWorldLayer(AMap: AMapNamespace): void {
+  if (!mapInstance || !AMap.DistrictLayer?.World) {
+    return;
+  }
+  if (!worldLayer) {
+    worldLayer = new AMap.DistrictLayer.World({
+      zIndex: 1,
+      zooms: [MIN_ZOOM, MAX_ZOOM],
+    });
+    worldLayer.setMap(mapInstance);
+  }
+  worldLayer.setStyles(getWorldLayerStyles());
+}
+
+function disableBaseMapNoise(): void {
+  if (!mapRoot.value) {
+    return;
+  }
+  mapRoot.value.style.filter =
+    props.theme === "dark"
+      ? "contrast(1.02) brightness(0.92) saturate(0.88)"
+      : "";
 }
 
 function shouldShowCityBoundaries(): boolean {
@@ -289,14 +347,232 @@ function shouldShowCityBoundaries(): boolean {
   );
 }
 
-function getCityNameCollisionDistance(zoom: number): number {
-  if (zoom >= 8.2) return 0;
-  if (zoom >= 7.4) return 0.1;
-  if (zoom >= 6.6) return 0.18;
-  if (zoom >= 5.9) return 0.28;
-  if (zoom >= 5.3) return 0.4;
-  if (zoom >= 5.05) return 0.52;
-  return 0.68;
+function shouldShowCountryLabels(): boolean {
+  return (mapInstance?.getZoom() ?? INITIAL_ZOOM) <= COUNTRY_LABEL_MAX_ZOOM;
+}
+
+function shouldShowWorldCityLabels(): boolean {
+  return (
+    (mapInstance?.getZoom() ?? INITIAL_ZOOM) >= WORLD_CITY_LABEL_ZOOM_THRESHOLD
+  );
+}
+
+function getCountryLabelTextStyle(): AMapTextStyle {
+  return props.theme === "dark"
+    ? {
+        "font-size": "11px",
+        "font-weight": "500",
+        color: "rgba(148,163,184,0.92)",
+        "text-shadow": "0 2px 10px rgba(2,6,23,0.9)",
+        "background-color": "transparent",
+        border: "none",
+      }
+    : {
+        "font-size": "11px",
+        "font-weight": "500",
+        color: "rgba(71,85,105,0.86)",
+        "text-shadow": "0 1px 8px rgba(255,255,255,0.92)",
+        "background-color": "transparent",
+        border: "none",
+      };
+}
+
+function shouldShowCityNameLabels(): boolean {
+  return (mapInstance?.getZoom() ?? INITIAL_ZOOM) >= CITY_NAME_ZOOM_THRESHOLD;
+}
+
+function getCityBoundaryStyle() {
+  return props.theme === "dark"
+    ? {
+        strokeColor: "rgba(100, 116, 139, 0.22)",
+        strokeOpacity: 1,
+        strokeWeight: 0.8,
+        fillOpacity: 0,
+        fillColor: "rgba(0,0,0,0)",
+      }
+    : {
+        strokeColor: "rgba(148, 163, 184, 0.18)",
+        strokeOpacity: 1,
+        strokeWeight: 0.8,
+        fillOpacity: 0,
+        fillColor: "rgba(0,0,0,0)",
+      };
+}
+
+function getVisitedCityPolygonStyle() {
+  return props.theme === "dark"
+    ? {
+        strokeColor: "rgba(34,211,238,0.88)",
+        strokeOpacity: 1,
+        strokeWeight: 1,
+        fillColor: "rgba(34,211,238,0.3)",
+        fillOpacity: 0.3,
+      }
+    : {
+        strokeColor: "rgba(14,165,233,0.72)",
+        strokeOpacity: 1,
+        strokeWeight: 1,
+        fillColor: "rgba(56,189,248,0.24)",
+        fillOpacity: 0.24,
+      };
+}
+
+function clearWorldCountryBoundaryOverlays(): void {
+  if (!worldCountryBoundaryOverlays.length || !mapInstance) {
+    worldCountryBoundaryOverlays = [];
+    worldCountryBoundariesReady = false;
+    return;
+  }
+  mapInstance.remove(worldCountryBoundaryOverlays);
+  worldCountryBoundaryOverlays.forEach((overlay) => overlay.setMap(null));
+  worldCountryBoundaryOverlays = [];
+  worldCountryBoundariesReady = false;
+}
+
+function renderWorldCountryBoundaryOverlays(AMap: AMapNamespace): void {
+  if (!mapInstance) {
+    return;
+  }
+  if (!worldCountryBoundariesReady) {
+    worldCountryBoundaryOverlays = getWorldCountryBoundaryItems().flatMap(
+      (item) =>
+        item.paths.map(
+          (path) =>
+            new AMap.Polygon({
+              path,
+              strokeColor:
+                props.theme === "dark"
+                  ? "rgba(100, 116, 139, 0.15)"
+                  : "rgba(148, 163, 184, 0.12)",
+              strokeOpacity: 0.15,
+              strokeWeight: props.theme === "dark" ? 0.8 : 0.7,
+              fillColor: "rgba(0,0,0,0)",
+              fillOpacity: 0,
+              bubble: false,
+              zIndex: 8,
+            })
+        )
+    );
+    if (worldCountryBoundaryOverlays.length) {
+      mapInstance.add(worldCountryBoundaryOverlays);
+    }
+    worldCountryBoundariesReady = true;
+    return;
+  }
+  worldCountryBoundaryOverlays.forEach((overlay) => {
+    overlay.setOptions({
+      strokeColor:
+        props.theme === "dark"
+          ? "rgba(100, 116, 139, 0.15)"
+          : "rgba(148, 163, 184, 0.12)",
+      strokeOpacity: 0.15,
+      strokeWeight: props.theme === "dark" ? 0.8 : 0.7,
+    });
+    overlay.show();
+  });
+}
+
+function clearProvinceOutlineOverlays(): void {
+  if (!provinceOutlineOverlays.length || !mapInstance) {
+    provinceOutlineOverlays = [];
+    provinceOutlinesReady = false;
+    return;
+  }
+  mapInstance.remove(provinceOutlineOverlays);
+  provinceOutlineOverlays.forEach((overlay) => overlay.setMap(null));
+  provinceOutlineOverlays = [];
+  provinceOutlinesReady = false;
+}
+
+function renderProvinceOutlineOverlays(AMap: AMapNamespace): void {
+  if (!mapInstance) {
+    return;
+  }
+  if (!provinceOutlinesReady) {
+    provinceOutlineOverlays = getAllProvinceFeatures().flatMap((feature) =>
+      featureToPolygonPaths(feature).map(
+        (path) =>
+          new AMap.Polygon({
+            path,
+            ...getProvinceOutlineStyle(),
+            bubble: false,
+            zIndex: 12,
+          })
+      )
+    );
+    if (provinceOutlineOverlays.length) {
+      mapInstance.add(provinceOutlineOverlays);
+    }
+    provinceOutlinesReady = true;
+    return;
+  }
+  const nextStyle = getProvinceOutlineStyle();
+  provinceOutlineOverlays.forEach((overlay) => {
+    overlay.setOptions(nextStyle);
+    overlay.show();
+  });
+}
+
+function clearVisitedCityOverlays(): void {
+  if (!visitedCityOverlays.length || !mapInstance) {
+    visitedCityOverlays = [];
+    visitedCityOverlaysKey = "";
+    return;
+  }
+  mapInstance.remove(visitedCityOverlays);
+  visitedCityOverlays.forEach((overlay) => overlay.setMap(null));
+  visitedCityOverlays = [];
+  visitedCityOverlaysKey = "";
+}
+
+function renderVisitedCityOverlays(AMap: AMapNamespace): void {
+  if (!mapInstance) {
+    return;
+  }
+  const nextKey = props.items
+    .map((item) => `${item.provinceName || ""}::${item.name || item.cityName}`)
+    .sort()
+    .join("||");
+  if (visitedCityOverlaysKey !== nextKey) {
+    clearVisitedCityOverlays();
+    const overlayMap = new Map<string, AMapPolygon[]>();
+    props.items.forEach((item) => {
+      const cityName = item.name || item.cityName;
+      const provinceName = item.provinceName ?? undefined;
+      const key = `${provinceName || ""}::${cityName}`;
+      if (overlayMap.has(key)) {
+        return;
+      }
+      const feature = getCityFeatureByName(cityName, provinceName);
+      const paths = featureToPolygonPaths(feature);
+      if (!paths.length) {
+        return;
+      }
+      overlayMap.set(
+        key,
+        paths.map(
+          (path) =>
+            new AMap.Polygon({
+              path,
+              ...getVisitedCityPolygonStyle(),
+              bubble: false,
+              zIndex: 34,
+            })
+        )
+      );
+    });
+    visitedCityOverlays = Array.from(overlayMap.values()).flat();
+    if (visitedCityOverlays.length) {
+      mapInstance.add(visitedCityOverlays);
+    }
+    visitedCityOverlaysKey = nextKey;
+    return;
+  }
+  const nextStyle = getVisitedCityPolygonStyle();
+  visitedCityOverlays.forEach((overlay) => {
+    overlay.setOptions(nextStyle);
+    overlay.show();
+  });
 }
 
 function getLabelTextStyle(): AMapTextStyle {
@@ -304,8 +580,8 @@ function getLabelTextStyle(): AMapTextStyle {
     ? {
         "font-size": "12px",
         "font-weight": "500",
-        color: "rgba(255,255,255,0.88)",
-        "text-shadow": "0 2px 10px rgba(0,0,0,0.5)",
+        color: "rgba(226,232,240,0.92)",
+        "text-shadow": "0 2px 10px rgba(0,0,0,0.52)",
         "background-color": "transparent",
         border: "none",
       }
@@ -317,6 +593,180 @@ function getLabelTextStyle(): AMapTextStyle {
         "background-color": "transparent",
         border: "none",
       };
+}
+
+function clearCityBoundaryOverlays(): void {
+  if (!cityBoundaryOverlays.length || !mapInstance) {
+    cityBoundaryOverlays = [];
+    cityBoundariesReady = false;
+    return;
+  }
+  mapInstance.remove(cityBoundaryOverlays);
+  cityBoundaryOverlays.forEach((overlay) => overlay.setMap(null));
+  cityBoundaryOverlays = [];
+  cityBoundariesReady = false;
+}
+
+function clearLabelOverlays(): void {
+  if (mapInstance) {
+    if (worldCountryLabelOverlays.length) {
+      mapInstance.remove(worldCountryLabelOverlays);
+    }
+    if (worldCityLabelOverlays.length) {
+      mapInstance.remove(worldCityLabelOverlays);
+    }
+    if (cityNameLabelOverlays.length) {
+      mapInstance.remove(cityNameLabelOverlays);
+    }
+  }
+  worldCountryLabelOverlays.forEach((overlay) => overlay.setMap(null));
+  worldCityLabelOverlays.forEach((overlay) => overlay.setMap(null));
+  cityNameLabelOverlays.forEach((overlay) => overlay.setMap(null));
+  worldCountryLabelOverlays = [];
+  worldCityLabelOverlays = [];
+  cityNameLabelOverlays = [];
+  worldCountryLabelsReady = false;
+  worldCityLabelsReady = false;
+  cityNameLabelsReady = false;
+}
+
+function renderCityBoundaryOverlays(AMap: AMapNamespace): void {
+  if (!mapInstance) {
+    return;
+  }
+  if (!cityBoundariesReady) {
+    cityBoundaryOverlays = getMapBoundaryItems(ALL_PROVINCE_NAMES).flatMap(
+      (item) =>
+        item.paths.map(
+          (path) =>
+            new AMap.Polygon({
+              path,
+              ...getCityBoundaryStyle(),
+              bubble: false,
+              zIndex: 30,
+              visible: shouldShowCityBoundaries(),
+            })
+        )
+    );
+    if (cityBoundaryOverlays.length) {
+      mapInstance.add(cityBoundaryOverlays);
+    }
+    cityBoundariesReady = true;
+    return;
+  }
+  const visible = shouldShowCityBoundaries();
+  const nextStyle = getCityBoundaryStyle();
+  cityBoundaryOverlays.forEach((overlay) => {
+    overlay.setOptions(nextStyle);
+    if (visible) {
+      overlay.show();
+      return;
+    }
+    overlay.hide();
+  });
+}
+
+function renderCityNameLabels(AMap: AMapNamespace): void {
+  if (!mapInstance) {
+    return;
+  }
+
+  // 1. 处理世界国家标签
+  const showCountry = shouldShowCountryLabels();
+  if (!worldCountryLabelsReady) {
+    worldCountryLabelOverlays = getWorldCountryLabelItems().map(
+      (item) =>
+        new AMap.Text({
+          text: item.name,
+          position: item.position,
+          anchor: "center",
+          offset: new AMap.Pixel(0, 0),
+          style: getCountryLabelTextStyle(),
+          zIndex: 16,
+          visible: showCountry,
+        })
+    );
+    if (worldCountryLabelOverlays.length) {
+      mapInstance.add(worldCountryLabelOverlays);
+    }
+    worldCountryLabelsReady = true;
+  } else {
+    const nextStyle = getCountryLabelTextStyle();
+    worldCountryLabelOverlays.forEach((overlay) => {
+      overlay.setOptions({ style: nextStyle });
+      if (showCountry) {
+        overlay.show();
+      } else {
+        overlay.hide();
+      }
+    });
+  }
+
+  // 2. 处理世界城市标签
+  const showWorldCity = shouldShowWorldCityLabels();
+  if (!worldCityLabelsReady) {
+    worldCityLabelOverlays = getWorldCityLabelItems().map(
+      (item) =>
+        new AMap.Text({
+          text: item.name,
+          position: item.position,
+          anchor: "center",
+          offset: new AMap.Pixel(0, 0),
+          style: getLabelTextStyle(), // 复用中国城市的标签样式
+          zIndex: 31, // 比中国城市低一级
+          visible: showWorldCity,
+        })
+    );
+    if (worldCityLabelOverlays.length) {
+      mapInstance.add(worldCityLabelOverlays);
+    }
+    worldCityLabelsReady = true;
+  } else {
+    const nextStyle = getLabelTextStyle();
+    worldCityLabelOverlays.forEach((overlay) => {
+      overlay.setOptions({ style: nextStyle });
+      if (showWorldCity) {
+        overlay.show();
+      } else {
+        overlay.hide();
+      }
+    });
+  }
+
+  // 3. 处理中国城市标签
+  const showCity = shouldShowCityNameLabels();
+  if (!cityNameLabelsReady) {
+    cityNameLabelOverlays = getMapLabelItems(ALL_PROVINCE_NAMES).map(
+      (item) =>
+        new AMap.Text({
+          text: item.name,
+          position: item.position,
+          anchor: "center",
+          offset: new AMap.Pixel(0, 0),
+          style: getLabelTextStyle(),
+          zIndex: 32,
+          visible: showCity,
+        })
+    );
+    if (cityNameLabelOverlays.length) {
+      mapInstance.add(cityNameLabelOverlays);
+    }
+    cityNameLabelsReady = true;
+  } else {
+    const nextStyle = getLabelTextStyle();
+    cityNameLabelOverlays.forEach((overlay) => {
+      overlay.setOptions({ style: nextStyle });
+      if (showCity) {
+        overlay.show();
+      } else {
+        overlay.hide();
+      }
+    });
+  }
+}
+
+function shouldShowLabels(): boolean {
+  return (mapInstance?.getZoom() ?? INITIAL_ZOOM) >= LABEL_ZOOM_THRESHOLD;
 }
 
 function getVisibleItems(items: FootprintMapItem[]): FootprintMapItem[] {
@@ -358,245 +808,67 @@ function getCollisionDistance(zoom: number): number {
   return 1.75;
 }
 
-function clearProvinceOverlays(): void {
-  if (!provinceOverlays.length || !mapInstance) {
-    provinceOverlays = [];
-    return;
-  }
-  mapInstance.remove(provinceOverlays);
-  provinceOverlays.forEach((overlay) => overlay.setMap(null));
-  provinceOverlays = [];
-}
-
-function clearCityBoundaryOverlays(): void {
-  if (!cityBoundaryOverlays.length || !mapInstance) {
-    cityBoundaryOverlays = [];
-    return;
-  }
-  mapInstance.remove(cityBoundaryOverlays);
-  cityBoundaryOverlays.forEach((overlay) => overlay.setMap(null));
-  cityBoundaryOverlays = [];
-}
-
-function clearCityOverlays(): void {
-  if (!cityOverlays.length || !mapInstance) {
-    cityOverlays = [];
-    return;
-  }
-  mapInstance.remove(cityOverlays);
-  cityOverlays.forEach((overlay) => overlay.setMap(null));
-  cityOverlays = [];
-}
-
-function clearLabelOverlays(): void {
-  if (!labelOverlays.length || !mapInstance) {
-    labelOverlays = [];
-    return;
-  }
-  mapInstance.remove(labelOverlays);
-  labelOverlays.forEach((overlay) => overlay.setMap(null));
-  labelOverlays = [];
-}
-
-function renderProvinceOverlays(AMap: AMapNamespace): void {
-  if (!mapInstance) {
-    return;
-  }
-  // 如果已经初始化，不再重新创建，除非数据变更
-  if (isOverlaysInitialized && provinceOverlays.length > 0) {
-    return;
-  }
-  clearProvinceOverlays();
-  const provinceNamesWithCityHighlights = new Set(
-    props.items
-      .map((item) => item.provinceName)
-      .filter((provinceName): provinceName is string => !!provinceName)
-  );
-  const visitedProvinceNameSet = new Set(
-    props.visitedProvinceNames.filter(
-      (provinceName) => !provinceNamesWithCityHighlights.has(provinceName)
-    )
-  );
-  const overlays: AMapPolygon[] = [];
-  getAllProvinceFeatures().forEach((feature) => {
-    const provinceName = String(feature.properties?.name ?? "").trim();
-    const polygonStyle = getProvincePolygonStyle(
-      visitedProvinceNameSet.has(provinceName)
-    );
-    const paths = featureToPolygonPaths(feature);
-    paths.forEach((path) => {
-      overlays.push(
-        new AMap.Polygon({
-          path,
-          ...polygonStyle,
-          bubble: false,
-          zIndex: visitedProvinceNameSet.has(provinceName) ? 22 : 12,
-        })
-      );
-    });
-  });
-  provinceOverlays = overlays;
-  if (provinceOverlays.length) {
-    mapInstance.add(provinceOverlays);
-  }
-}
-
 function clearMarkerOverlays(): void {
-  if (!markerOverlays.length || !mapInstance) {
-    markerOverlays = [];
-    return;
+  if (mapInstance) {
+    if (markerOverlays.length) {
+      mapInstance.remove(markerOverlays);
+    }
   }
-  mapInstance.remove(markerOverlays);
   markerOverlays.forEach((overlay) => overlay.setMap(null));
   markerOverlays = [];
-}
-
-function renderCityBoundaryOverlays(AMap: AMapNamespace): void {
-  if (!mapInstance) {
-    return;
-  }
-
-  const shouldShow = shouldShowCityBoundaries();
-
-  // 如果已经初始化过，只需要显示或隐藏，不再重新创建数千个对象
-  if (isOverlaysInitialized && cityBoundaryOverlays.length > 0) {
-    cityBoundaryOverlays.forEach((overlay) => {
-      if (shouldShow) overlay.show();
-      else overlay.hide();
-    });
-    return;
-  }
-
-  clearCityBoundaryOverlays();
-  const boundaryStyle = getCityBoundaryStyle();
-  cityBoundaryOverlays = getMapBoundaryItems(allProvinceNames).flatMap((item) =>
-    item.paths.map(
-      (path) =>
-        new AMap.Polygon({
-          path,
-          ...boundaryStyle,
-          bubble: false,
-          zIndex: 20,
-          visible: shouldShow, // 初始可见性
-        })
-    )
-  );
-  if (cityBoundaryOverlays.length) {
-    mapInstance.add(cityBoundaryOverlays);
-  }
-}
-
-function renderCityOverlays(AMap: AMapNamespace): void {
-  if (!mapInstance) {
-    return;
-  }
-  // 如果已经初始化过，不再重新创建，因为数据没变
-  if (isOverlaysInitialized && cityOverlays.length > 0) {
-    return;
-  }
-  clearCityOverlays();
-  const cityPolygonStyle = getCityPolygonStyle();
-  const overlayMap = new Map<string, AMapPolygon[]>();
-  props.items.forEach((item) => {
-    const cityName = item.name || item.cityName;
-    const provinceName = item.provinceName ?? undefined;
-    const key = `${provinceName || ""}::${cityName}`;
-    if (overlayMap.has(key)) {
-      return;
-    }
-    const feature = getCityFeatureByName(cityName, provinceName);
-    const paths = featureToPolygonPaths(feature);
-    if (!paths.length) {
-      return;
-    }
-    overlayMap.set(
-      key,
-      paths.map(
-        (path) =>
-          new AMap.Polygon({
-            path,
-            ...cityPolygonStyle,
-            bubble: false,
-            zIndex: 28,
-          })
-      )
-    );
-  });
-  cityOverlays = Array.from(overlayMap.values()).flat();
-  if (cityOverlays.length) {
-    mapInstance.add(cityOverlays);
-  }
-}
-
-function renderCityNameLabels(AMap: AMapNamespace): void {
-  if (!mapInstance) {
-    return;
-  }
-  clearLabelOverlays();
-  if (!shouldShowCityNameLabels()) {
-    return;
-  }
-  const zoom = mapInstance.getZoom();
-  const collisionDistance = getCityNameCollisionDistance(zoom);
-  const visibleItems: { position: [number, number] }[] = [];
-  const labels = getMapLabelItems(allProvinceNames)
-    .sort((left, right) => left.name.localeCompare(right.name, "zh-CN"))
-    .filter((item) => {
-      if (collisionDistance <= 0) {
-        visibleItems.push(item);
-        return true;
-      }
-      const [longitude, latitude] = item.position;
-      const isTooClose = visibleItems.some((current) => {
-        const [currentLongitude, currentLatitude] = current.position;
-        return (
-          Math.abs(currentLongitude - longitude) < collisionDistance &&
-          Math.abs(currentLatitude - latitude) < collisionDistance
-        );
-      });
-      if (isTooClose) {
-        return false;
-      }
-      visibleItems.push(item);
-      return true;
-    })
-    .map(
-      (item) =>
-        new AMap.Text({
-          text: item.name,
-          position: item.position,
-          anchor: "center",
-          offset: new AMap.Pixel(0, 0),
-          style: getLabelTextStyle(),
-          zIndex: 24,
-        })
-    );
-  labelOverlays = labels;
-  if (labelOverlays.length) {
-    mapInstance.add(labelOverlays);
-  }
+  markerCache.clear();
 }
 
 function renderMarkers(AMap: AMapNamespace): void {
   if (!mapInstance) {
     return;
   }
-  clearMarkerOverlays();
+
   const visibleItems = getVisibleItems(props.items);
-  markerOverlays = visibleItems.map(
-    (item) =>
-      new AMap.Marker({
+  const nextOverlays: AMapMarker[] = [];
+  const nextCache = new Map<string, AMapMarker>();
+
+  visibleItems.forEach((item) => {
+    const key = `${item.id || item.name}::${item.position[0]}::${
+      item.position[1]
+    }::${props.theme}`;
+    let marker = markerCache.get(key);
+
+    if (marker) {
+      // 如果缩放发生变化，可能需要更新内容显隐
+      marker.setContent(buildMarkerContent(item));
+      nextCache.set(key, marker);
+      nextOverlays.push(marker);
+      markerCache.delete(key);
+    } else {
+      marker = new AMap.Marker({
         position: item.position,
         anchor: "center",
         offset: new AMap.Pixel(0, 0),
         content: buildMarkerContent(item),
         zIndex: item.isLatest ? 130 : 120,
         extData: item,
-      })
-  );
-  if (markerOverlays.length) {
-    mapInstance.add(markerOverlays);
+      });
+      nextCache.set(key, marker);
+      nextOverlays.push(marker);
+    }
+  });
+
+  // 移除不再需要的 marker
+  if (markerCache.size > 0) {
+    mapInstance.remove(Array.from(markerCache.values()));
+    markerCache.forEach((m) => m.setMap(null));
   }
+
+  // 添加新的 marker
+  const toAdd = nextOverlays.filter((m) => !m.getMap());
+  if (toAdd.length > 0) {
+    mapInstance.add(toAdd);
+  }
+
+  markerOverlays = nextOverlays;
+  markerCache = nextCache;
+  showMapBackdrop.value = false;
 }
 
 function renderMapOverlays(): void {
@@ -605,62 +877,31 @@ function renderMapOverlays(): void {
     return;
   }
 
-  // 防抖处理，避免频繁渲染
   if (renderTimer) {
     clearTimeout(renderTimer);
+    renderTimer = null;
   }
 
-  const performRender = (): void => {
-    const renderToken = ++latestRenderToken;
+  ensureWorldLayer(AMap);
+  renderWorldCountryBoundaryOverlays(AMap);
+  renderProvinceOutlineOverlays(AMap);
+  renderCityBoundaryOverlays(AMap);
+  renderVisitedCityOverlays(AMap);
 
-    // 分批异步渲染，避免阻塞主线程
-    requestAnimationFrame(() => {
-      if (renderToken !== latestRenderToken) return;
-      renderProvinceOverlays(AMap);
-
-      requestAnimationFrame(() => {
-        if (renderToken !== latestRenderToken) return;
-        renderCityBoundaryOverlays(AMap);
-
-        requestAnimationFrame(() => {
-          if (renderToken !== latestRenderToken) return;
-          renderCityOverlays(AMap);
-
-          requestAnimationFrame(() => {
-            if (renderToken !== latestRenderToken) return;
-            renderCityNameLabels(AMap);
-            renderMarkers(AMap);
-            isOverlaysInitialized = true; // 首次全量渲染完成后标记
-          });
-        });
-      });
-    });
-  };
-
-  // 如果是第一次渲染或已经移动，则增加一点防抖
-  // 如果在缩放/拖拽中，会由 zoomend/moveend 触发
-  renderTimer = setTimeout(performRender, 60);
+  const renderToken = ++latestRenderToken;
+  if (renderToken !== latestRenderToken) {
+    return;
+  }
+  renderCityNameLabels(AMap);
+  renderMarkers(AMap);
 }
 
 function fitInitialView(): void {
   if (!mapInstance || hasUserMoved) {
     return;
   }
-  if (!markerOverlays.length) {
-    mapInstance.setZoomAndCenter(INITIAL_ZOOM, INITIAL_CENTER, true);
-    return;
-  }
-  mapInstance.setFitView(
-    [
-      ...provinceOverlays,
-      ...cityBoundaryOverlays,
-      ...cityOverlays,
-      ...markerOverlays,
-    ],
-    true,
-    [100, 120, 100, 120],
-    5.6
-  );
+  showMapBackdrop.value = false;
+  mapInstance.setZoomAndCenter(INITIAL_ZOOM, INITIAL_CENTER, true);
 }
 
 function bindMapEvents(): void {
@@ -713,7 +954,6 @@ function adjustMapZoom(delta: 1 | -1): void {
     [mapInstance.getCenter().lng, mapInstance.getCenter().lat],
     true
   );
-  renderMapOverlays();
 }
 
 function bindRootMouseEvents(): void {
@@ -782,6 +1022,8 @@ async function initMap(): Promise<void> {
         center: INITIAL_CENTER,
         zooms: [MIN_ZOOM, MAX_ZOOM],
         showLabel: false,
+        showOversea: true,
+        language: "zh_cn",
         resizeEnable: true,
         dragEnable: true,
         zoomEnable: true,
@@ -790,16 +1032,18 @@ async function initMap(): Promise<void> {
         keyboardEnable: false,
         scrollEnable: true,
         scrollWheel: false,
-        features: ["bg", "road"],
+        features: getMapFeatures(),
         mapStyle: getMapStyle(),
       });
     }
     bindMapEvents();
     bindRootMouseEvents();
+    disableBaseMapNoise();
     statusMessage.value = "";
     showInteractionTipOnce();
 
     // 初始渲染也使用分批异步模式，避免阻塞
+    // 不渲染中国地图覆盖物，让高德地图默认显示世界地图
     renderMapOverlays();
     fitInitialView();
   } catch (error) {
@@ -809,8 +1053,13 @@ async function initMap(): Promise<void> {
 }
 
 function updateMapTheme(): void {
-  isOverlaysInitialized = false; // 主题变更需要重新生成覆盖物
-  mapInstance?.setMapStyle(getMapStyle());
+  if (!mapInstance) {
+    return;
+  }
+  showMapBackdrop.value = true;
+  mapInstance.setMapStyle(getMapStyle());
+  worldLayer?.setStyles(getWorldLayerStyles());
+  disableBaseMapNoise();
   renderMapOverlays();
 }
 
@@ -824,7 +1073,6 @@ watch(
 watch(
   () => [props.items, props.visitedProvinceNames] as const,
   () => {
-    isOverlaysInitialized = false; // 数据变更需要重新生成覆盖物
     const renderToken = ++latestRenderToken;
     queueMicrotask(() => {
       if (renderToken !== latestRenderToken) {
@@ -862,11 +1110,14 @@ onBeforeUnmount(() => {
   }
   unbindMapEvents();
   unbindRootMouseEvents();
-  clearProvinceOverlays();
+  clearWorldCountryBoundaryOverlays();
+  clearProvinceOutlineOverlays();
+  clearVisitedCityOverlays();
   clearCityBoundaryOverlays();
-  clearCityOverlays();
   clearLabelOverlays();
   clearMarkerOverlays();
+  worldLayer?.setMap(null);
+  worldLayer = null;
   mapInstance?.destroy();
   mapInstance = null;
   hasUserMoved = false;

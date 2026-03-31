@@ -2,6 +2,7 @@ package com.dyx.blog.controller.auth;
 
 import com.dyx.blog.common.dto.LoginRequest;
 import com.dyx.blog.common.response.Result;
+import com.dyx.blog.common.util.ClientIpUtil;
 import com.dyx.blog.service.AuthService;
 import com.dyx.blog.vo.LoginResponse;
 import jakarta.servlet.http.HttpServletRequest;
@@ -32,10 +33,6 @@ public class AuthController {
      */
     @PostMapping("/login")
     public Result<LoginResponse> login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpRequest) {
-        String ipAddress = httpRequest.getHeader("X-Forwarded-For");
-        if (ipAddress == null || ipAddress.isEmpty() || "unknown".equalsIgnoreCase(ipAddress)) {
-            ipAddress = httpRequest.getRemoteAddr();
-        }
-        return Result.success(dyxAuthService.login(request, ipAddress));
+        return Result.success(dyxAuthService.login(request, ClientIpUtil.resolveClientIp(httpRequest)));
     }
 }

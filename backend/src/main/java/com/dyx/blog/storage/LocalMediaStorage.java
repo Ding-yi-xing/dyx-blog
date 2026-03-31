@@ -31,7 +31,7 @@ public class LocalMediaStorage implements MediaStorage {
     public MediaStorageResult upload(MultipartFile file, String storedFileName) {
         try {
             Path uploadDirectory = getUploadDirectory();
-            Path targetPath = uploadDirectory.resolve(storedFileName).normalize();
+            Path targetPath = requireFileInUploadDirectory(uploadDirectory.resolve(storedFileName).normalize(), uploadDirectory);
             Files.copy(file.getInputStream(), targetPath, StandardCopyOption.REPLACE_EXISTING);
             return new MediaStorageResult(storedFileName, buildFileUrl(storedFileName));
         } catch (IOException exception) {
@@ -69,14 +69,24 @@ public class LocalMediaStorage implements MediaStorage {
 
     private Path resolveStoredFilePath(String fileName, String fileUrl) throws IOException {
         Path uploadDirectory = getUploadDirectory();
+        Path resolvedPath;
         if (StringUtils.hasText(fileName)) {
-            return uploadDirectory.resolve(fileName).normalize();
+            resolvedPath = uploadDirectory.resolve(fileName).normalize();
+        } else {
+            String normalizedPrefix = normalizeAccessPrefix();
+            String relativePath = StringUtils.hasText(fileUrl) && fileUrl.startsWith(normalizedPrefix)
+                    ? fileUrl.substring(normalizedPrefix.length())
+                    : fileUrl;
+            resolvedPath = uploadDirectory.resolve(relativePath).normalize();
         }
-        String normalizedPrefix = normalizeAccessPrefix();
-        String relativePath = StringUtils.hasText(fileUrl) && fileUrl.startsWith(normalizedPrefix)
-                ? fileUrl.substring(normalizedPrefix.length())
-                : fileUrl;
-        return uploadDirectory.resolve(relativePath).normalize();
+        return requireFileInUploadDirectory(resolvedPath, uploadDirectory);
+    }
+
+    private Path requireFileInUploadDirectory(Path resolvedPath, Path uploadDirectory) {
+        if (!resolvedPath.startsWith(uploadDirectory)) {
+            throw new BusinessException("媒体资源路径无效");
+        }
+        return resolvedPath;
     }
 
     private String normalizeAccessPrefix() {

@@ -51,6 +51,8 @@
                       v-if="block.type !== 'subtitle'"
                       v-model="block.text"
                       :placeholder="blockPlaceholderMap[block.type]"
+                      :maxlength="textBlockMaxLengthMap[block.type]"
+                      show-word-limit
                     />
                     <el-input
                       v-else
@@ -58,6 +60,8 @@
                       type="textarea"
                       :rows="4"
                       :placeholder="blockPlaceholderMap[block.type]"
+                      :maxlength="textBlockMaxLengthMap[block.type]"
+                      show-word-limit
                     />
                   </template>
 
@@ -66,10 +70,12 @@
                       :model-value="formatTagItems(block.items)"
                       type="textarea"
                       :rows="4"
+                      maxlength="239"
+                      show-word-limit
                       placeholder="每行一个标签，或用逗号分隔"
                       @update:model-value="handleTagItemsInput(block, $event)"
                     />
-                    <p class="text-xs text-slate-400">会在首页显示为标签胶囊。</p>
+                    <p class="text-xs text-slate-400">最多 8 个标签，每个标签不超过 24 个字，会在首页显示为标签胶囊。</p>
                   </template>
                 </div>
               </div>
@@ -139,17 +145,19 @@
               <template v-for="block in previewLeftBlocks" :key="block.id">
                 <p
                   v-if="block.type === 'eyebrow'"
-                  class="text-xs font-semibold uppercase tracking-[0.42em] text-slate-300 lg:text-sm"
+                  class="line-clamp-2 max-w-full break-words text-xs font-semibold uppercase tracking-[0.42em] text-slate-300 lg:text-sm"
+                  :title="block.text || 'HELLO THERE!'"
                 >
                   {{ block.text || 'HELLO THERE!' }}
                 </p>
                 <h3
                   v-else-if="block.type === 'title'"
-                  class="text-4xl font-semibold leading-tight tracking-tight text-white lg:text-[3.25rem]"
+                  class="line-clamp-3 max-w-full break-words text-4xl font-semibold leading-tight tracking-tight text-white lg:text-[3.25rem]"
+                  :title="block.text || '写代码的人，也写点文字。'"
                 >
                   {{ block.text || '写代码的人，也写点文字。' }}
                 </h3>
-                <p v-else-if="block.type === 'subtitle'" class="max-w-2xl text-base leading-8 text-slate-300 lg:text-lg lg:leading-9">
+                <p v-else-if="block.type === 'subtitle'" class="line-clamp-4 max-w-2xl break-words text-base leading-8 text-slate-300 lg:text-lg lg:leading-9" :title="block.text || '这里有后端开发、安全研究、折腾小工具的记录，也有一些不那么严肃的碎碎念。'">
                   {{ block.text || '这里有后端开发、安全研究、折腾小工具的记录，也有一些不那么严肃的碎碎念。' }}
                 </p>
                 <template v-else-if="isTagsBlock(block)">
@@ -157,7 +165,8 @@
                     <span
                       v-for="item in block.items"
                       :key="item"
-                      class="inline-flex items-center rounded-full bg-slate-800/80 px-4 py-1.5 text-slate-100"
+                      class="inline-flex max-w-full items-center truncate rounded-full bg-slate-800/80 px-4 py-1.5 text-slate-100"
+                      :title="item"
                     >
                       {{ item }}
                     </span>
@@ -236,6 +245,13 @@ const blockPlaceholderMap: Record<'eyebrow' | 'title' | 'subtitle', string> = {
   title: '请输入主标题',
   subtitle: '请输入副标题'
 };
+const textBlockMaxLengthMap: Record<'eyebrow' | 'title' | 'subtitle', number> = {
+  eyebrow: 48,
+  title: 80,
+  subtitle: 160
+};
+const TAG_ITEM_MAX_LENGTH = 24;
+const TAG_ITEM_MAX_COUNT = 8;
 
 const saving = ref(false);
 const draggingBlockId = ref<string | null>(null);
@@ -414,7 +430,9 @@ function updateTagItems(block: HeroTagsBlock, value: string): void {
   block.items = value
     .split(/\r?\n|,/)
     .map((item) => item.trim())
-    .filter(Boolean);
+    .filter(Boolean)
+    .slice(0, TAG_ITEM_MAX_COUNT)
+    .map((item) => item.slice(0, TAG_ITEM_MAX_LENGTH));
 }
 
 function handleBackgroundSelect(value: string | string[] | undefined): void {

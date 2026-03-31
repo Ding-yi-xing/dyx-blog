@@ -25,24 +25,24 @@
     <el-dialog v-model="dialogVisible" :title="form.id ? '编辑文章' : '新建文章'" width="760px">
       <el-form label-position="top">
         <el-form-item label="文章标题">
-          <el-input v-model="form.title" placeholder="请输入文章标题" />
+          <el-input v-model="form.title" maxlength="120" show-word-limit placeholder="请输入文章标题" />
         </el-form-item>
         <div class="grid gap-4 sm:grid-cols-2">
           <el-form-item label="分类">
-            <el-input v-model="form.category" placeholder="请输入文章分类" />
+            <el-input v-model="form.category" maxlength="60" show-word-limit placeholder="请输入文章分类" />
           </el-form-item>
           <el-form-item label="标签">
-            <el-input v-model="form.tags" placeholder="多个标签可用逗号分隔" />
+            <el-input v-model="form.tags" maxlength="120" show-word-limit placeholder="多个标签可用逗号分隔" />
           </el-form-item>
         </div>
         <el-form-item label="摘要">
-          <el-input v-model="form.summary" type="textarea" :rows="3" placeholder="请输入文章摘要" />
+          <el-input v-model="form.summary" type="textarea" :rows="3" maxlength="300" show-word-limit placeholder="请输入文章摘要" />
         </el-form-item>
         <el-form-item label="封面图">
           <AdminMediaPicker v-model="form.coverImage" button-text="选择文章封面" empty-text="暂未选择文章封面" />
         </el-form-item>
         <el-form-item label="正文内容">
-          <el-input v-model="form.content" type="textarea" :rows="8" placeholder="请输入文章正文" />
+          <el-input v-model="form.content" type="textarea" :rows="8" maxlength="20000" show-word-limit placeholder="请输入文章正文" />
         </el-form-item>
         <el-form-item label="发布状态">
           <el-select v-model="form.published" class="!w-full">
@@ -65,6 +65,7 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import AdminMediaPicker from '@/views/admin/AdminMediaPicker.vue';
 import { deleteAdminPost, getAdminPosts, saveAdminPost } from '@/api/modules/admin';
 import type { PostData } from '@/api/modules/site';
+import { resolveErrorMessage } from '@/utils/error';
 
 const rawList = ref<PostData[]>([]);
 const dialogVisible = ref(false);
@@ -129,7 +130,7 @@ async function handleSave(): Promise<void> {
     dialogVisible.value = false;
     await loadAdminPosts();
   } catch (error) {
-    ElMessage.error('文章保存失败');
+    ElMessage.error(resolveErrorMessage(error, '文章保存失败'));
   } finally {
     saving.value = false;
   }

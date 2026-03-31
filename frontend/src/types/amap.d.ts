@@ -50,6 +50,9 @@ interface AMapMapOptions {
   mapStyle?: string;
   zooms?: [number, number];
   showLabel?: boolean;
+  showOversea?: boolean;
+  language?: string;
+  lang?: string;
   resizeEnable?: boolean;
   dragEnable?: boolean;
   zoomEnable?: boolean;
@@ -59,6 +62,27 @@ interface AMapMapOptions {
   scrollEnable?: boolean;
   scrollWheel?: boolean;
   features?: string[];
+}
+
+interface AMapDistrictLayerStyleOptions {
+  'stroke-width'?: number;
+  'stroke-color'?: string;
+  'nation-stroke'?: string;
+  'coastline-stroke'?: string;
+  'province-stroke'?: string;
+  'city-stroke'?: string;
+  'county-stroke'?: string;
+  fill?: string | ((properties: Record<string, unknown>) => string);
+}
+
+interface AMapDistrictLayerWorldOptions {
+  zIndex?: number;
+  zooms?: [number, number];
+}
+
+interface AMapDistrictLayerInstance {
+  setMap(map: AMapMap | null): void;
+  setStyles(styles: AMapDistrictLayerStyleOptions): void;
 }
 
 interface AMapMarkerOptions {
@@ -95,7 +119,9 @@ declare class AMapMapClass implements AMapEventCapable {
   getZoom(): number;
   getCenter(): AMapLngLatLike;
   on(eventName: string, handler: (...args: any[]) => void): void;
+  on(eventName: 'complete', handler: () => void): void;
   off(eventName: string, handler: (...args: any[]) => void): void;
+  off(eventName: 'complete', handler: () => void): void;
 }
 
 declare class AMapMarkerClass implements AMapEventCapable {
@@ -114,6 +140,16 @@ declare class AMapPolygonClass implements AMapEventCapable {
   hide(): void;
 }
 
+declare class AMapDistrictLayerWorldClass implements AMapDistrictLayerInstance {
+  constructor(options?: AMapDistrictLayerWorldOptions);
+  setMap(map: AMapMap | null): void;
+  setStyles(styles: AMapDistrictLayerStyleOptions): void;
+}
+
+interface AMapDistrictLayerNamespace {
+  World: typeof AMapDistrictLayerWorldClass;
+}
+
 declare class AMapTextClass implements AMapEventCapable {
   constructor(options?: AMapTextOptions);
   setMap(map: AMapMap | null): void;
@@ -127,4 +163,5 @@ interface AMapNamespace {
   Polygon: typeof AMapPolygonClass;
   Text: typeof AMapTextClass;
   Pixel: new (x: number, y: number) => AMapPixel;
+  DistrictLayer?: AMapDistrictLayerNamespace;
 }

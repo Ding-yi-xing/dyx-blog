@@ -55,7 +55,7 @@ public interface SiteService {
      *
      * @return 文章列表。
      */
-    List<Post> listPosts();
+    List<Post> listPosts(Integer page, Integer pageSize);
 
     /**
      * 获取文章详情。

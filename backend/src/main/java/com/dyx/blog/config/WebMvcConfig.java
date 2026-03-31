@@ -2,7 +2,6 @@ package com.dyx.blog.config;
 
 import com.dyx.blog.common.interceptor.JwtAuthInterceptor;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -24,9 +23,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     private final JwtAuthInterceptor dyxJwtAuthInterceptor;
     private final FileProperties dyxFileProperties;
-
-    @Value("${dyx.security.cors-allowed-origins:}")
-    private List<String> dyxCorsAllowedOrigins;
+    private final DyxSecurityProperties dyxSecurityProperties;
 
     /**
      * 配置密码加密器。
@@ -45,8 +42,9 @@ public class WebMvcConfig implements WebMvcConfigurer {
      */
     @Override
     public void addCorsMappings(CorsRegistry registry) {
+        List<String> corsAllowedOrigins = dyxSecurityProperties.getCorsAllowedOrigins();
         registry.addMapping("/**")
-                .allowedOrigins(dyxCorsAllowedOrigins.toArray(String[]::new))
+                .allowedOriginPatterns(corsAllowedOrigins.toArray(String[]::new))
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("Authorization", "Content-Type", "X-Requested-With")
                 .allowCredentials(false);

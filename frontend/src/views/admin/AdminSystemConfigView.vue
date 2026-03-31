@@ -61,26 +61,38 @@
           <el-form-item label="Endpoint">
             <el-input
               v-model="form.ossEndpoint"
-              placeholder="例如 oss-cn-hangzhou.aliyuncs.com"
+              placeholder="未修改则保留当前值；留空保存可清空"
             />
+            <div class="mt-2 text-xs text-slate-500">
+              当前状态：{{ form.ossEndpointConfigured ? '已配置' : '未配置' }}
+            </div>
           </el-form-item>
           <el-form-item label="Region">
             <el-input
               v-model="form.ossRegion"
-              placeholder="例如 cn-hangzhou，不填则尝试从 Endpoint 推导"
+              placeholder="未修改则保留当前值；留空保存可清空"
             />
+            <div class="mt-2 text-xs text-slate-500">
+              当前状态：{{ form.ossRegionConfigured ? '已配置' : '未配置' }}
+            </div>
           </el-form-item>
           <el-form-item label="Bucket" class="md:col-span-2">
             <el-input
               v-model="form.ossBucketName"
-              placeholder="请输入 Bucket 名称"
+              placeholder="未修改则保留当前值；留空保存可清空"
             />
+            <div class="mt-2 text-xs text-slate-500">
+              当前状态：{{ form.ossBucketNameConfigured ? '已配置' : '未配置' }}
+            </div>
           </el-form-item>
           <el-form-item label="公开访问前缀" class="md:col-span-2">
             <el-input
               v-model="form.ossPublicUrlPrefix"
-              placeholder="例如 https://bucket.oss-cn-hangzhou.aliyuncs.com/"
+              placeholder="未修改则保留当前值；留空保存可清空"
             />
+            <div class="mt-2 text-xs text-slate-500">
+              当前状态：{{ form.ossPublicUrlPrefixConfigured ? '已配置' : '未配置' }}
+            </div>
           </el-form-item>
           <el-form-item label="OSS 目录" class="md:col-span-2">
             <el-input
@@ -161,31 +173,53 @@ const saving = ref(false);
 const form = reactive<SystemConfigData>({
   id: 1,
   storageType: "local",
-  ossEndpoint: "",
-  ossRegion: "",
-  ossBucketName: "",
-  ossPublicUrlPrefix: "",
+  ossEndpoint: undefined,
+  ossRegion: undefined,
+  ossBucketName: undefined,
+  ossPublicUrlPrefix: undefined,
   ossBaseDir: "",
   copyrightText: "",
   techSupportText: "",
+  ossEndpointConfigured: false,
+  ossRegionConfigured: false,
+  ossBucketNameConfigured: false,
+  ossPublicUrlPrefixConfigured: false,
 });
 
 function applyFormData(data?: SystemConfigData): void {
   form.id = data?.id ?? 1;
   form.storageType =
-    (data?.storageType as "local" | "oss" | undefined) ?? "local";
-  form.ossEndpoint = data?.ossEndpoint ?? "";
-  form.ossRegion = data?.ossRegion ?? "";
-  form.ossBucketName = data?.ossBucketName ?? "";
-  form.ossPublicUrlPrefix = data?.ossPublicUrlPrefix ?? "";
+    (data?.storageType as "local" | "oss" | undefined) ?? form.storageType ?? "local";
+  form.ossEndpoint = data?.ossEndpoint ?? form.ossEndpoint;
+  form.ossRegion = data?.ossRegion ?? form.ossRegion;
+  form.ossBucketName = data?.ossBucketName ?? form.ossBucketName;
+  form.ossPublicUrlPrefix = data?.ossPublicUrlPrefix ?? form.ossPublicUrlPrefix;
   form.ossBaseDir = data?.ossBaseDir ?? "";
   form.copyrightText = data?.copyrightText ?? "";
   form.techSupportText = data?.techSupportText ?? "";
+  form.ossEndpointConfigured = Boolean(data?.ossEndpointConfigured);
+  form.ossRegionConfigured = Boolean(data?.ossRegionConfigured);
+  form.ossBucketNameConfigured = Boolean(data?.ossBucketNameConfigured);
+  form.ossPublicUrlPrefixConfigured = Boolean(data?.ossPublicUrlPrefixConfigured);
 }
 
 async function loadSystemConfig(): Promise<void> {
   const response = await getAdminSystemConfig();
   applyFormData(response.data);
+}
+
+function buildPayload(): SystemConfigData {
+  return {
+    id: form.id,
+    storageType: form.storageType,
+    ossEndpoint: form.ossEndpoint,
+    ossRegion: form.ossRegion,
+    ossBucketName: form.ossBucketName,
+    ossPublicUrlPrefix: form.ossPublicUrlPrefix,
+    ossBaseDir: form.ossBaseDir,
+    copyrightText: form.copyrightText,
+    techSupportText: form.techSupportText,
+  };
 }
 
 async function handleSave(): Promise<void> {
@@ -194,7 +228,7 @@ async function handleSave(): Promise<void> {
   }
   saving.value = true;
   try {
-    const response = await updateAdminSystemConfig({ ...form });
+    const response = await updateAdminSystemConfig(buildPayload());
     applyFormData(response.data);
     ElMessage.success("系统配置保存成功");
   } catch (error) {

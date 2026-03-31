@@ -57,7 +57,11 @@
 
       <el-table ref="tableRef" :data="logs" stripe @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="52" align="center" />
-        <el-table-column prop="createdAt" label="访问时间" min-width="170" />
+        <el-table-column label="访问时间" min-width="170">
+          <template #default="scope">
+            {{ formatDateTime(scope.row.createdAt) }}
+          </template>
+        </el-table-column>
         <el-table-column prop="pageLabel" label="页面" min-width="120" />
         <el-table-column prop="ipAddress" label="IP" min-width="150" />
         <el-table-column prop="deviceTypeLabel" label="设备类型" min-width="120" />
@@ -105,6 +109,7 @@ import {
   type RecentVisitRecord
 } from '@/api/modules/admin';
 import { resolveErrorMessage } from '@/utils/error';
+import { formatDateTime } from '@/utils/date';
 
 const logs = ref<RecentVisitRecord[]>([]);
 const selectedIds = ref<number[]>([]);

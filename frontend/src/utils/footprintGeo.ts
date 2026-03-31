@@ -1,5 +1,7 @@
 import chinaGeoJson from 'china-map-data/china.js';
+import worldGeoJson from 'china-map-data/world.js';
 import provinceGeoCollection from 'china-map-data/province/index.js';
+import countryList from 'province-city-china/dist/country.json';
 import type { FootprintData } from '@/api/modules/site';
 
 export interface GeoPoint {
@@ -27,6 +29,16 @@ export interface MapLabelItem {
 export interface MapBoundaryItem {
   name: string;
   provinceName: string | null;
+  paths: [number, number][][];
+}
+
+export interface WorldCountryLabelItem {
+  name: string;
+  position: [number, number];
+}
+
+export interface WorldCountryBoundaryItem {
+  name: string;
   paths: [number, number][][];
 }
 
@@ -61,6 +73,8 @@ type EncodeOffset = [number, number];
 type EncodeOffsetPolygon = EncodeOffset[];
 type EncodeOffsetMultiPolygon = EncodeOffsetPolygon[];
 
+import worldCitiesGeoJson from '@/assets/world-cities.geojson';
+
 function unwrapModuleExport<T>(value: T | { default?: T }): T {
   if (value && typeof value === 'object' && 'default' in value) {
     return (value as { default?: T }).default ?? (value as T);
@@ -68,58 +82,13 @@ function unwrapModuleExport<T>(value: T | { default?: T }): T {
   return value as T;
 }
 
-function decodePolygonRing(encoded: EncodedRing, encodeOffsets: EncodeOffset): [number, number][] {
-  const result: [number, number][] = [];
-  let prevX = encodeOffsets[0];
-  let prevY = encodeOffsets[1];
-
-  for (let index = 0; index < encoded.length; index += 2) {
-    let x = encoded.charCodeAt(index) - 64;
-    let y = encoded.charCodeAt(index + 1) - 64;
-    x = (x >> 1) ^ -(x & 1);
-    y = (y >> 1) ^ -(y & 1);
-    x += prevX;
-    y += prevY;
-    prevX = x;
-    prevY = y;
-    result.push([x / 1024, y / 1024]);
-  }
-
-  return result;
-}
-
-function decodeFeatureGeometry(feature: GeoJsonFeature): void {
-  const geometry = feature.geometry;
-  if (!geometry?.coordinates || !geometry.encodeOffsets || !geometry.type) {
-    return;
-  }
-  if (geometry.type === 'Polygon') {
-    const encodedPolygon = geometry.coordinates as EncodedPolygon;
-    const offsets = geometry.encodeOffsets as EncodeOffsetPolygon;
-    geometry.coordinates = encodedPolygon.map((ring, index) => decodePolygonRing(ring, offsets[index]));
-    return;
-  }
-  if (geometry.type === 'MultiPolygon') {
-    const encodedMultiPolygon = geometry.coordinates as EncodedMultiPolygon;
-    const offsets = geometry.encodeOffsets as EncodeOffsetMultiPolygon;
-    geometry.coordinates = encodedMultiPolygon.map((polygon, polygonIndex) =>
-      polygon.map((ring, ringIndex) => decodePolygonRing(ring, offsets[polygonIndex][ringIndex]))
-    );
-  }
-}
-
-function normalizeGeoJsonCollection(collection: GeoJsonCollection): GeoJsonCollection {
-  if (!collection.UTF8Encoding) {
-    return collection;
-  }
-  collection.features?.forEach((feature) => decodeFeatureGeometry(feature));
-  collection.UTF8Encoding = false;
-  return collection;
-}
-
 const normalizedChinaGeoJson = normalizeGeoJsonCollection(
   unwrapModuleExport(chinaGeoJson as GeoJsonCollection | { default?: GeoJsonCollection })
 );
+const normalizedWorldGeoJson = normalizeGeoJsonCollection(
+  unwrapModuleExport(worldGeoJson as GeoJsonCollection | { default?: GeoJsonCollection })
+);
+const normalizedWorldCitiesGeoJson = unwrapModuleExport(worldCitiesGeoJson);
 const normalizedProvinceGeoCollection = unwrapModuleExport(
   provinceGeoCollection as Record<string, GeoJsonCollection | undefined> | { default?: Record<string, GeoJsonCollection | undefined> }
 );
@@ -127,8 +96,6 @@ const normalizedProvinceGeoCollection = unwrapModuleExport(
 // 缓存已解码和处理过的地理数据，提升重复查询和缩放时的性能
 const normalizedProvinceCache = new Map<string, GeoJsonCollection>();
 const boundaryCache = new Map<string, GeoJsonFeature[]>();
-let cachedMapLabelItems: MapLabelItem[] | null = null;
-let cachedMapBoundaryItems: MapBoundaryItem[] | null = null;
 
 export const DIRECT_ADMIN_PROVINCE_SET = new Set([
   '北京市',
@@ -143,6 +110,87 @@ export const DIRECT_ADMIN_PROVINCE_SET = new Set([
 const FOOTPRINT_CITY_COORDINATE_OVERRIDE_MAP: Record<string, GeoPoint> = {
   山南市: { longitude: 91.95, latitude: 29.2 }
 };
+
+const WORLD_COUNTRY_NAME_MAP = new Map<string, string>();
+
+function normalizeCountryLookupKey(value?: string): string {
+  return String(value ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, 'and')
+    .replace(/[.'’()\-]/g, ' ')
+    .replace(/,/g, ' ')
+    .replace(/\bthe\b/g, ' ')
+    .replace(/\bof\b/g, ' ')
+    .replace(/\brepublic\b/g, ' ')
+    .replace(/\bdemocratic\b/g, ' ')
+    .replace(/\bfederal\b/g, ' ')
+    .replace(/\bislamic\b/g, ' ')
+    .replace(/\bkingdom\b/g, ' ')
+    .replace(/\bstate\b/g, ' ')
+    .replace(/\bstates\b/g, ' ')
+    .replace(/\bunion\b/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function registerWorldCountryName(sourceName: string | undefined, targetName: string | undefined): void {
+  const key = normalizeCountryLookupKey(sourceName);
+  const value = String(targetName ?? '').trim();
+  if (!key || !value) {
+    return;
+  }
+  WORLD_COUNTRY_NAME_MAP.set(key, value);
+}
+
+countryList.forEach((country) => {
+  registerWorldCountryName(country.name, country.cnname);
+  registerWorldCountryName(country.fullname, country.cnname || country.name);
+  registerWorldCountryName(country.cnname, country.cnname);
+  registerWorldCountryName(country.alpha2, country.cnname || country.name);
+  registerWorldCountryName(country.alpha3, country.cnname || country.name);
+});
+
+[
+  ['United States', '美国'],
+  ['United States of America', '美国'],
+  ['Russia', '俄罗斯'],
+  ['Russian Federation', '俄罗斯'],
+  ['South Korea', '韩国'],
+  ['Korea', '韩国'],
+  ['North Korea', '朝鲜'],
+  ['Dem. Rep. Korea', '朝鲜'],
+  ['Democratic Republic of the Congo', '刚果（金）'],
+  ['Dem. Rep. Congo', '刚果（金）'],
+  ['Republic of the Congo', '刚果（布）'],
+  ['Congo', '刚果（布）'],
+  ['United Kingdom', '英国'],
+  ['Britain', '英国'],
+  ['Czech Republic', '捷克'],
+  ['Czechia', '捷克'],
+  ['Dominican Rep.', '多米尼加'],
+  ['Central African Rep.', '中非'],
+  ['Bosnia and Herz.', '波黑'],
+  ['Eq. Guinea', '赤道几内亚'],
+  ['eSwatini', '斯威士兰'],
+  ['Swaziland', '斯威士兰'],
+  ['Timor-Leste', '东帝汶'],
+  ['Solomon Is.', '所罗门群岛'],
+  ['N. Cyprus', '北塞浦路斯'],
+  ['Macedonia', '北马其顿'],
+  ['North Macedonia', '北马其顿'],
+  ['S. Sudan', '南苏丹'],
+  ['Laos', '老挝'],
+  ['Syria', '叙利亚'],
+  ['Vatican', '梵蒂冈'],
+  ['Brunei', '文莱'],
+  ['Moldova', '摩尔多瓦'],
+  ['Iran', '伊朗'],
+  ['Tanzania', '坦桑尼亚'],
+  ['Palestine', '巴勒斯坦']
+].forEach(([sourceName, targetName]) => {
+  registerWorldCountryName(sourceName, targetName);
+});
 
 const CITY_GEO_MAP: Record<string, GeoPoint> = {
   厦门市: { longitude: 118.11022, latitude: 24.49047 },
@@ -411,6 +459,29 @@ export function resolveCityFeatureCenter(item: Pick<FootprintData, 'cityName' | 
   return null;
 }
 
+function resolveStoredFootprintGeoPoint(item: Pick<FootprintData, 'positionX' | 'positionY'>): GeoPoint | null {
+  const longitude = Number(item.positionX);
+  const latitude = Number(item.positionY);
+  if (!Number.isFinite(longitude) || !Number.isFinite(latitude)) {
+    return null;
+  }
+  if (longitude < -180 || longitude > 180 || latitude < -90 || latitude > 90) {
+    return null;
+  }
+  return {
+    longitude,
+    latitude
+  };
+}
+
+function shouldPreferStoredFootprintGeoPoint(item: Pick<FootprintData, 'countryName' | 'regionName'>): boolean {
+  const countryName = String(item.countryName ?? '').trim();
+  if (countryName && countryName !== '中国') {
+    return true;
+  }
+  return !normalizeProvinceName(item.regionName);
+}
+
 export function resolveFootprintGeoPoint(item: Pick<FootprintData, 'cityName' | 'regionName'>): GeoPoint | null {
   const normalizedCityName = normalizeCityName(item.cityName) ?? item.cityName;
   const overridePoint = FOOTPRINT_CITY_COORDINATE_OVERRIDE_MAP[normalizedCityName];
@@ -438,7 +509,9 @@ export function buildFootprintMapItems(footprints: FootprintData[]): FootprintMa
   const latestCityName = normalizeCityName(latest?.cityName) ?? latest?.cityName ?? null;
   return footprints
     .map((item): FootprintMapItem | null => {
-      const geoPoint = resolveFootprintGeoPoint(item);
+      const geoPoint = shouldPreferStoredFootprintGeoPoint(item)
+        ? resolveStoredFootprintGeoPoint(item) ?? resolveFootprintGeoPoint(item)
+        : resolveFootprintGeoPoint(item) ?? resolveStoredFootprintGeoPoint(item);
       if (!geoPoint) {
         return null;
       }
@@ -467,6 +540,26 @@ function normalizePolygonRing(value: unknown): [number, number][] {
     .filter(([longitude, latitude]) => Number.isFinite(longitude) && Number.isFinite(latitude));
 }
 
+function getPolygonCenter(paths: [number, number][][]): [number, number] | null {
+  let totalLongitude = 0;
+  let totalLatitude = 0;
+  let totalPoints = 0;
+
+  paths.forEach((path) => {
+    path.forEach(([longitude, latitude]) => {
+      totalLongitude += longitude;
+      totalLatitude += latitude;
+      totalPoints += 1;
+    });
+  });
+
+  if (!totalPoints) {
+    return null;
+  }
+
+  return [totalLongitude / totalPoints, totalLatitude / totalPoints];
+}
+
 export function featureToPolygonPaths(feature: GeoJsonFeature | null | undefined): [number, number][][] {
   if (!feature?.geometry?.type || !feature.geometry.coordinates) {
     return [];
@@ -486,13 +579,15 @@ export function featureToPolygonPaths(feature: GeoJsonFeature | null | undefined
 }
 
 export function getMapLabelItems(provinceNames: string[]): MapLabelItem[] {
-  if (cachedMapLabelItems) {
-    return cachedMapLabelItems;
-  }
+  const requestedProvinceNames = provinceNames.length
+    ? provinceNames
+    : getAllProvinceFeatures().map(
+        (feature) => String(feature.properties?.name ?? '').trim()
+      );
   const seen = new Set<string>();
   const result: MapLabelItem[] = [];
 
-  provinceNames.forEach((provinceName) => {
+  requestedProvinceNames.forEach((provinceName) => {
     const normalizedProvinceName = normalizeProvinceName(provinceName);
     if (!normalizedProvinceName) {
       return;
@@ -536,18 +631,19 @@ export function getMapLabelItems(provinceNames: string[]): MapLabelItem[] {
     });
   });
 
-  cachedMapLabelItems = result;
   return result;
 }
 
 export function getMapBoundaryItems(provinceNames: string[]): MapBoundaryItem[] {
-  if (cachedMapBoundaryItems) {
-    return cachedMapBoundaryItems;
-  }
+  const requestedProvinceNames = provinceNames.length
+    ? provinceNames
+    : getAllProvinceFeatures().map(
+        (feature) => String(feature.properties?.name ?? '').trim()
+      );
   const seen = new Set<string>();
   const result: MapBoundaryItem[] = [];
 
-  provinceNames.forEach((provinceName) => {
+  requestedProvinceNames.forEach((provinceName) => {
     const normalizedProvinceName = normalizeProvinceName(provinceName);
     if (!normalizedProvinceName) {
       return;
@@ -575,7 +671,105 @@ export function getMapBoundaryItems(provinceNames: string[]): MapBoundaryItem[] 
     });
   });
 
-  cachedMapBoundaryItems = result;
+  return result;
+}
+
+export function getWorldCountryBoundaryItems(): WorldCountryBoundaryItem[] {
+  const seen = new Set<string>();
+  const result: WorldCountryBoundaryItem[] = [];
+
+  normalizedWorldGeoJson.features?.forEach((feature) => {
+    const featureName = String(feature.properties?.name ?? '').trim();
+    const paths = featureToPolygonPaths(feature);
+    if (!featureName || !paths.length) {
+      return;
+    }
+    const key = normalizeCountryLookupKey(featureName) || featureName;
+    if (seen.has(key)) {
+      return;
+    }
+    seen.add(key);
+    result.push({
+      name: WORLD_COUNTRY_NAME_MAP.get(key) ?? featureName,
+      paths,
+    });
+  });
+
+  return result;
+}
+
+export interface WorldCityLabelItem {
+  name: string;
+  position: [number, number];
+}
+
+export function getWorldCityLabelItems(): WorldCityLabelItem[] {
+  const result: WorldCityLabelItem[] = [];
+  
+  if (!normalizedWorldCitiesGeoJson || !Array.isArray(normalizedWorldCitiesGeoJson.features)) {
+    return result;
+  }
+
+  normalizedWorldCitiesGeoJson.features.forEach((feature: any) => {
+    const name = feature.properties?.NAME;
+    const coordinates = feature.geometry?.coordinates;
+    
+    if (name && Array.isArray(coordinates) && coordinates.length === 2) {
+      result.push({
+        name,
+        position: [Number(coordinates[0]), Number(coordinates[1])]
+      });
+    }
+  });
+
+  return result;
+}
+
+export function getWorldCountryLabelItems(): WorldCountryLabelItem[] {
+  const seen = new Set<string>();
+  const result: WorldCountryLabelItem[] = [];
+
+  normalizedWorldGeoJson.features?.forEach((feature) => {
+    const featureName = String(feature.properties?.name ?? '').trim();
+    if (!featureName) {
+      return;
+    }
+
+    const cp = feature.properties?.cp;
+    const position = Array.isArray(cp) && cp.length === 2
+      ? [Number(cp[0]), Number(cp[1])] as [number, number]
+      : getPolygonCenter(featureToPolygonPaths(feature));
+
+    if (!position) {
+      return;
+    }
+
+    const [longitude, latitude] = position;
+    if (!Number.isFinite(longitude) || !Number.isFinite(latitude)) {
+      return;
+    }
+
+    const key = normalizeCountryLookupKey(featureName);
+    const labelName = WORLD_COUNTRY_NAME_MAP.get(key) ?? featureName;
+    if (!labelName || labelName === '中国' || labelName === 'China') {
+      return;
+    }
+
+    if (Math.abs(longitude) > 180 || Math.abs(latitude) > 90) {
+      return;
+    }
+
+    const dedupeKey = normalizeCountryLookupKey(labelName) || `${labelName}::${longitude.toFixed(3)}::${latitude.toFixed(3)}`;
+    if (seen.has(dedupeKey)) {
+      return;
+    }
+    seen.add(dedupeKey);
+    result.push({
+      name: labelName,
+      position: [longitude, latitude]
+    });
+  });
+
   return result;
 }
 

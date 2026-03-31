@@ -3,6 +3,7 @@ package com.dyx.blog.controller.admin;
 import com.dyx.blog.common.dto.DashboardSummaryDTO;
 import com.dyx.blog.common.dto.GuestbookAdminDTO;
 import com.dyx.blog.common.dto.PageResult;
+import com.dyx.blog.common.exception.BusinessException;
 import com.dyx.blog.common.response.Result;
 import com.dyx.blog.entity.Footprint;
 import com.dyx.blog.entity.GuestbookMessage;
@@ -16,6 +17,8 @@ import com.dyx.blog.entity.User;
 import com.dyx.blog.entity.Work;
 import com.dyx.blog.service.AdminService;
 import com.dyx.blog.service.MediaService;
+import com.dyx.blog.vo.AdminSystemConfigVo;
+import com.dyx.blog.vo.AdminUserVo;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -469,8 +472,8 @@ public class AdminController {
      * @return 系统配置结果。
      */
     @GetMapping("/system-config")
-    public Result<SystemConfig> getSystemConfig() {
-        return Result.success(dyxAdminService.getSystemConfig());
+    public Result<AdminSystemConfigVo> getSystemConfig() {
+        return Result.success(dyxAdminService.getAdminSystemConfig());
     }
 
     /**
@@ -480,7 +483,7 @@ public class AdminController {
      * @return 保存结果。
      */
     @PutMapping("/system-config")
-    public Result<SystemConfig> updateSystemConfig(@RequestBody SystemConfig systemConfig) {
+    public Result<AdminSystemConfigVo> updateSystemConfig(@RequestBody SystemConfig systemConfig) {
         return Result.success(dyxAdminService.saveSystemConfig(systemConfig));
     }
 
@@ -490,7 +493,7 @@ public class AdminController {
      * @return 用户列表结果。
      */
     @GetMapping("/users")
-    public Result<List<User>> listUsers() {
+    public Result<List<AdminUserVo>> listUsers() {
         return Result.success(dyxAdminService.listUsers());
     }
 
@@ -501,7 +504,7 @@ public class AdminController {
      * @return 保存结果。
      */
     @PostMapping("/users")
-    public Result<User> createUser(@RequestBody User user) {
+    public Result<AdminUserVo> createUser(@RequestBody User user) {
         return Result.success(dyxAdminService.saveUser(user));
     }
 
@@ -513,7 +516,7 @@ public class AdminController {
      * @return 保存结果。
      */
     @PutMapping("/users/{id}")
-    public Result<User> updateUser(@PathVariable Long id, @RequestBody User user) {
+    public Result<AdminUserVo> updateUser(@PathVariable Long id, @RequestBody User user) {
         user.setId(id);
         return Result.success(dyxAdminService.saveUser(user));
     }
@@ -548,6 +551,9 @@ public class AdminController {
      */
     @GetMapping("/media/content")
     public ResponseEntity<byte[]> proxyMedia(@RequestParam String fileUrl) {
+        if (fileUrl == null || fileUrl.trim().isEmpty()) {
+            throw new BusinessException("fileUrl 不能为空");
+        }
         return dyxMediaService.proxyMedia(fileUrl);
     }
 

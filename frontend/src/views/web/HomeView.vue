@@ -36,19 +36,19 @@
                 <template v-for="block in heroContentBlocks" :key="block.id">
                   <p
                     v-if="block.type === 'eyebrow'"
-                    class="home-meta text-xs font-semibold uppercase tracking-[0.42em] lg:text-sm"
+                    class="home-meta text-xs font-semibold uppercase tracking-[0.42em] lg:text-sm mb-3"
                   >
                     {{ block.text || "HELLO THERE!" }}
                   </p>
                   <h1
                     v-else-if="block.type === 'title'"
-                    class="home-section-title max-w-4xl text-4xl font-semibold leading-[1.02] tracking-[-0.04em] sm:text-5xl lg:text-[4.2rem] xl:text-[4.9rem]"
+                    class="home-section-title max-w-4xl text-3xl font-semibold leading-[1.1] tracking-[-0.04em] sm:text-4xl lg:text-[3.2rem] xl:text-[3.8rem] mb-4"
                   >
                     {{ block.text || "写代码的人，也写点文字。" }}
                   </h1>
                   <p
                     v-else-if="block.type === 'subtitle'"
-                    class="home-section-text max-w-2xl text-[15px] leading-8 sm:text-lg lg:text-[1.15rem] lg:leading-9"
+                    class="home-section-text max-w-2xl text-[15px] leading-8 sm:text-lg lg:text-[1.15rem] lg:leading-9 mb-4"
                   >
                     {{
                       block.text ||
@@ -57,7 +57,7 @@
                   </p>
                   <template v-else-if="isTagsBlock(block)">
                     <div
-                      class="flex flex-wrap gap-3 text-xs font-medium sm:text-sm"
+                      class="flex flex-wrap gap-2 text-xs font-medium sm:text-sm mb-4"
                     >
                       <span
                         v-for="item in block.items"
@@ -67,7 +67,7 @@
                         {{ item }}
                       </span>
                     </div>
-                    <div class="flex flex-wrap items-center gap-3">
+                    <div class="flex flex-wrap items-center gap-3.5">
                       <RouterLink
                         to="/blog"
                         class="inline-flex items-center rounded-full bg-[rgb(var(--dyx-text-main-rgb))] px-5 py-3 text-sm font-medium text-[rgb(var(--dyx-text-inverse-rgb))] transition hover:opacity-90"
@@ -431,7 +431,7 @@ const heroImageBlock = computed(() =>
 const hasHeroImage = computed(() => !!heroImageBlock.value?.imageUrl);
 const heroGridClass = computed(() =>
   hasHeroImage.value
-    ? "lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] xl:grid-cols-[minmax(0,0.86fr)_minmax(0,1.14fr)]"
+    ? "lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]"
     : "lg:grid-cols-1"
 );
 const heroInnerClass = computed(() =>
@@ -441,19 +441,19 @@ const heroInnerClass = computed(() =>
 );
 const heroViewportClass = computed(() => {
   if (hasHeroBackground.value) {
-    return "home-hero-viewport home-hero-viewport--with-bg h-full pt-[64px] pb-0 sm:pb-0 sm:pt-[92px] lg:pt-[160px]";
+    return "home-hero-viewport home-hero-viewport--with-bg h-full pt-[64px] pb-0 sm:pb-0 sm:pt-[92px] lg:pt-[140px]";
   }
   return "home-hero-viewport h-full pt-[76px] pb-2 sm:pb-3 sm:pt-[96px] lg:pt-[88px]";
 });
 const heroCopyClass = computed(() =>
   hasHeroBackground.value
-    ? "justify-start gap-6 pt-4 sm:justify-center sm:gap-7 sm:pt-0 lg:justify-start lg:gap-8 lg:pt-0"
-    : "justify-start gap-8 pt-4 sm:justify-center sm:pt-0 lg:justify-start lg:pt-0"
+    ? "justify-start gap-3 pt-4 sm:justify-center sm:gap-4 sm:pt-0 lg:justify-start lg:gap-5 lg:pt-0 xl:pt-0"
+    : "justify-start gap-4 pt-4 sm:justify-center sm:pt-0 lg:justify-start lg:pt-0 xl:pt-0"
 );
 const heroContentClass = computed(() =>
   hasHeroBackground.value
-    ? "justify-start gap-5 sm:justify-center sm:gap-6 lg:justify-start lg:gap-7 lg:pr-8"
-    : "justify-start gap-6 sm:justify-center lg:justify-start lg:gap-7 lg:pr-8"
+    ? "justify-start gap-3 sm:justify-center sm:gap-4 lg:justify-start lg:gap-5 lg:pr-8 xl:pr-12"
+    : "justify-start gap-4 sm:justify-center lg:justify-start lg:gap-5 lg:pr-8 xl:pr-12"
 );
 const heroBackgroundStyle = computed(() => {
   const backgroundImageUrl = heroImageBlock.value?.backgroundImageUrl?.trim();
@@ -473,9 +473,14 @@ const currentSectionIndex = ref(0);
 let wheelHandler: ((event: WheelEvent) => void) | null = null;
 let scrollSyncHandler: (() => void) | null = null;
 let scrollSnapTimer: number | null = null;
+let wheelNavigationLocked = false;
 
 function updateTopNavVisibility(): void {
   setTopNavVisible?.(currentSectionIndex.value === 0);
+}
+
+function unlockWheelNavigation(): void {
+  wheelNavigationLocked = false;
 }
 
 function scrollToSection(
@@ -540,6 +545,10 @@ onMounted(() => {
       return;
     }
     event.preventDefault();
+    if (wheelNavigationLocked) {
+      return;
+    }
+    wheelNavigationLocked = true;
     scrollToSection(currentSectionIndex.value + (event.deltaY > 0 ? 1 : -1));
   };
 
@@ -548,7 +557,8 @@ onMounted(() => {
     clearScrollSnapTimer();
     scrollSnapTimer = window.setTimeout(() => {
       scrollToSection(currentSectionIndex.value, "smooth");
-    }, 120);
+      unlockWheelNavigation();
+    }, 260);
   };
 
   el.addEventListener("wheel", wheelHandler, { passive: false });
@@ -564,6 +574,7 @@ onBeforeUnmount(() => {
     el.removeEventListener("scroll", scrollSyncHandler);
   }
   clearScrollSnapTimer();
+  unlockWheelNavigation();
   setTopNavVisible?.(true);
 });
 </script>

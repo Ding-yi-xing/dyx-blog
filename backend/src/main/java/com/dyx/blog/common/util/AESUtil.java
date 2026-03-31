@@ -1,7 +1,7 @@
 package com.dyx.blog.common.util;
 
 import com.dyx.blog.common.exception.BusinessException;
-import org.springframework.beans.factory.annotation.Value;
+import com.dyx.blog.config.DyxSecurityProperties;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.Cipher;
@@ -18,9 +18,8 @@ public class AESUtil {
 
     private static String secretKey;
 
-    @Value("${dyx.security.encrypt-key:dyx-blog-default-key-32chars!!!}")
-    public void setSecretKey(String key) {
-        AESUtil.secretKey = key;
+    public AESUtil(DyxSecurityProperties dyxSecurityProperties) {
+        AESUtil.secretKey = dyxSecurityProperties.getEncryptKey();
     }
 
     private static final String ALGORITHM = "AES";

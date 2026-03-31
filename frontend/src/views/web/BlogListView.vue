@@ -24,7 +24,7 @@
             <h2 class="text-base font-semibold dyx-text-main transition-opacity duration-150 group-hover:opacity-80 sm:text-lg">
               {{ item.title }}
             </h2>
-            <p class="mt-2 max-w-3xl text-[13px] leading-7 dyx-text-muted line-clamp-2">
+            <p class="mt-2 max-w-3xl text-[13px] leading-7 dyx-text-muted line-clamp-4">
               {{ item.summary || '暂无摘要' }}
             </p>
             <div class="mt-4 flex flex-wrap items-center gap-2 text-[12px] dyx-text-meta">

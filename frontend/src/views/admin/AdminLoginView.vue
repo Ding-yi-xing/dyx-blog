@@ -40,11 +40,26 @@ const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
 const submitting = ref(false);
+const DEFAULT_REDIRECT_PATH = '/dyx-manager/dashboard';
 
 const form = reactive({
   username: '',
   password: ''
 });
+
+function resolveRedirectPath(value: unknown): string {
+  if (typeof value !== 'string') {
+    return DEFAULT_REDIRECT_PATH;
+  }
+  const normalized = value.trim();
+  if (!normalized.startsWith('/')) {
+    return DEFAULT_REDIRECT_PATH;
+  }
+  if (normalized.startsWith('//') || !normalized.startsWith('/dyx-manager')) {
+    return DEFAULT_REDIRECT_PATH;
+  }
+  return normalized;
+}
 
 async function handleLogin(): Promise<void> {
   if (submitting.value) {
@@ -55,8 +70,7 @@ async function handleLogin(): Promise<void> {
     const response = await adminLogin(form);
     authStore.setAuth(response.data.token, response.data.user);
     ElMessage.success('登录成功');
-    const redirectPath = typeof route.query.redirect === 'string' ? route.query.redirect : '/dyx-manager/dashboard';
-    await router.push(redirectPath);
+    await router.push(resolveRedirectPath(route.query.redirect));
   } catch (error) {
     ElMessage.error(resolveErrorMessage(error, '登录失败，请检查账号或密码'));
   } finally {

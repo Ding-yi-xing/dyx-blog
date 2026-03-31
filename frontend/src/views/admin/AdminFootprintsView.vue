@@ -251,7 +251,13 @@ async function handleSaveCopy(): Promise<void> {
   }
   copySaving.value = true;
   try {
-    const response = await updateAdminSystemConfig({ ...systemConfigForm });
+    const response = await updateAdminSystemConfig({
+      id: systemConfigForm.id,
+      footprintEyebrow: systemConfigForm.footprintEyebrow,
+      footprintTitle: systemConfigForm.footprintTitle,
+      footprintSubtitle: systemConfigForm.footprintSubtitle,
+      footprintDescription: systemConfigForm.footprintDescription
+    });
     applySystemConfig(response.data);
     ElMessage.success('足迹文案保存成功');
   } catch (error) {

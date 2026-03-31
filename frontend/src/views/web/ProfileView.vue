@@ -71,7 +71,7 @@
           :key="item.id"
           class="dyx-page-card overflow-hidden rounded-[28px] shadow-dyx-soft transition hover:-translate-y-1"
         >
-          <div v-if="resolveWorkMedia(item).length" class="relative h-48 w-full overflow-hidden bg-black">
+          <div v-if="resolveWorkMedia(item).length" class="work-media-shell relative h-48 w-full overflow-hidden bg-black">
             <el-image
               v-if="isImageUrl(resolveWorkCover(item))"
               :src="resolveWorkCover(item)"
@@ -87,6 +87,22 @@
               preload="metadata"
               class="block h-48 w-full bg-black object-cover"
             ></video>
+            <div v-if="resolveWorkMediaCount(item) > 1" class="work-media-badge">
+              <span class="work-media-badge-dot"></span>
+              <span>{{ resolveWorkMediaCount(item) }} 项素材</span>
+            </div>
+            <div v-if="resolveWorkPreviewStack(item).length > 1" class="work-media-stack" aria-hidden="true">
+              <span
+                v-for="(url, index) in resolveWorkPreviewStack(item)"
+                :key="`${item.id}-${index}-${url}`"
+                class="work-media-stack-item"
+                :style="{
+                  backgroundImage: `url(${url})`,
+                  transform: `translateX(${index * 10}px) rotate(${index === 0 ? '-4deg' : index === 1 ? '0deg' : '4deg'})`,
+                  zIndex: String(resolveWorkPreviewStack(item).length - index)
+                }"
+              ></span>
+            </div>
           </div>
           <div class="p-6">
             <div class="flex flex-wrap items-center gap-3 text-xs dyx-text-meta">
@@ -138,22 +154,24 @@
               <p class="mt-4 text-sm leading-7 dyx-text-muted">{{ item.description || '暂无荣誉说明。' }}</p>
               <div v-if="resolveHonorMedia(item).length" class="mt-6 grid gap-3 sm:grid-cols-2">
                 <template v-for="(url, index) in resolveHonorMedia(item)" :key="`${item.id}-${index}`">
-                  <el-image
-                    v-if="isImageUrl(url)"
-                    :src="url"
-                    :preview-src-list="resolveHonorImages(item)"
-                    :initial-index="resolveHonorImages(item).indexOf(url)"
-                    fit="cover"
-                    preview-teleported
-                    class="block h-40 w-full overflow-hidden rounded-2xl"
-                  />
-                  <video
-                    v-else-if="isVideoUrl(url)"
-                    :src="url"
-                    controls
-                    preload="metadata"
-                    class="block h-40 w-full rounded-2xl bg-black object-cover"
-                  ></video>
+                  <div v-if="isImageUrl(url)" class="honor-media-shell flex h-40 w-full items-center justify-center overflow-hidden rounded-2xl bg-black">
+                    <el-image
+                      :src="url"
+                      :preview-src-list="resolveHonorImages(item)"
+                      :initial-index="resolveHonorImages(item).indexOf(url)"
+                      fit="cover"
+                      preview-teleported
+                      class="block h-40 w-full"
+                    />
+                  </div>
+                  <div v-else-if="isVideoUrl(url)" class="honor-media-shell flex h-40 w-full items-center justify-center overflow-hidden rounded-2xl bg-black">
+                    <video
+                      :src="url"
+                      controls
+                      preload="metadata"
+                      class="block h-40 w-full rounded-2xl bg-black object-cover"
+                    ></video>
+                  </div>
                 </template>
               </div>
               <a
@@ -232,6 +250,14 @@ function resolveWorkCover(item: WorkData): string {
   return resolveWorkMedia(item)[0] ?? '';
 }
 
+function resolveWorkMediaCount(item: WorkData): number {
+  return resolveWorkMedia(item).length;
+}
+
+function resolveWorkPreviewStack(item: WorkData): string[] {
+  return resolveWorkImages(item).slice(0, 3);
+}
+
 function resolveHonorMedia(item: HonorData): string[] {
   const mediaUrls = parseImageUrls(item.imageUrls);
   if (item.coverImage && !mediaUrls.includes(item.coverImage)) {
@@ -272,6 +298,70 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.work-media-shell {
+  background:
+    radial-gradient(circle at center, rgba(255, 255, 255, 0.08), transparent 55%),
+    #000;
+}
+
+.work-media-badge {
+  position: absolute;
+  right: 0.75rem;
+  top: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+  border-radius: 9999px;
+  background: rgba(15, 23, 42, 0.72);
+  padding: 0.34rem 0.72rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  color: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.26);
+}
+
+.work-media-badge-dot {
+  display: inline-block;
+  height: 0.42rem;
+  width: 0.42rem;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.12);
+}
+
+.work-media-stack {
+  position: absolute;
+  left: 0.85rem;
+  bottom: 0.85rem;
+  height: 2.25rem;
+  width: 5.2rem;
+  pointer-events: none;
+}
+
+.work-media-stack-item {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 2.25rem;
+  width: 3rem;
+  transform-origin: center bottom;
+  border-radius: 0.95rem;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background-color: rgba(15, 23, 42, 0.92);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.34);
+}
+
+.honor-media-shell {
+  background:
+    radial-gradient(circle at center, rgba(255, 255, 255, 0.08), transparent 55%),
+    #000;
+}
+
 .honors-scroll {
   -ms-overflow-style: none;
   scrollbar-width: none;

@@ -5,4 +5,5 @@ declare module '*.vue' {
 }
 
 declare module 'china-map-data/china.js';
+declare module 'china-map-data/world.js';
 declare module 'china-map-data/province/index.js';

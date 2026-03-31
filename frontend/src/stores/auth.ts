@@ -15,16 +15,19 @@ interface AuthState {
 const TOKEN_KEY = 'dyx-admin-token';
 const USER_KEY = 'dyx-admin-user';
 
+function readSessionUser(): AdminUser | null {
+  const raw = sessionStorage.getItem(USER_KEY);
+  return raw ? (JSON.parse(raw) as AdminUser) : null;
+}
+
 /**
  * 后台认证状态仓库。
  * 负责维护 token、用户信息和登录退出行为。
  */
 export const useAuthStore = defineStore('dyx-auth', {
   state: (): AuthState => ({
-    token: localStorage.getItem(TOKEN_KEY) ?? '',
-    user: localStorage.getItem(USER_KEY)
-      ? (JSON.parse(localStorage.getItem(USER_KEY) as string) as AdminUser)
-      : null
+    token: sessionStorage.getItem(TOKEN_KEY) ?? '',
+    user: readSessionUser()
   }),
   getters: {
     isAuthenticated: (state) => Boolean(state.token)
@@ -38,8 +41,10 @@ export const useAuthStore = defineStore('dyx-auth', {
     setAuth(token: string, user: AdminUser): void {
       this.token = token;
       this.user = user;
-      localStorage.setItem(TOKEN_KEY, token);
-      localStorage.setItem(USER_KEY, JSON.stringify(user));
+      sessionStorage.setItem(TOKEN_KEY, token);
+      sessionStorage.setItem(USER_KEY, JSON.stringify(user));
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(USER_KEY);
     },
 
     /**
@@ -48,6 +53,8 @@ export const useAuthStore = defineStore('dyx-auth', {
     clearAuth(): void {
       this.token = '';
       this.user = null;
+      sessionStorage.removeItem(TOKEN_KEY);
+      sessionStorage.removeItem(USER_KEY);
       localStorage.removeItem(TOKEN_KEY);
       localStorage.removeItem(USER_KEY);
     }

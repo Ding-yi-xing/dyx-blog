@@ -5,8 +5,11 @@ import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.BindException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -74,6 +77,42 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ConstraintViolationException.class)
     public Result<Void> handleConstraintViolationException(ConstraintViolationException exception) {
         return Result.failure(400, exception.getMessage());
+    }
+
+    /**
+     * 处理请求参数缺失异常。
+     *
+     * @param exception 参数缺失异常。
+     * @return 统一失败响应。
+     */
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public Result<Void> handleMissingServletRequestParameterException(MissingServletRequestParameterException exception) {
+        return Result.failure(400, exception.getParameterName() + " 不能为空");
+    }
+
+    /**
+     * 处理请求体不可读异常。
+     *
+     * @param exception 请求体解析异常。
+     * @return 统一失败响应。
+     */
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public Result<Void> handleHttpMessageNotReadableException(HttpMessageNotReadableException exception) {
+        return Result.failure(400, "请求体格式不正确");
+    }
+
+    /**
+     * 处理请求方法不支持异常。
+     *
+     * @param exception 请求方法异常。
+     * @return 统一失败响应。
+     */
+    @ResponseStatus(HttpStatus.METHOD_NOT_ALLOWED)
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public Result<Void> handleHttpRequestMethodNotSupportedException(HttpRequestMethodNotSupportedException exception) {
+        return Result.failure(405, "请求方法不支持");
     }
 
     /**

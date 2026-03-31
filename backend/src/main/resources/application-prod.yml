@@ -51,7 +51,13 @@ dyx:
     encrypt-key: ${ENCRYPT_KEY}
     cors-allowed-origins:
       - http://118.178.186.196
-      - http://www.dyx.company
-      - https://www.dyx.company
-      - http://localhost:5173
-      - http://127.0.0.1:5173
+      - http://localhost:*
+      - http://127.0.0.1:*
+      - http://[::1]:*
+      - http://192.168.*:*
+      - http://10.*:*
+      - http://172.*:*
+      - http://www.dyx.company:*
+      - https://www.dyx.company:*
+      - https://dyx.company:*
+      - http://dyx.company:*

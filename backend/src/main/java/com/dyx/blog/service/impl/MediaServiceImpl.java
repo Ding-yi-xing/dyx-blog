@@ -37,6 +37,10 @@ import org.springframework.web.multipart.MultipartFile;
 import javax.imageio.ImageIO;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.IDN;
+import java.net.InetAddress;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -69,6 +73,11 @@ public class MediaServiceImpl implements MediaService {
     );
     private static final Set<String> IMAGE_MEDIA_TYPES = Set.of(
             "image/jpeg", "image/png", "image/gif", "image/webp", "image/bmp"
+    );
+    private static final Set<String> PRIVATE_IPV4_PREFIXES = Set.of(
+            "10.", "127.", "169.254.", "172.16.", "172.17.", "172.18.", "172.19.",
+            "172.20.", "172.21.", "172.22.", "172.23.", "172.24.", "172.25.", "172.26.",
+            "172.27.", "172.28.", "172.29.", "172.30.", "172.31.", "192.168."
     );
 
     private final MediaMapper dyxMediaMapper;
@@ -310,8 +319,9 @@ public class MediaServiceImpl implements MediaService {
     }
 
     private ResponseEntity<byte[]> proxyRemoteMedia(Media media) {
+        URI remoteUri = validateRemoteMediaUri(media.getFileUrl());
         try {
-            ResponseEntity<ByteArrayResource> response = restTemplate.getForEntity(media.getFileUrl(), ByteArrayResource.class);
+            ResponseEntity<ByteArrayResource> response = restTemplate.getForEntity(remoteUri, ByteArrayResource.class);
             ByteArrayResource body = response.getBody();
             if (!response.getStatusCode().is2xxSuccessful() || body == null) {
                 throw new BusinessException("读取远程媒体文件失败");
@@ -357,6 +367,87 @@ public class MediaServiceImpl implements MediaService {
             throw new BusinessException("媒体资源路径无效");
         }
         return resolvedPath;
+    }
+
+    private URI validateRemoteMediaUri(String fileUrl) {
+        if (!StringUtils.hasText(fileUrl)) {
+            throw new BusinessException("媒体资源链接无效");
+        }
+        try {
+            URI uri = new URI(fileUrl.trim()).normalize();
+            String scheme = uri.getScheme();
+            if (!"https".equalsIgnoreCase(scheme)) {
+                throw new BusinessException("远程媒体链接仅支持 HTTPS");
+            }
+            if (uri.getUserInfo() != null || uri.getHost() == null || uri.getPort() != -1) {
+                throw new BusinessException("远程媒体链接无效");
+            }
+            String host = IDN.toASCII(uri.getHost().trim()).toLowerCase(Locale.ROOT);
+            if (isDisallowedRemoteHost(host)) {
+                throw new BusinessException("远程媒体链接不受信任");
+            }
+            return new URI(uri.getScheme(), null, host, -1, uri.getPath(), uri.getQuery(), null);
+        } catch (URISyntaxException exception) {
+            throw new BusinessException("远程媒体链接无效");
+        }
+    }
+
+    private boolean isDisallowedRemoteHost(String host) {
+        if (!StringUtils.hasText(host)) {
+            return true;
+        }
+        if ("localhost".equals(host) || host.endsWith(".localhost") || host.endsWith(".local")) {
+            return true;
+        }
+        if (host.contains(":")) {
+            String normalized = host;
+            if (normalized.startsWith("[") && normalized.endsWith("]")) {
+                normalized = normalized.substring(1, normalized.length() - 1);
+            }
+            return "::1".equals(normalized)
+                    || normalized.startsWith("fc")
+                    || normalized.startsWith("fd")
+                    || normalized.startsWith("fe80:");
+        }
+        for (String prefix : PRIVATE_IPV4_PREFIXES) {
+            if (host.startsWith(prefix)) {
+                return true;
+            }
+        }
+        if (isIpv4Address(host)) {
+            try {
+                return InetAddress.getByName(host).isAnyLocalAddress()
+                        || InetAddress.getByName(host).isLoopbackAddress()
+                        || InetAddress.getByName(host).isSiteLocalAddress()
+                        || InetAddress.getByName(host).isLinkLocalAddress()
+                        || InetAddress.getByName(host).isMulticastAddress();
+            } catch (IOException exception) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isIpv4Address(String host) {
+        String[] parts = host.split("\\.");
+        if (parts.length != 4) {
+            return false;
+        }
+        for (String part : parts) {
+            if (part.isEmpty() || part.length() > 3) {
+                return false;
+            }
+            for (int index = 0; index < part.length(); index++) {
+                if (!Character.isDigit(part.charAt(index))) {
+                    return false;
+                }
+            }
+            int value = Integer.parseInt(part);
+            if (value < 0 || value > 255) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private String sanitizeFileName(String fileName) {
