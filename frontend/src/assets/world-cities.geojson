@@ -1,55 +1,95 @@
 {
   "type": "FeatureCollection",
   "features": [
-    {
-      "type": "Feature",
-      "properties": {
-        "NAME": "Tokyo"
-      },
-      "geometry": {
-        "type": "Point",
-        "coordinates": [139.6917, 35.6895]
-      }
-    },
-    {
-      "type": "Feature",
-      "properties": {
-        "NAME": "New York"
-      },
-      "geometry": {
-        "type": "Point",
-        "coordinates": [-74.0060, 40.7128]
-      }
-    },
-    {
-      "type": "Feature",
-      "properties": {
-        "NAME": "London"
-      },
-      "geometry": {
-        "type": "Point",
-        "coordinates": [-0.1278, 51.5074]
-      }
-    },
-    {
-      "type": "Feature",
-      "properties": {
-        "NAME": "Paris"
-      },
-      "geometry": {
-        "type": "Point",
-        "coordinates": [2.3522, 48.8566]
-      }
-    },
-    {
-      "type": "Feature",
-      "properties": {
-        "NAME": "Sydney"
-      },
-      "geometry": {
-        "type": "Point",
-        "coordinates": [151.2093, -33.8688]
-      }
-    }
+    { "type": "Feature", "properties": { "NAME": "Tokyo", "COUNTRY": "Japan", "LEVEL": 1 }, "geometry": { "type": "Point", "coordinates": [139.6917, 35.6895] } },
+    { "type": "Feature", "properties": { "NAME": "Osaka", "COUNTRY": "Japan", "LEVEL": 2 }, "geometry": { "type": "Point", "coordinates": [135.5023, 34.6937] } },
+    { "type": "Feature", "properties": { "NAME": "Sapporo", "COUNTRY": "Japan", "LEVEL": 3 }, "geometry": { "type": "Point", "coordinates": [141.3545, 43.0618] } },
+    { "type": "Feature", "properties": { "NAME": "Seoul", "COUNTRY": "South Korea", "LEVEL": 1 }, "geometry": { "type": "Point", "coordinates": [126.9780, 37.5665] } },
+    { "type": "Feature", "properties": { "NAME": "Busan", "COUNTRY": "South Korea", "LEVEL": 2 }, "geometry": { "type": "Point", "coordinates": [129.0756, 35.1796] } },
+    { "type": "Feature", "properties": { "NAME": "Bangkok", "COUNTRY": "Thailand", "LEVEL": 1 }, "geometry": { "type": "Point", "coordinates": [100.5018, 13.7563] } },
+    { "type": "Feature", "properties": { "NAME": "Chiang Mai", "COUNTRY": "Thailand", "LEVEL": 3 }, "geometry": { "type": "Point", "coordinates": [98.9853, 18.7883] } },
+    { "type": "Feature", "properties": { "NAME": "Singapore", "COUNTRY": "Singapore", "LEVEL": 1 }, "geometry": { "type": "Point", "coordinates": [103.8198, 1.3521] } },
+    { "type": "Feature", "properties": { "NAME": "Kuala Lumpur", "COUNTRY": "Malaysia", "LEVEL": 1 }, "geometry": { "type": "Point", "coordinates": [101.6869, 3.1390] } },
+    { "type": "Feature", "properties": { "NAME": "Penang", "COUNTRY": "Malaysia", "LEVEL": 3 }, "geometry": { "type": "Point", "coordinates": [100.3327, 5.4164] } },
+    { "type": "Feature", "properties": { "NAME": "Jakarta", "COUNTRY": "Indonesia", "LEVEL": 1 }, "geometry": { "type": "Point", "coordinates": [106.8456, -6.2088] } },
+    { "type": "Feature", "properties": { "NAME": "Surabaya", "COUNTRY": "Indonesia", "LEVEL": 2 }, "geometry": { "type": "Point", "coordinates": [112.7521, -7.2575] } },
+    { "type": "Feature", "properties": { "NAME": "Bali", "COUNTRY": "Indonesia", "LEVEL": 3 }, "geometry": { "type": "Point", "coordinates": [115.1889, -8.4095] } },
+    { "type": "Feature", "properties": { "NAME": "Manila", "COUNTRY": "Philippines", "LEVEL": 1 }, "geometry": { "type": "Point", "coordinates": [120.9842, 14.5995] } },
+    { "type": "Feature", "properties": { "NAME": "Cebu", "COUNTRY": "Philippines", "LEVEL": 3 }, "geometry": { "type": "Point", "coordinates": [123.8854, 10.3157] } },
+    { "type": "Feature", "properties": { "NAME": "Hanoi", "COUNTRY": "Vietnam", "LEVEL": 1 }, "geometry": { "type": "Point", "coordinates": [105.8342, 21.0278] } },
+    { "type": "Feature", "properties": { "NAME": "Ho Chi Minh City", "COUNTRY": "Vietnam", "LEVEL": 2 }, "geometry": { "type": "Point", "coordinates": [106.6297, 10.8231] } },
+    { "type": "Feature", "properties": { "NAME": "Da Nang", "COUNTRY": "Vietnam", "LEVEL": 3 }, "geometry": { "type": "Point", "coordinates": [108.2022, 16.0544] } },
+    { "type": "Feature", "properties": { "NAME": "New Delhi", "COUNTRY": "India", "LEVEL": 1 }, "geometry": { "type": "Point", "coordinates": [77.1025, 28.7041] } },
+    { "type": "Feature", "properties": { "NAME": "Mumbai", "COUNTRY": "India", "LEVEL": 2 }, "geometry": { "type": "Point", "coordinates": [72.8777, 19.0760] } },
+    { "type": "Feature", "properties": { "NAME": "Bengaluru", "COUNTRY": "India", "LEVEL": 2 }, "geometry": { "type": "Point", "coordinates": [77.5946, 12.9716] } },
+    { "type": "Feature", "properties": { "NAME": "Chennai", "COUNTRY": "India", "LEVEL": 3 }, "geometry": { "type": "Point", "coordinates": [80.2707, 13.0827] } },
+    { "type": "Feature", "properties": { "NAME": "Kolkata", "COUNTRY": "India", "LEVEL": 3 }, "geometry": { "type": "Point", "coordinates": [88.3639, 22.5726] } },
+    { "type": "Feature", "properties": { "NAME": "Dubai", "COUNTRY": "United Arab Emirates", "LEVEL": 1 }, "geometry": { "type": "Point", "coordinates": [55.2708, 25.2048] } },
+    { "type": "Feature", "properties": { "NAME": "Abu Dhabi", "COUNTRY": "United Arab Emirates", "LEVEL": 2 }, "geometry": { "type": "Point", "coordinates": [54.3773, 24.4539] } },
+    { "type": "Feature", "properties": { "NAME": "Riyadh", "COUNTRY": "Saudi Arabia", "LEVEL": 1 }, "geometry": { "type": "Point", "coordinates": [46.6753, 24.7136] } },
+    { "type": "Feature", "properties": { "NAME": "Jeddah", "COUNTRY": "Saudi Arabia", "LEVEL": 2 }, "geometry": { "type": "Point", "coordinates": [39.1925, 21.4858] } },
+    { "type": "Feature", "properties": { "NAME": "Istanbul", "COUNTRY": "Turkey", "LEVEL": 1 }, "geometry": { "type": "Point", "coordinates": [28.9784, 41.0082] } },
+    { "type": "Feature", "properties": { "NAME": "Ankara", "COUNTRY": "Turkey", "LEVEL": 2 }, "geometry": { "type": "Point", "coordinates": [32.8597, 39.9334] } },
+    { "type": "Feature", "properties": { "NAME": "Moscow", "COUNTRY": "Russia", "LEVEL": 1 }, "geometry": { "type": "Point", "coordinates": [37.6173, 55.7558] } },
+    { "type": "Feature", "properties": { "NAME": "Saint Petersburg", "COUNTRY": "Russia", "LEVEL": 2 }, "geometry": { "type": "Point", "coordinates": [30.3351, 59.9343] } },
+    { "type": "Feature", "properties": { "NAME": "Novosibirsk", "COUNTRY": "Russia", "LEVEL": 3 }, "geometry": { "type": "Point", "coordinates": [82.9204, 55.0302] } },
+    { "type": "Feature", "properties": { "NAME": "London", "COUNTRY": "United Kingdom", "LEVEL": 1 }, "geometry": { "type": "Point", "coordinates": [-0.1276, 51.5072] } },
+    { "type": "Feature", "properties": { "NAME": "Manchester", "COUNTRY": "United Kingdom", "LEVEL": 2 }, "geometry": { "type": "Point", "coordinates": [-2.2426, 53.4808] } },
+    { "type": "Feature", "properties": { "NAME": "Birmingham", "COUNTRY": "United Kingdom", "LEVEL": 3 }, "geometry": { "type": "Point", "coordinates": [-1.8904, 52.4862] } },
+    { "type": "Feature", "properties": { "NAME": "Paris", "COUNTRY": "France", "LEVEL": 1 }, "geometry": { "type": "Point", "coordinates": [2.3522, 48.8566] } },
+    { "type": "Feature", "properties": { "NAME": "Marseille", "COUNTRY": "France", "LEVEL": 2 }, "geometry": { "type": "Point", "coordinates": [5.3698, 43.2965] } },
+    { "type": "Feature", "properties": { "NAME": "Lyon", "COUNTRY": "France", "LEVEL": 3 }, "geometry": { "type": "Point", "coordinates": [4.8357, 45.7640] } },
+    { "type": "Feature", "properties": { "NAME": "Berlin", "COUNTRY": "Germany", "LEVEL": 1 }, "geometry": { "type": "Point", "coordinates": [13.4050, 52.5200] } },
+    { "type": "Feature", "properties": { "NAME": "Hamburg", "COUNTRY": "Germany", "LEVEL": 2 }, "geometry": { "type": "Point", "coordinates": [9.9937, 53.5511] } },
+    { "type": "Feature", "properties": { "NAME": "Munich", "COUNTRY": "Germany", "LEVEL": 3 }, "geometry": { "type": "Point", "coordinates": [11.5820, 48.1351] } },
+    { "type": "Feature", "properties": { "NAME": "Madrid", "COUNTRY": "Spain", "LEVEL": 1 }, "geometry": { "type": "Point", "coordinates": [-3.7038, 40.4168] } },
+    { "type": "Feature", "properties": { "NAME": "Barcelona", "COUNTRY": "Spain", "LEVEL": 2 }, "geometry": { "type": "Point", "coordinates": [2.1734, 41.3851] } },
+    { "type": "Feature", "properties": { "NAME": "Valencia", "COUNTRY": "Spain", "LEVEL": 3 }, "geometry": { "type": "Point", "coordinates": [-0.3763, 39.4699] } },
+    { "type": "Feature", "properties": { "NAME": "Rome", "COUNTRY": "Italy", "LEVEL": 1 }, "geometry": { "type": "Point", "coordinates": [12.4964, 41.9028] } },
+    { "type": "Feature", "properties": { "NAME": "Milan", "COUNTRY": "Italy", "LEVEL": 2 }, "geometry": { "type": "Point", "coordinates": [9.1900, 45.4642] } },
+    { "type": "Feature", "properties": { "NAME": "Naples", "COUNTRY": "Italy", "LEVEL": 3 }, "geometry": { "type": "Point", "coordinates": [14.2681, 40.8518] } },
+    { "type": "Feature", "properties": { "NAME": "Amsterdam", "COUNTRY": "Netherlands", "LEVEL": 1 }, "geometry": { "type": "Point", "coordinates": [4.9041, 52.3676] } },
+    { "type": "Feature", "properties": { "NAME": "Brussels", "COUNTRY": "Belgium", "LEVEL": 1 }, "geometry": { "type": "Point", "coordinates": [4.3517, 50.8503] } },
+    { "type": "Feature", "properties": { "NAME": "Zurich", "COUNTRY": "Switzerland", "LEVEL": 1 }, "geometry": { "type": "Point", "coordinates": [8.5417, 47.3769] } },
+    { "type": "Feature", "properties": { "NAME": "Vienna", "COUNTRY": "Austria", "LEVEL": 1 }, "geometry": { "type": "Point", "coordinates": [16.3738, 48.2082] } },
+    { "type": "Feature", "properties": { "NAME": "Prague", "COUNTRY": "Czech Republic", "LEVEL": 1 }, "geometry": { "type": "Point", "coordinates": [14.4378, 50.0755] } },
+    { "type": "Feature", "properties": { "NAME": "Warsaw", "COUNTRY": "Poland", "LEVEL": 1 }, "geometry": { "type": "Point", "coordinates": [21.0122, 52.2297] } },
+    { "type": "Feature", "properties": { "NAME": "Stockholm", "COUNTRY": "Sweden", "LEVEL": 1 }, "geometry": { "type": "Point", "coordinates": [18.0686, 59.3293] } },
+    { "type": "Feature", "properties": { "NAME": "Oslo", "COUNTRY": "Norway", "LEVEL": 1 }, "geometry": { "type": "Point", "coordinates": [10.7522, 59.9139] } },
+    { "type": "Feature", "properties": { "NAME": "Copenhagen", "COUNTRY": "Denmark", "LEVEL": 1 }, "geometry": { "type": "Point", "coordinates": [12.5683, 55.6761] } },
+    { "type": "Feature", "properties": { "NAME": "Helsinki", "COUNTRY": "Finland", "LEVEL": 1 }, "geometry": { "type": "Point", "coordinates": [24.9384, 60.1699] } },
+    { "type": "Feature", "properties": { "NAME": "Lisbon", "COUNTRY": "Portugal", "LEVEL": 1 }, "geometry": { "type": "Point", "coordinates": [-9.1393, 38.7223] } },
+    { "type": "Feature", "properties": { "NAME": "Dublin", "COUNTRY": "Ireland", "LEVEL": 1 }, "geometry": { "type": "Point", "coordinates": [-6.2603, 53.3498] } },
+    { "type": "Feature", "properties": { "NAME": "Athens", "COUNTRY": "Greece", "LEVEL": 1 }, "geometry": { "type": "Point", "coordinates": [23.7275, 37.9838] } },
+    { "type": "Feature", "properties": { "NAME": "Budapest", "COUNTRY": "Hungary", "LEVEL": 1 }, "geometry": { "type": "Point", "coordinates": [19.0402, 47.4979] } },
+    { "type": "Feature", "properties": { "NAME": "New York", "COUNTRY": "United States", "LEVEL": 1 }, "geometry": { "type": "Point", "coordinates": [-74.0060, 40.7128] } },
+    { "type": "Feature", "properties": { "NAME": "Washington", "COUNTRY": "United States", "LEVEL": 1 }, "geometry": { "type": "Point", "coordinates": [-77.0369, 38.9072] } },
+    { "type": "Feature", "properties": { "NAME": "Los Angeles", "COUNTRY": "United States", "LEVEL": 2 }, "geometry": { "type": "Point", "coordinates": [-118.2437, 34.0522] } },
+    { "type": "Feature", "properties": { "NAME": "Chicago", "COUNTRY": "United States", "LEVEL": 2 }, "geometry": { "type": "Point", "coordinates": [-87.6298, 41.8781] } },
+    { "type": "Feature", "properties": { "NAME": "San Francisco", "COUNTRY": "United States", "LEVEL": 3 }, "geometry": { "type": "Point", "coordinates": [-122.4194, 37.7749] } },
+    { "type": "Feature", "properties": { "NAME": "Seattle", "COUNTRY": "United States", "LEVEL": 3 }, "geometry": { "type": "Point", "coordinates": [-122.3321, 47.6062] } },
+    { "type": "Feature", "properties": { "NAME": "Toronto", "COUNTRY": "Canada", "LEVEL": 1 }, "geometry": { "type": "Point", "coordinates": [-79.3832, 43.6532] } },
+    { "type": "Feature", "properties": { "NAME": "Vancouver", "COUNTRY": "Canada", "LEVEL": 2 }, "geometry": { "type": "Point", "coordinates": [-123.1207, 49.2827] } },
+    { "type": "Feature", "properties": { "NAME": "Montreal", "COUNTRY": "Canada", "LEVEL": 3 }, "geometry": { "type": "Point", "coordinates": [-73.5673, 45.5017] } },
+    { "type": "Feature", "properties": { "NAME": "Mexico City", "COUNTRY": "Mexico", "LEVEL": 1 }, "geometry": { "type": "Point", "coordinates": [-99.1332, 19.4326] } },
+    { "type": "Feature", "properties": { "NAME": "Guadalajara", "COUNTRY": "Mexico", "LEVEL": 2 }, "geometry": { "type": "Point", "coordinates": [-103.3496, 20.6597] } },
+    { "type": "Feature", "properties": { "NAME": "Monterrey", "COUNTRY": "Mexico", "LEVEL": 3 }, "geometry": { "type": "Point", "coordinates": [-100.3161, 25.6866] } },
+    { "type": "Feature", "properties": { "NAME": "Sao Paulo", "COUNTRY": "Brazil", "LEVEL": 1 }, "geometry": { "type": "Point", "coordinates": [-46.6333, -23.5505] } },
+    { "type": "Feature", "properties": { "NAME": "Rio de Janeiro", "COUNTRY": "Brazil", "LEVEL": 2 }, "geometry": { "type": "Point", "coordinates": [-43.1729, -22.9068] } },
+    { "type": "Feature", "properties": { "NAME": "Brasilia", "COUNTRY": "Brazil", "LEVEL": 3 }, "geometry": { "type": "Point", "coordinates": [-47.8825, -15.7942] } },
+    { "type": "Feature", "properties": { "NAME": "Buenos Aires", "COUNTRY": "Argentina", "LEVEL": 1 }, "geometry": { "type": "Point", "coordinates": [-58.3816, -34.6037] } },
+    { "type": "Feature", "properties": { "NAME": "Santiago", "COUNTRY": "Chile", "LEVEL": 1 }, "geometry": { "type": "Point", "coordinates": [-70.6693, -33.4489] } },
+    { "type": "Feature", "properties": { "NAME": "Lima", "COUNTRY": "Peru", "LEVEL": 1 }, "geometry": { "type": "Point", "coordinates": [-77.0428, -12.0464] } },
+    { "type": "Feature", "properties": { "NAME": "Bogota", "COUNTRY": "Colombia", "LEVEL": 1 }, "geometry": { "type": "Point", "coordinates": [-74.0721, 4.7110] } },
+    { "type": "Feature", "properties": { "NAME": "Johannesburg", "COUNTRY": "South Africa", "LEVEL": 1 }, "geometry": { "type": "Point", "coordinates": [28.0473, -26.2041] } },
+    { "type": "Feature", "properties": { "NAME": "Cape Town", "COUNTRY": "South Africa", "LEVEL": 2 }, "geometry": { "type": "Point", "coordinates": [18.4241, -33.9249] } },
+    { "type": "Feature", "properties": { "NAME": "Nairobi", "COUNTRY": "Kenya", "LEVEL": 1 }, "geometry": { "type": "Point", "coordinates": [36.8219, -1.2921] } },
+    { "type": "Feature", "properties": { "NAME": "Cairo", "COUNTRY": "Egypt", "LEVEL": 1 }, "geometry": { "type": "Point", "coordinates": [31.2357, 30.0444] } },
+    { "type": "Feature", "properties": { "NAME": "Lagos", "COUNTRY": "Nigeria", "LEVEL": 1 }, "geometry": { "type": "Point", "coordinates": [3.3792, 6.5244] } },
+    { "type": "Feature", "properties": { "NAME": "Casablanca", "COUNTRY": "Morocco", "LEVEL": 1 }, "geometry": { "type": "Point", "coordinates": [-7.5898, 33.5731] } },
+    { "type": "Feature", "properties": { "NAME": "Sydney", "COUNTRY": "Australia", "LEVEL": 1 }, "geometry": { "type": "Point", "coordinates": [151.2093, -33.8688] } },
+    { "type": "Feature", "properties": { "NAME": "Melbourne", "COUNTRY": "Australia", "LEVEL": 2 }, "geometry": { "type": "Point", "coordinates": [144.9631, -37.8136] } },
+    { "type": "Feature", "properties": { "NAME": "Brisbane", "COUNTRY": "Australia", "LEVEL": 3 }, "geometry": { "type": "Point", "coordinates": [153.0251, -27.4698] } },
+    { "type": "Feature", "properties": { "NAME": "Auckland", "COUNTRY": "New Zealand", "LEVEL": 1 }, "geometry": { "type": "Point", "coordinates": [174.7633, -36.8485] } }
   ]
 }
