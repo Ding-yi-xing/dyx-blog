@@ -34,9 +34,13 @@ export const useAuthStore = defineStore('dyx-auth', {
   },
   actions: {
     /**
-     * 保存登录后的 token 和用户信息。
-     * @param token 登录成功后返回的认证令牌。
-     * @param user 当前登录用户信息。
+     * 保存登录成功后的认证令牌与用户信息。
+     *
+     * @param token 登录成功后返回的 JWT 认证令牌。
+     * @param user 当前登录用户信息，用于页面鉴权与展示。
+     * @returns 无返回值。
+     * @throws 该方法不会主动抛出业务异常；若浏览器存储不可用，则会由运行时环境抛出存储相关异常。
+     * @author Dyx
      */
     setAuth(token: string, user: AdminUser): void {
       this.token = token;
@@ -48,7 +52,11 @@ export const useAuthStore = defineStore('dyx-auth', {
     },
 
     /**
-     * 清理当前登录态。
+     * 清理当前登录态并移除浏览器中的认证缓存。
+     *
+     * @returns 无返回值。
+     * @throws 该方法不会主动抛出业务异常；若浏览器存储不可用，则会由运行时环境抛出存储相关异常。
+     * @author Dyx
      */
     clearAuth(): void {
       this.token = '';

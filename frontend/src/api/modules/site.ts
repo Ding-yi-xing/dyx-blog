@@ -194,6 +194,14 @@ export interface GuestbookData {
   messages?: GuestbookMessageData[];
 }
 
+/**
+ * 根据当前资料生成首页 Hero 的默认区块配置。
+ *
+ * @param profile 可选的资料子集，用于优先填充站点标题、主副标题和头像等默认展示内容。
+ * @returns 返回可直接用于首页 Hero 渲染和后台初始化的默认配置对象。
+ * @throws 该函数不会主动抛出异常；当传入资料缺失时会回退到内置默认文案。
+ * @author Dyx
+ */
 export function createDefaultHeroConfig(profile?: Pick<ProfileData, 'siteTitle' | 'heroTitle' | 'heroSubtitle' | 'avatarUrl'>): HeroConfigData {
   return {
     version: 1,
@@ -236,6 +244,14 @@ export function createDefaultHeroConfig(profile?: Pick<ProfileData, 'siteTitle' 
   };
 }
 
+/**
+ * 解析资料中的 Hero 配置 JSON，并在解析失败时回退到默认配置。
+ *
+ * @param profile 可选的资料子集，既可能提供序列化后的 Hero 配置，也可能仅提供默认回退所需的基础字段。
+ * @returns 返回可安全用于页面渲染的 Hero 配置对象。
+ * @throws 该函数不会向外抛出 JSON 解析异常；解析失败时会捕获异常并返回默认配置。
+ * @author Dyx
+ */
 export function parseHeroConfig(profile?: Pick<ProfileData, 'heroConfig' | 'siteTitle' | 'heroTitle' | 'heroSubtitle' | 'avatarUrl'>): HeroConfigData {
   const fallback = createDefaultHeroConfig(profile);
   if (!profile?.heroConfig) {

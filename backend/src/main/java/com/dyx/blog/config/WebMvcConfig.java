@@ -26,9 +26,11 @@ public class WebMvcConfig implements WebMvcConfigurer {
     private final DyxSecurityProperties dyxSecurityProperties;
 
     /**
-     * 配置密码加密器。
+     * 注册系统使用的密码编码器。
      *
-     * @return BCryptPasswordEncoder 实例。
+     * @return 基于 BCrypt 算法的密码编码器实例，用于登录校验与用户密码存储。
+     * @throws IllegalArgumentException 当前实现不会主动抛出该异常；若 Spring 容器初始化参数异常，则由框架启动流程抛出。
+     * @author Dyx
      */
     @Bean
     public PasswordEncoder passwordEncoder() {
