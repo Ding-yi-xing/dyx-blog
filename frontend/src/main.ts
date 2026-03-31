@@ -3,6 +3,7 @@ import { createPinia } from 'pinia';
 import ElementPlus from 'element-plus';
 import 'element-plus/dist/index.css';
 import App from './App.vue';
+import GlobalInitOverlay from './components/common/GlobalInitOverlay.vue';
 import router from './router';
 import './styles/index.scss';
 
@@ -18,6 +19,7 @@ import './styles/index.scss';
 const dyxApp = createApp(App);
 const dyxPinia = createPinia();
 
+dyxApp.component('GlobalInitOverlay', GlobalInitOverlay);
 dyxApp.use(dyxPinia);
 dyxApp.use(router);
 dyxApp.use(ElementPlus);

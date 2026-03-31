@@ -242,6 +242,8 @@ const VISITED_CITY_Z_INDEX = 34;
 const MARKER_LATEST_Z_INDEX = 130;
 const MARKER_NORMAL_Z_INDEX = 120;
 const EMPTY_OVERLAY_KEY = "";
+let hasInitializedMap = false;
+let mapInitPromise: Promise<void> | null = null;
 
 function getMarkerZoomBucket(): number {
   return Math.round((mapInstance?.getZoom() ?? INITIAL_ZOOM) * 10);
@@ -512,19 +514,13 @@ function escapeHtml(value: string): string {
 }
 
 function shouldShowVisitedCityLabels(): boolean {
-  return false;
+  return true;
 }
 
 function getVisitedCityLabelStyle(isLatest: boolean): string {
-  if (props.theme === "dark") {
-    return isLatest
-      ? "margin-top:8px;white-space:nowrap;font-size:12px;line-height:1;color:rgba(255,255,255,1);text-shadow:0 2px 12px rgba(0,0,0,0.56);letter-spacing:0.02em;font-weight:600;"
-      : "margin-top:8px;white-space:nowrap;font-size:12px;line-height:1;color:rgba(248,250,252,0.98);text-shadow:0 2px 12px rgba(0,0,0,0.56);letter-spacing:0.02em;";
-  }
-
   return isLatest
-    ? "margin-top:8px;white-space:nowrap;font-size:12px;line-height:1;color:#0f172a;letter-spacing:0.02em;font-weight:600;"
-    : "margin-top:8px;white-space:nowrap;font-size:12px;line-height:1;color:#334155;letter-spacing:0.02em;";
+    ? "margin-top:8px;white-space:nowrap;font-size:12px;line-height:1;color:rgba(255,255,255,1);text-shadow:0 2px 12px rgba(0,0,0,0.56);letter-spacing:0.02em;font-weight:600;"
+    : "margin-top:8px;white-space:nowrap;font-size:12px;line-height:1;color:rgba(255,255,255,0.98);text-shadow:0 2px 12px rgba(0,0,0,0.56);letter-spacing:0.02em;";
 }
 
 function buildMarkerContent(item: FootprintMapItem): string {
@@ -1401,7 +1397,7 @@ function refreshMapVisualTheme(): void {
  * 在缺少高德 Key 或脚本加载失败时，会通过状态文案向页面反馈原因。
  */
 async function initMap(): Promise<void> {
-  if (!mapRoot.value) {
+  if (!mapRoot.value || hasInitializedMap) {
     return;
   }
   if (!getAmapApiKeyConfigured()) {
@@ -1411,27 +1407,41 @@ async function initMap(): Promise<void> {
   statusMessage.value = "地图加载中…";
   try {
     const AMap = await loadAmapSdk();
-    if (!mapRoot.value) {
+    if (!mapRoot.value || hasInitializedMap) {
       return;
     }
     initializeMapInstance(AMap);
     prepareMapAfterInit();
+    hasInitializedMap = true;
   } catch (error) {
     statusMessage.value =
       error instanceof Error ? error.message : "高德地图加载失败。";
   }
 }
 
+async function ensureMapInitialized(): Promise<void> {
+  if (hasInitializedMap) {
+    return;
+  }
+  if (!mapInitPromise) {
+    mapInitPromise = initMap().finally(() => {
+      mapInitPromise = null;
+    });
+  }
+  await mapInitPromise;
+}
+
+
+/**
+ * 执行一次完整的覆盖物渲染流程。
+ * 包括图层样式同步、边界层刷新、标签层刷新和点位层刷新。
+ */
 function updateRenderStateBeforeCycle(): void {
   if (!shouldShowWorldCityLabels()) {
     clearWorldCityLabelState();
   }
 }
 
-/**
- * 执行一次完整的覆盖物渲染流程。
- * 包括图层样式同步、边界层刷新、标签层刷新和点位层刷新。
- */
 function renderMapOverlays(): void {
   const AMap = beginRenderCycle();
   if (!AMap) {
@@ -1457,6 +1467,9 @@ function handleDataWatch(): void {
 
 function handleVisibleWatch(newVal?: boolean): void {
   handleVisibleChange(newVal);
+  if (newVal) {
+    void ensureMapInitialized();
+  }
 }
 
 /**
@@ -1464,7 +1477,9 @@ function handleVisibleWatch(newVal?: boolean): void {
  */
 function handleMounted(): void {
   initializeViewportState();
-  void initMap();
+  if (props.visible) {
+    void ensureMapInitialized();
+  }
 }
 
 /**

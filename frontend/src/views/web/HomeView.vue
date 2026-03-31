@@ -38,13 +38,13 @@
                     v-if="block.type === 'eyebrow'"
                     class="home-meta text-xs font-semibold uppercase tracking-[0.42em] lg:text-sm mb-3"
                   >
-                    {{ block.text || "HELLO THERE!" }}
+                    {{ block.text || 'HELLO THERE!' }}
                   </p>
                   <h1
                     v-else-if="block.type === 'title'"
                     class="home-section-title max-w-4xl text-3xl font-semibold leading-[1.1] tracking-[-0.04em] sm:text-4xl lg:text-[3.2rem] xl:text-[3.8rem] mb-4"
                   >
-                    {{ block.text || "写代码的人，也写点文字。" }}
+                    {{ block.text || '写代码的人，也写点文字。' }}
                   </h1>
                   <p
                     v-else-if="block.type === 'subtitle'"
@@ -52,7 +52,7 @@
                   >
                     {{
                       block.text ||
-                      "这里有后端开发、安全研究、折腾小工具的记录，也有一些不那么严肃的碎碎念。这个博客更像是一个公开的笔记本，欢迎随便翻翻。"
+                      '这里有后端开发、安全研究、折腾小工具的记录，也有一些不那么严肃的碎碎念。这个博客更像是一个公开的笔记本，欢迎随便翻翻。'
                     }}
                   </p>
                   <template v-else-if="isTagsBlock(block)">
@@ -118,7 +118,7 @@
             :items="footprintMapData"
             :visited-province-names="visitedProvinceNames"
             :theme="activeTheme"
-            :visible="currentSectionIndex === 1"
+            :visible="shouldActivateMap"
           />
           <div
             v-else
@@ -221,7 +221,6 @@
           </div>
         </div>
 
-        <!-- 页脚版权信息 -->
         <div
           v-if="copyrightText || techSupportText"
           class="absolute bottom-6 right-6 z-50 text-right text-[11px] leading-5 sm:bottom-8 sm:right-8 lg:bottom-10 lg:right-10"
@@ -236,6 +235,12 @@
         </div>
       </section>
     </div>
+
+    <GlobalInitOverlay
+      :visible="isInitLoading"
+      :theme="activeTheme"
+      message="首页初始化中..."
+    />
   </section>
 </template>
 
@@ -243,24 +248,28 @@
 import {
   computed,
   inject,
+  nextTick,
   onBeforeUnmount,
   onMounted,
   ref,
   type Ref,
-} from "vue";
-import HomeFootprintMap from "@/components/web/HomeFootprintMap.vue";
+} from 'vue';
+import HomeFootprintMap from '@/components/web/HomeFootprintMap.vue';
 import {
+  createDefaultHeroConfig,
   getHomeData,
   recordSiteVisit,
-  parseHeroConfig,
+  resolveHeroConfig,
+  type HeroConfigData,
   type HeroImageBlock,
   type HeroTagsBlock,
   type HeroTextBlock,
   type HomeData,
-} from "@/api/modules/site";
-import { buildFootprintMapItems } from "@/utils/footprintGeo";
+} from '@/api/modules/site';
+import { getCurrentYear } from '@/utils/date';
+import { buildFootprintMapItems } from '@/utils/footprintGeo';
 
-type ThemeMode = "light" | "dark";
+type ThemeMode = 'light' | 'dark';
 
 const PROVINCE_AREA_MAP: Record<string, number> = {
   北京市: 16410,
@@ -300,97 +309,102 @@ const PROVINCE_AREA_MAP: Record<string, number> = {
 };
 
 const CHINA_TOTAL_AREA = 9600000;
+const HOME_SECTION_COUNT = 3;
+const currentYear = getCurrentYear();
 
 const homeData = ref<HomeData>({});
+const heroConfigState = ref<HeroConfigData>(createDefaultHeroConfig());
+const isInitLoading = ref(true);
+const isHeroReady = ref(false);
+const isAboveFoldReady = ref(false);
+const hasInitLoadedOnce = ref(false);
 const setTopNavVisible = inject<((visible: boolean) => void) | undefined>(
-  "dyx-set-top-nav-visible"
+  'dyx-set-top-nav-visible'
 );
-const currentTheme = inject<Ref<ThemeMode> | undefined>("dyx-theme");
+const currentTheme = inject<Ref<ThemeMode> | undefined>('dyx-theme');
 
 const profile = computed(() => homeData.value.profile ?? {});
 const footprints = computed(() =>
   (homeData.value.footprints ?? []).filter((item) => item.published !== 0)
 );
-const activeTheme = computed<ThemeMode>(() => currentTheme?.value ?? "dark");
+const activeTheme = computed<ThemeMode>(() => currentTheme?.value ?? 'dark');
 const footprintConfig = computed(() => homeData.value.systemConfig ?? {});
 const footprintEyebrow = computed(
-  () => footprintConfig.value.footprintEyebrow?.trim() || "Footprints"
+  () => footprintConfig.value.footprintEyebrow?.trim() || 'Footprints'
 );
 const footprintTitle = computed(
-  () => footprintConfig.value.footprintTitle?.trim() || "我去过的地方"
+  () => footprintConfig.value.footprintTitle?.trim() || '我去过的地方'
 );
 const footprintSubtitle = computed(
   () =>
     footprintConfig.value.footprintSubtitle?.trim() ||
-    "从沿海到高原，慢慢点亮地图上的每一站。"
+    '从沿海到高原，慢慢点亮地图上的每一站。'
 );
 const footprintDescription = computed(
   () =>
     footprintConfig.value.footprintDescription?.trim() ||
-    "这些城市和区域构成了最近几年的出发方向，也让首页第二屏变成一张正在持续扩展的旅行轨迹。"
+    '这些城市和区域构成了最近几年的出发方向，也让首页第二屏变成一张正在持续扩展的旅行轨迹。'
 );
 const copyrightText = computed(
   () =>
     footprintConfig.value.copyrightText?.trim() ||
-    `© ${new Date().getFullYear()} DYX BLOG. All rights reserved.`
+    `© ${currentYear} DYX BLOG. All rights reserved.`
 );
 const techSupportText = computed(
   () =>
     footprintConfig.value.techSupportText?.trim() ||
-    "Powered by Vue 3 & Spring Boot 3"
+    'Powered by Vue 3 & Spring Boot 3'
 );
 const footprintSectionClass = computed(() =>
-  activeTheme.value === "dark"
-    ? "bg-[#0a0a0f]"
-    : "bg-[radial-gradient(circle_at_20%_18%,rgba(59,130,246,0.12),transparent_28%),radial-gradient(circle_at_78%_22%,rgba(56,189,248,0.10),transparent_26%),linear-gradient(180deg,rgba(248,250,252,0.98),rgba(239,246,255,0.98))]"
+  activeTheme.value === 'dark'
+    ? 'bg-[#0a0a0f]'
+    : 'bg-[radial-gradient(circle_at_20%_18%,rgba(59,130,246,0.12),transparent_28%),radial-gradient(circle_at_78%_22%,rgba(56,189,248,0.10),transparent_26%),linear-gradient(180deg,rgba(248,250,252,0.98),rgba(239,246,255,0.98))]'
 );
 const footprintBackdropClass = computed(() =>
-  activeTheme.value === "dark"
-    ? "bg-[radial-gradient(circle_at_18%_14%,rgba(0,200,255,0.16),transparent_24%),radial-gradient(circle_at_82%_18%,rgba(0,150,200,0.14),transparent_22%),radial-gradient(circle_at_50%_78%,rgba(0,120,160,0.10),transparent_32%),linear-gradient(180deg,rgba(10,10,15,1),rgba(11,14,20,0.98)_48%,rgba(7,9,14,1))]"
-    : "bg-[radial-gradient(circle_at_18%_16%,rgba(59,130,246,0.14),transparent_30%),radial-gradient(circle_at_82%_18%,rgba(56,189,248,0.12),transparent_28%),linear-gradient(180deg,rgba(248,250,252,0.99),rgba(239,246,255,0.99)_48%,rgba(226,232,240,1))]"
+  activeTheme.value === 'dark'
+    ? 'bg-[radial-gradient(circle_at_18%_14%,rgba(0,200,255,0.16),transparent_24%),radial-gradient(circle_at_82%_18%,rgba(0,150,200,0.14),transparent_22%),radial-gradient(circle_at_50%_78%,rgba(0,120,160,0.10),transparent_32%),linear-gradient(180deg,rgba(10,10,15,1),rgba(11,14,20,0.98)_48%,rgba(7,9,14,1))]'
+    : 'bg-[radial-gradient(circle_at_18%_16%,rgba(59,130,246,0.14),transparent_30%),radial-gradient(circle_at_82%_18%,rgba(56,189,248,0.12),transparent_28%),linear-gradient(180deg,rgba(248,250,252,0.99),rgba(239,246,255,0.99)_48%,rgba(226,232,240,1))]'
 );
 const footprintTitleClass = computed(() =>
-  activeTheme.value === "dark" ? "text-white" : "text-slate-900"
+  activeTheme.value === 'dark' ? 'text-white' : 'text-slate-900'
 );
 const footprintMetaClass = computed(() =>
-  activeTheme.value === "dark" ? "text-cyan-200/70" : "text-slate-500"
+  activeTheme.value === 'dark' ? 'text-cyan-200/70' : 'text-slate-500'
 );
 const footprintSubtitleClass = computed(() =>
-  activeTheme.value === "dark" ? "text-cyan-50/92" : "text-slate-600"
+  activeTheme.value === 'dark' ? 'text-cyan-50/92' : 'text-slate-600'
 );
 const footprintDescriptionClass = computed(() =>
-  activeTheme.value === "dark" ? "text-slate-300/88" : "text-slate-500"
+  activeTheme.value === 'dark' ? 'text-slate-300/88' : 'text-slate-500'
 );
 const footprintStatsClass = computed(() =>
-  activeTheme.value === "dark"
-    ? "border-cyan-300/15 bg-[linear-gradient(180deg,rgba(2,6,23,0.72),rgba(8,20,35,0.82))] shadow-[0_24px_72px_rgba(2,6,23,0.42)] md:border-white/10 md:bg-slate-950/24 md:shadow-[0_14px_42px_rgba(2,6,23,0.22)]"
-    : "border-sky-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.9),rgba(239,246,255,0.94))] shadow-[0_18px_56px_rgba(148,163,184,0.2)] md:border-slate-200/70 md:bg-white/72 md:shadow-[0_16px_40px_rgba(148,163,184,0.12)]"
+  activeTheme.value === 'dark'
+    ? 'border-cyan-300/15 bg-[linear-gradient(180deg,rgba(2,6,23,0.72),rgba(8,20,35,0.82))] shadow-[0_24px_72px_rgba(2,6,23,0.42)] md:border-white/10 md:bg-slate-950/24 md:shadow-[0_14px_42px_rgba(2,6,23,0.22)]'
+    : 'border-sky-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.9),rgba(239,246,255,0.94))] shadow-[0_18px_56px_rgba(148,163,184,0.2)] md:border-slate-200/70 md:bg-white/72 md:shadow-[0_16px_40px_rgba(148,163,184,0.12)]'
 );
 const footprintStatsItemClass = computed(() =>
-  activeTheme.value === "dark"
-    ? "bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(34,211,238,0.08))] ring-1 ring-cyan-300/10 md:bg-white/0 md:ring-white/0"
-    : "bg-[linear-gradient(180deg,rgba(255,255,255,0.95),rgba(224,242,254,0.85))] ring-1 ring-white/80 md:bg-white/0 md:ring-transparent"
+  activeTheme.value === 'dark'
+    ? 'bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(34,211,238,0.08))] ring-1 ring-cyan-300/10 md:bg-white/0 md:ring-white/0'
+    : 'bg-[linear-gradient(180deg,rgba(255,255,255,0.95),rgba(224,242,254,0.85))] ring-1 ring-white/80 md:bg-white/0 md:ring-transparent'
 );
 const footprintEmptyClass = computed(() =>
-  activeTheme.value === "dark" ? "text-slate-400" : "text-slate-500"
+  activeTheme.value === 'dark' ? 'text-slate-400' : 'text-slate-500'
 );
 const activitySectionClass = computed(() =>
-  activeTheme.value === "dark" ? "bg-[#08101b]" : "bg-slate-100"
+  activeTheme.value === 'dark' ? 'bg-[#08101b]' : 'bg-slate-100'
 );
 const activityBackdropClass = computed(() =>
-  activeTheme.value === "dark"
-    ? "bg-[radial-gradient(circle_at_16%_20%,rgba(56,189,248,0.16),transparent_32%),radial-gradient(circle_at_82%_16%,rgba(96,165,250,0.14),transparent_28%),linear-gradient(180deg,rgba(6,10,18,0.98),rgba(10,17,30,0.98)_48%,rgba(5,8,15,1))]"
-    : "bg-[radial-gradient(circle_at_16%_20%,rgba(59,130,246,0.12),transparent_30%),radial-gradient(circle_at_82%_16%,rgba(125,211,252,0.16),transparent_28%),linear-gradient(180deg,rgba(248,250,252,0.99),rgba(239,246,255,1)_48%,rgba(226,232,240,1))]"
+  activeTheme.value === 'dark'
+    ? 'bg-[radial-gradient(circle_at_16%_20%,rgba(56,189,248,0.16),transparent_32%),radial-gradient(circle_at_82%_16%,rgba(96,165,250,0.14),transparent_28%),linear-gradient(180deg,rgba(6,10,18,0.98),rgba(10,17,30,0.98)_48%,rgba(5,8,15,1))]'
+    : 'bg-[radial-gradient(circle_at_16%_20%,rgba(59,130,246,0.12),transparent_30%),radial-gradient(circle_at_82%_16%,rgba(125,211,252,0.16),transparent_28%),linear-gradient(180deg,rgba(248,250,252,0.99),rgba(239,246,255,1)_48%,rgba(226,232,240,1))]'
 );
 const activityTitleClass = computed(() =>
-  activeTheme.value === "dark" ? "text-white" : "text-slate-900"
+  activeTheme.value === 'dark' ? 'text-white' : 'text-slate-900'
 );
 const activityTextClass = computed(() =>
-  activeTheme.value === "dark" ? "text-slate-300" : "text-slate-600"
+  activeTheme.value === 'dark' ? 'text-slate-300' : 'text-slate-600'
 );
-const footprintMapData = computed(() =>
-  buildFootprintMapItems(footprints.value)
-);
+const footprintMapData = computed(() => buildFootprintMapItems(footprints.value));
 const visitedProvinceNames = computed(() => {
   const uniqueProvinceNames = new Set(
     footprintMapData.value
@@ -411,28 +425,28 @@ const footprintStats = computed(() => {
     Number(((unlockedArea / CHINA_TOTAL_AREA) * 100).toFixed(1))
   );
   return [
-    { label: "去过省份", value: `${provinceCount} 个` },
-    { label: "去过城市", value: `${cityCount} 个` },
-    { label: "点亮国土", value: `${unlockedRate}%` },
-    { label: "足迹总数", value: `${footprints.value.length} 条` },
+    { label: '去过省份', value: `${provinceCount} 个` },
+    { label: '去过城市', value: `${cityCount} 个` },
+    { label: '点亮国土', value: `${unlockedRate}%` },
+    { label: '足迹总数', value: `${footprints.value.length} 条` },
   ];
 });
-const heroConfig = computed(() => parseHeroConfig(profile.value));
+const heroConfig = computed(() => heroConfigState.value);
 const heroContentBlocks = computed(() =>
   heroConfig.value.blocks.filter(
-    (block): block is HeroTextBlock | HeroTagsBlock => block.type !== "image"
+    (block): block is HeroTextBlock | HeroTagsBlock => block.type !== 'image'
   )
 );
 const heroImageBlock = computed(() =>
   heroConfig.value.blocks.find(
-    (block): block is HeroImageBlock => block.type === "image"
+    (block): block is HeroImageBlock => block.type === 'image'
   )
 );
 const hasHeroImage = computed(() => !!heroImageBlock.value?.imageUrl);
 const heroGridClass = computed(() =>
   hasHeroImage.value
-    ? "lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]"
-    : "lg:grid-cols-1"
+    ? 'lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]'
+    : 'lg:grid-cols-1'
 );
 const heroInnerClass = computed(() =>
   hasHeroBackground.value
@@ -441,19 +455,19 @@ const heroInnerClass = computed(() =>
 );
 const heroViewportClass = computed(() => {
   if (hasHeroBackground.value) {
-    return "home-hero-viewport home-hero-viewport--with-bg h-full pt-[64px] pb-0 sm:pb-0 sm:pt-[92px] lg:pt-[140px]";
+    return 'home-hero-viewport home-hero-viewport--with-bg h-full pt-[64px] pb-0 sm:pb-0 sm:pt-[92px] lg:pt-[140px]';
   }
-  return "home-hero-viewport h-full pt-[76px] pb-2 sm:pb-3 sm:pt-[96px] lg:pt-[88px]";
+  return 'home-hero-viewport h-full pt-[76px] pb-2 sm:pb-3 sm:pt-[96px] lg:pt-[88px]';
 });
 const heroCopyClass = computed(() =>
   hasHeroBackground.value
-    ? "justify-start gap-3 pt-4 sm:justify-center sm:gap-4 sm:pt-0 lg:justify-start lg:gap-5 lg:pt-0 xl:pt-0"
-    : "justify-start gap-4 pt-4 sm:justify-center sm:pt-0 lg:justify-start lg:pt-0 xl:pt-0"
+    ? 'justify-start gap-3 pt-4 sm:justify-center sm:gap-4 sm:pt-0 lg:justify-start lg:gap-5 lg:pt-0 xl:pt-0'
+    : 'justify-start gap-4 pt-4 sm:justify-center sm:pt-0 lg:justify-start lg:pt-0 xl:pt-0'
 );
 const heroContentClass = computed(() =>
   hasHeroBackground.value
-    ? "justify-start gap-3 sm:justify-center sm:gap-4 lg:justify-start lg:gap-5 lg:pr-8 xl:pr-12"
-    : "justify-start gap-4 sm:justify-center lg:justify-start lg:gap-5 lg:pr-8 xl:pr-12"
+    ? 'justify-start gap-3 sm:justify-center sm:gap-4 lg:justify-start lg:gap-5 lg:pr-8 xl:pr-12'
+    : 'justify-start gap-4 sm:justify-center lg:justify-start lg:gap-5 lg:pr-8 xl:pr-12'
 );
 const heroBackgroundStyle = computed(() => {
   const backgroundImageUrl = heroImageBlock.value?.backgroundImageUrl?.trim();
@@ -467,12 +481,16 @@ const heroBackgroundStyle = computed(() => {
 const hasHeroBackground = computed(
   () => !!heroImageBlock.value?.backgroundImageUrl?.trim()
 );
+const shouldActivateMap = computed(
+  () => hasInitLoadedOnce.value && currentSectionIndex.value >= 1
+);
 
 const scrollContainer = ref<HTMLElement | null>(null);
 const currentSectionIndex = ref(0);
 let wheelHandler: ((event: WheelEvent) => void) | null = null;
 let scrollSyncHandler: (() => void) | null = null;
 let scrollSnapTimer: number | null = null;
+let scrollFrameId: number | null = null;
 let wheelNavigationLocked = false;
 
 function updateTopNavVisibility(): void {
@@ -485,16 +503,18 @@ function unlockWheelNavigation(): void {
 
 function scrollToSection(
   index: number,
-  behavior: ScrollBehavior = "smooth"
+  behavior: ScrollBehavior = 'smooth'
 ): void {
   const el = scrollContainer.value;
   if (!el) {
     return;
   }
-  const maxIndex = 2;
+  const maxIndex = HOME_SECTION_COUNT - 1;
   const nextIndex = Math.max(0, Math.min(index, maxIndex));
-  currentSectionIndex.value = nextIndex;
-  updateTopNavVisibility();
+  if (nextIndex !== currentSectionIndex.value) {
+    currentSectionIndex.value = nextIndex;
+    updateTopNavVisibility();
+  }
   el.scrollTo({
     top: nextIndex * el.clientHeight,
     behavior,
@@ -506,11 +526,24 @@ function syncCurrentSectionFromScroll(): void {
   if (!el || el.clientHeight <= 0) {
     return;
   }
-  const nextIndex = Math.round(el.scrollTop / el.clientHeight);
+  const nextIndex = Math.max(
+    0,
+    Math.min(HOME_SECTION_COUNT - 1, Math.round(el.scrollTop / el.clientHeight))
+  );
   if (nextIndex !== currentSectionIndex.value) {
     currentSectionIndex.value = nextIndex;
     updateTopNavVisibility();
   }
+}
+
+function scheduleScrollSync(): void {
+  if (scrollFrameId !== null) {
+    return;
+  }
+  scrollFrameId = window.requestAnimationFrame(() => {
+    scrollFrameId = null;
+    syncCurrentSectionFromScroll();
+  });
 }
 
 function clearScrollSnapTimer(): void {
@@ -520,21 +553,42 @@ function clearScrollSnapTimer(): void {
   }
 }
 
+function clearScrollFrame(): void {
+  if (scrollFrameId !== null) {
+    window.cancelAnimationFrame(scrollFrameId);
+    scrollFrameId = null;
+  }
+}
+
 function isTagsBlock(
   block: HeroTextBlock | HeroTagsBlock
 ): block is HeroTagsBlock {
-  return block.type === "tags";
+  return block.type === 'tags';
+}
+
+async function finishInitLoading(): Promise<void> {
+  await nextTick();
+  window.setTimeout(() => {
+    isAboveFoldReady.value = true;
+    isInitLoading.value = false;
+    hasInitLoadedOnce.value = true;
+  }, 180);
 }
 
 async function loadHomeData(): Promise<void> {
+  heroConfigState.value = createDefaultHeroConfig(profile.value);
+  isHeroReady.value = false;
   const response = await getHomeData();
   homeData.value = response.data ?? {};
+  heroConfigState.value = resolveHeroConfig(homeData.value.profile);
+  isHeroReady.value = true;
+  await finishInitLoading();
 }
 
 onMounted(() => {
   currentSectionIndex.value = 0;
   updateTopNavVisibility();
-  void recordSiteVisit("home");
+  void recordSiteVisit('home');
   void loadHomeData();
 
   const el = scrollContainer.value;
@@ -553,27 +607,28 @@ onMounted(() => {
   };
 
   scrollSyncHandler = () => {
-    syncCurrentSectionFromScroll();
+    scheduleScrollSync();
     clearScrollSnapTimer();
     scrollSnapTimer = window.setTimeout(() => {
-      scrollToSection(currentSectionIndex.value, "smooth");
+      scrollToSection(currentSectionIndex.value, 'smooth');
       unlockWheelNavigation();
     }, 260);
   };
 
-  el.addEventListener("wheel", wheelHandler, { passive: false });
-  el.addEventListener("scroll", scrollSyncHandler, { passive: true });
+  el.addEventListener('wheel', wheelHandler, { passive: false });
+  el.addEventListener('scroll', scrollSyncHandler, { passive: true });
 });
 
 onBeforeUnmount(() => {
   const el = scrollContainer.value;
   if (el && wheelHandler) {
-    el.removeEventListener("wheel", wheelHandler);
+    el.removeEventListener('wheel', wheelHandler);
   }
   if (el && scrollSyncHandler) {
-    el.removeEventListener("scroll", scrollSyncHandler);
+    el.removeEventListener('scroll', scrollSyncHandler);
   }
   clearScrollSnapTimer();
+  clearScrollFrame();
   unlockWheelNavigation();
   setTopNavVisible?.(true);
 });
