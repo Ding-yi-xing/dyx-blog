@@ -73,7 +73,89 @@ type EncodeOffset = [number, number];
 type EncodeOffsetPolygon = EncodeOffset[];
 type EncodeOffsetMultiPolygon = EncodeOffsetPolygon[];
 
-import worldCitiesGeoJson from '@/assets/world-cities.geojson';
+import worldCitiesGeoJsonText from '@/assets/world-cities.geojson?raw';
+
+function decodePolygonRing(encodedRing: EncodedRing, encodeOffset: EncodeOffset): [number, number][] {
+  if (!encodedRing || !Array.isArray(encodeOffset) || encodeOffset.length < 2) {
+    return [];
+  }
+
+  const result: [number, number][] = [];
+  let prevX = Number(encodeOffset[0]);
+  let prevY = Number(encodeOffset[1]);
+
+  for (let index = 0; index < encodedRing.length; index += 2) {
+    let x = encodedRing.charCodeAt(index) - 64;
+    let y = encodedRing.charCodeAt(index + 1) - 64;
+
+    x = (x >> 1) ^ -(x & 1);
+    y = (y >> 1) ^ -(y & 1);
+    x += prevX;
+    y += prevY;
+    prevX = x;
+    prevY = y;
+
+    result.push([x / 1024, y / 1024]);
+  }
+
+  return result;
+}
+
+function decodeGeometry(
+  geometry?: GeoJsonFeature['geometry']
+): GeoJsonFeature['geometry'] {
+  if (!geometry?.type || !geometry.coordinates || !geometry.encodeOffsets) {
+    return geometry;
+  }
+
+  if (geometry.type === 'Polygon') {
+    const coordinates = geometry.coordinates as EncodedPolygon;
+    const encodeOffsets = geometry.encodeOffsets as EncodeOffsetPolygon;
+    return {
+      ...geometry,
+      coordinates: coordinates.map((ring, index) =>
+        decodePolygonRing(ring, encodeOffsets[index] ?? [0, 0])
+      )
+    };
+  }
+
+  if (geometry.type === 'MultiPolygon') {
+    const coordinates = geometry.coordinates as EncodedMultiPolygon;
+    const encodeOffsets = geometry.encodeOffsets as EncodeOffsetMultiPolygon;
+    return {
+      ...geometry,
+      coordinates: coordinates.map((polygon, polygonIndex) =>
+        polygon.map((ring, ringIndex) =>
+          decodePolygonRing(
+            ring,
+            encodeOffsets[polygonIndex]?.[ringIndex] ?? [0, 0]
+          )
+        )
+      )
+    };
+  }
+
+  return geometry;
+}
+
+function normalizeGeoJsonCollection(collection: GeoJsonCollection): GeoJsonCollection {
+  if (!collection?.features?.length) {
+    return collection;
+  }
+
+  if (!collection.UTF8Encoding) {
+    return collection;
+  }
+
+  return {
+    ...collection,
+    UTF8Encoding: false,
+    features: collection.features.map((feature) => ({
+      ...feature,
+      geometry: decodeGeometry(feature.geometry)
+    }))
+  };
+}
 
 function unwrapModuleExport<T>(value: T | { default?: T }): T {
   if (value && typeof value === 'object' && 'default' in value) {
@@ -88,7 +170,9 @@ const normalizedChinaGeoJson = normalizeGeoJsonCollection(
 const normalizedWorldGeoJson = normalizeGeoJsonCollection(
   unwrapModuleExport(worldGeoJson as GeoJsonCollection | { default?: GeoJsonCollection })
 );
-const normalizedWorldCitiesGeoJson = unwrapModuleExport(worldCitiesGeoJson);
+const normalizedWorldCitiesGeoJson = JSON.parse(
+  unwrapModuleExport(worldCitiesGeoJsonText)
+) as { features?: Array<any> };
 const normalizedProvinceGeoCollection = unwrapModuleExport(
   provinceGeoCollection as Record<string, GeoJsonCollection | undefined> | { default?: Record<string, GeoJsonCollection | undefined> }
 );

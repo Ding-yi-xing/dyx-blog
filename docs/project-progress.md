@@ -6,7 +6,7 @@
 - 项目定位：个人品牌主页 + 求职简历展示 + 博客内容站 + 后台管理系统
 - 前端技术：Vue 3、TypeScript、Pinia、Vue Router、Axios、Tailwind CSS、Element Plus
 - 后端技术：Spring Boot 3、MyBatis-Plus、MySQL、JWT、本地媒体存储
-- 管理方式：前台与后台共用一个前端项目，通过 `/admin` 路由分区
+- 管理方式：前台与后台共用一个前端项目，通过 `/dyx-manager` 路由分区
 
 ## 2. 当前功能模块划分
 
@@ -110,7 +110,7 @@
 - [x] 完成足迹时间格式解析修复
 - [x] 完成首页足迹地图高亮透明度收敛
 - [x] 完成冗余硬编码逻辑清理（ensureTable/Column）
-- [x] 完成数据库脚本标准化（schema.sql）
+- [x] 完成数据库初始化脚本整理（dyx-blog-init.sql）
 - [x] 完成 API 返回体 DTO 封装优化
 
 ## 5. 当前已实现内容
@@ -153,7 +153,7 @@
 **访问日志分页与前台 UI 重构**
 
 - [x] 为访问日志功能添加分页查看功能，确保实现完整的分页逻辑，包括页码导航、每页显示数量设置、总页数计算等功能
-  - 后端：`/api/admin/visit-logs` 已支持 `page` / `pageSize`，并返回带 `total/page/pageSize` 的分页数据
+  - 后端：`/api/dyx-manager/visit-logs` 已支持 `page` / `pageSize`，并返回带 `total/page/pageSize` 的分页数据
   - 前端：`AdminVisitLogsView.vue` 已接入 Element Plus 分页组件，支持切页与动态调整每页数量
 - [x] 使用已安装的 skill 对博客页面进行 UI 重构，保持原有页面逻辑不变
   - 已经对 Home / BlogList / BlogDetail 的配色、布局与动效做第一轮重构
@@ -167,7 +167,7 @@
 ### **第二阶段：代码精简与数据库迁移 (已完成)**
 
 - [x] **移除冗余代码**：清理了 `AdminServiceImpl`、`SiteServiceImpl` 和 `BlogApplication` 中重复的 `ensureTable` 和 `ensureColumn` 硬编码逻辑。
-- [x] **数据库脚本标准化**：将所有初始化 DDL 提取到 `backend/src/main/resources/schema.sql`。
+- [x] **数据库初始化脚本整理**：当前仓库已统一保留 `backend/src/main/resources/sql/dyx-blog-init.sql` 作为初始化脚本入口，并同步维护表结构与默认数据。
 - [x] **API 结构优化**：引入 `DashboardSummaryDTO`、`HomeDataDTO`、`PageResult` 等 DTO 统一返回体封装，移除不必要的 Map 嵌套。
 - [x] **性能增强**：后端引入了基于 Spring Cache 的本地缓存机制，优化了前台高频接口的响应速度。
 
