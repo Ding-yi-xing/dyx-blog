@@ -224,22 +224,34 @@ export interface AdminListUserData {
 }
 
 /**
- * 调用后台仪表盘摘要接口。
+ * 获取后台仪表盘摘要数据。
+ *
+ * @returns 返回后台首页统计卡片、访问趋势和热门页面等摘要数据。
+ * @throws 该函数不会主动抛出同步异常；接口失败时会以 Promise reject 形式返回。
+ * @author Dyx
  */
 export function getDashboardSummary() {
   return adminHttp.get('/dyx-manager/dashboard/summary');
 }
 
 /**
- * 调用后台文章列表接口。
+ * 获取后台文章列表。
+ *
+ * @returns 返回后台文章管理页所需的文章列表数据。
+ * @throws 该函数不会主动抛出同步异常；接口失败时会以 Promise reject 形式返回。
+ * @author Dyx
  */
 export function getAdminPosts() {
   return adminHttp.get('/dyx-manager/posts');
 }
 
 /**
- * 调用后台文章保存接口。
- * @param payload 文章表单数据。
+ * 保存后台文章数据。
+ *
+ * @param payload 文章表单数据；带有 id 时更新现有文章，否则创建新文章。
+ * @returns 返回保存后的文章数据。
+ * @throws 该函数不会主动抛出同步异常；保存失败、校验不通过或权限不足时会以 Promise reject 形式返回。
+ * @author Dyx
  */
 export function saveAdminPost(payload: Partial<PostData>) {
   if (payload.id) {
@@ -249,23 +261,35 @@ export function saveAdminPost(payload: Partial<PostData>) {
 }
 
 /**
- * 调用后台文章删除接口。
+ * 删除后台文章。
+ *
  * @param id 文章主键。
+ * @returns 返回删除接口的 Promise 结果。
+ * @throws 该函数不会主动抛出同步异常；删除失败或权限不足时会以 Promise reject 形式返回。
+ * @author Dyx
  */
 export function deleteAdminPost(id: number) {
   return adminHttp.delete(`/dyx-manager/posts/${id}`);
 }
 
 /**
- * 调用后台动态列表接口。
+ * 获取后台动态列表。
+ *
+ * @returns 返回后台动态管理页所需的动态列表数据。
+ * @throws 该函数不会主动抛出同步异常；接口失败时会以 Promise reject 形式返回。
+ * @author Dyx
  */
 export function getAdminMoments() {
   return adminHttp.get('/dyx-manager/moments');
 }
 
 /**
- * 调用后台动态保存接口。
- * @param payload 动态表单数据。
+ * 保存后台动态数据。
+ *
+ * @param payload 动态表单数据；带有 id 时更新现有动态，否则创建新动态。
+ * @returns 返回保存后的动态数据。
+ * @throws 该函数不会主动抛出同步异常；保存失败、校验不通过或权限不足时会以 Promise reject 形式返回。
+ * @author Dyx
  */
 export function saveAdminMoment(payload: Partial<MomentData>) {
   if (payload.id) {
@@ -275,23 +299,35 @@ export function saveAdminMoment(payload: Partial<MomentData>) {
 }
 
 /**
- * 调用后台动态删除接口。
+ * 删除后台动态。
+ *
  * @param id 动态主键。
+ * @returns 返回删除接口的 Promise 结果。
+ * @throws 该函数不会主动抛出同步异常；删除失败或权限不足时会以 Promise reject 形式返回。
+ * @author Dyx
  */
 export function deleteAdminMoment(id: number) {
   return adminHttp.delete(`/dyx-manager/moments/${id}`);
 }
 
 /**
- * 调用后台项目列表接口。
+ * 获取后台项目列表。
+ *
+ * @returns 返回后台项目管理页所需的项目列表数据。
+ * @throws 该函数不会主动抛出同步异常；接口失败时会以 Promise reject 形式返回。
+ * @author Dyx
  */
 export function getAdminProjects() {
   return adminHttp.get('/dyx-manager/projects');
 }
 
 /**
- * 调用后台项目保存接口。
- * @param payload 项目表单数据。
+ * 保存后台项目数据。
+ *
+ * @param payload 项目表单数据；带有 id 时更新现有项目，否则创建新项目。
+ * @returns 返回保存后的项目数据。
+ * @throws 该函数不会主动抛出同步异常；保存失败、校验不通过或权限不足时会以 Promise reject 形式返回。
+ * @author Dyx
  */
 export function saveAdminProject(payload: Partial<ProjectData>) {
   if (payload.id) {
@@ -301,23 +337,35 @@ export function saveAdminProject(payload: Partial<ProjectData>) {
 }
 
 /**
- * 调用后台项目删除接口。
+ * 删除后台项目。
+ *
  * @param id 项目主键。
+ * @returns 返回删除接口的 Promise 结果。
+ * @throws 该函数不会主动抛出同步异常；删除失败或权限不足时会以 Promise reject 形式返回。
+ * @author Dyx
  */
 export function deleteAdminProject(id: number) {
   return adminHttp.delete(`/dyx-manager/projects/${id}`);
 }
 
 /**
- * 调用后台作品列表接口。
+ * 获取后台作品列表。
+ *
+ * @returns 返回后台作品管理页所需的作品列表数据。
+ * @throws 该函数不会主动抛出同步异常；接口失败时会以 Promise reject 形式返回。
+ * @author Dyx
  */
 export function getAdminWorks() {
   return adminHttp.get('/dyx-manager/works');
 }
 
 /**
- * 调用后台作品保存接口。
- * @param payload 作品表单数据。
+ * 保存后台作品数据。
+ *
+ * @param payload 作品表单数据；带有 id 时更新现有作品，否则创建新作品。
+ * @returns 返回保存后的作品数据。
+ * @throws 该函数不会主动抛出同步异常；保存失败、校验不通过或权限不足时会以 Promise reject 形式返回。
+ * @author Dyx
  */
 export function saveAdminWork(payload: Partial<WorkData>) {
   if (payload.id) {
@@ -327,23 +375,35 @@ export function saveAdminWork(payload: Partial<WorkData>) {
 }
 
 /**
- * 调用后台作品删除接口。
+ * 删除后台作品。
+ *
  * @param id 作品主键。
+ * @returns 返回删除接口的 Promise 结果。
+ * @throws 该函数不会主动抛出同步异常；删除失败或权限不足时会以 Promise reject 形式返回。
+ * @author Dyx
  */
 export function deleteAdminWork(id: number) {
   return adminHttp.delete(`/dyx-manager/works/${id}`);
 }
 
 /**
- * 调用后台荣誉列表接口。
+ * 获取后台荣誉列表。
+ *
+ * @returns 返回后台荣誉管理页所需的荣誉列表数据。
+ * @throws 该函数不会主动抛出同步异常；接口失败时会以 Promise reject 形式返回。
+ * @author Dyx
  */
 export function getAdminHonors() {
   return adminHttp.get('/dyx-manager/honors');
 }
 
 /**
- * 调用后台荣誉保存接口。
- * @param payload 荣誉表单数据。
+ * 保存后台荣誉数据。
+ *
+ * @param payload 荣誉表单数据；带有 id 时更新现有荣誉，否则创建新荣誉。
+ * @returns 返回保存后的荣誉数据。
+ * @throws 该函数不会主动抛出同步异常；保存失败、校验不通过或权限不足时会以 Promise reject 形式返回。
+ * @author Dyx
  */
 export function saveAdminHonor(payload: Partial<HonorData>) {
   if (payload.id) {
@@ -353,23 +413,35 @@ export function saveAdminHonor(payload: Partial<HonorData>) {
 }
 
 /**
- * 调用后台荣誉删除接口。
+ * 删除后台荣誉。
+ *
  * @param id 荣誉主键。
+ * @returns 返回删除接口的 Promise 结果。
+ * @throws 该函数不会主动抛出同步异常；删除失败或权限不足时会以 Promise reject 形式返回。
+ * @author Dyx
  */
 export function deleteAdminHonor(id: number) {
   return adminHttp.delete(`/dyx-manager/honors/${id}`);
 }
 
 /**
- * 调用后台足迹列表接口。
+ * 获取后台足迹列表。
+ *
+ * @returns 返回后台足迹管理页所需的足迹列表数据。
+ * @throws 该函数不会主动抛出同步异常；接口失败时会以 Promise reject 形式返回。
+ * @author Dyx
  */
 export function getAdminFootprints() {
   return adminHttp.get('/dyx-manager/footprints');
 }
 
 /**
- * 调用后台足迹保存接口。
- * @param payload 足迹表单数据。
+ * 保存后台足迹数据。
+ *
+ * @param payload 足迹表单数据；带有 id 时更新现有足迹，否则创建新足迹。
+ * @returns 返回保存后的足迹数据。
+ * @throws 该函数不会主动抛出同步异常；保存失败、校验不通过或权限不足时会以 Promise reject 形式返回。
+ * @author Dyx
  */
 export function saveAdminFootprint(payload: Partial<FootprintData>) {
   if (payload.id) {
@@ -379,79 +451,120 @@ export function saveAdminFootprint(payload: Partial<FootprintData>) {
 }
 
 /**
- * 调用后台足迹删除接口。
+ * 删除后台足迹。
+ *
  * @param id 足迹主键。
+ * @returns 返回删除接口的 Promise 结果。
+ * @throws 该函数不会主动抛出同步异常；删除失败或权限不足时会以 Promise reject 形式返回。
+ * @author Dyx
  */
 export function deleteAdminFootprint(id: number) {
   return adminHttp.delete(`/dyx-manager/footprints/${id}`);
 }
 
 /**
- * 调用后台首页横幅查询接口。
+ * 获取后台首页 Hero 配置。
+ *
+ * @returns 返回首页 Hero 编辑页所需的资料数据。
+ * @throws 该函数不会主动抛出同步异常；接口失败时会以 Promise reject 形式返回。
+ * @author Dyx
  */
 export function getAdminHeroProfile() {
   return adminHttp.get('/dyx-manager/profile/hero');
 }
 
 /**
- * 调用后台首页横幅更新接口。
+ * 更新后台首页 Hero 配置。
+ *
  * @param payload 首页横幅表单数据。
+ * @returns 返回更新后的首页 Hero 资料数据。
+ * @throws 该函数不会主动抛出同步异常；保存失败、校验不通过或权限不足时会以 Promise reject 形式返回。
+ * @author Dyx
  */
 export function updateAdminHeroProfile(payload: ProfileData) {
   return adminHttp.put('/dyx-manager/profile/hero', payload);
 }
 
 /**
- * 调用后台个人资料查询接口。
+ * 获取后台个人资料。
+ *
+ * @returns 返回 About、Resume 等管理页共用的资料数据。
+ * @throws 该函数不会主动抛出同步异常；接口失败时会以 Promise reject 形式返回。
+ * @author Dyx
  */
 export function getAdminProfile() {
   return adminHttp.get('/dyx-manager/profile');
 }
 
 /**
- * 调用后台个人资料更新接口。
+ * 更新后台个人资料。
+ *
  * @param payload 个人资料表单数据。
+ * @returns 返回更新后的个人资料数据。
+ * @throws 该函数不会主动抛出同步异常；保存失败、校验不通过或权限不足时会以 Promise reject 形式返回。
+ * @author Dyx
  */
 export function updateAdminProfile(payload: ProfileData) {
   return adminHttp.put('/dyx-manager/profile', payload);
 }
 
 /**
- * 调用后台系统配置查询接口。
+ * 获取后台系统配置。
+ *
+ * @returns 返回系统配置管理页所需的数据。
+ * @throws 该函数不会主动抛出同步异常；接口失败时会以 Promise reject 形式返回。
+ * @author Dyx
  */
 export function getAdminSystemConfig() {
   return adminHttp.get('/dyx-manager/system-config');
 }
 
 /**
- * 调用后台系统配置更新接口。
+ * 更新后台系统配置。
+ *
  * @param payload 系统配置表单数据。
+ * @returns 返回更新后的系统配置数据。
+ * @throws 该函数不会主动抛出同步异常；保存失败、校验不通过或权限不足时会以 Promise reject 形式返回。
+ * @author Dyx
  */
 export function updateAdminSystemConfig(payload: SystemConfigData) {
   return adminHttp.put('/dyx-manager/system-config', payload);
 }
 
 /**
- * 调用后台媒体列表接口。
+ * 获取后台媒体列表。
+ *
+ * @returns 返回后台媒体管理页所需的媒体列表数据。
+ * @throws 该函数不会主动抛出同步异常；接口失败时会以 Promise reject 形式返回。
+ * @author Dyx
  */
 export function getAdminMedia() {
   return adminHttp.get('/dyx-manager/media');
 }
 
 /**
- * 调用后台媒体删除接口。
+ * 删除后台媒体资源。
+ *
  * @param id 媒体主键。
+ * @returns 返回删除接口的 Promise 结果。
+ * @throws 该函数不会主动抛出同步异常；删除失败、资源被引用或权限不足时会以 Promise reject 形式返回。
+ * @author Dyx
  */
 export function deleteAdminMedia(id: string | number) {
   return adminHttp.delete(`/dyx-manager/media/${id}`);
 }
 
 /**
- * 导入 uploads 目录下已存在文件。
+ * 导入 uploads 目录下已存在的媒体文件。
+ *
+ * @returns 返回媒体导入接口的 Promise 结果。
+ * @throws 该函数不会主动抛出同步异常；导入失败或权限不足时会以 Promise reject 形式返回。
+ * @author Dyx
  */
 export function importExistingAdminMedia() {
   return adminHttp.post('/dyx-manager/media/import-existing');
 }
+
 
 /**
  * 获取后台用户列表。

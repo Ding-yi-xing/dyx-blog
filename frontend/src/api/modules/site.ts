@@ -271,6 +271,22 @@ export function parseHeroConfig(profile?: Pick<ProfileData, 'heroConfig' | 'site
   }
 }
 
+const heroConfigCache = new Map<string, HeroConfigData>();
+
+export function resolveHeroConfig(profile?: Pick<ProfileData, 'heroConfig' | 'siteTitle' | 'heroTitle' | 'heroSubtitle' | 'avatarUrl'>): HeroConfigData {
+  const rawHeroConfig = profile?.heroConfig?.trim();
+  if (!rawHeroConfig) {
+    return createDefaultHeroConfig(profile);
+  }
+  const cached = heroConfigCache.get(rawHeroConfig);
+  if (cached) {
+    return cached;
+  }
+  const resolved = parseHeroConfig(profile);
+  heroConfigCache.set(rawHeroConfig, resolved);
+  return resolved;
+}
+
 /**
  * 解析资料中的联系方式配置并过滤无效项。
  *

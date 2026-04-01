@@ -1,3 +1,6 @@
+/**
+ * 浏览器全局 Window 上补充的高德地图相关字段声明。
+ */
 interface Window {
   AMap?: AMapNamespace;
   _AMapSecurityConfig?: {
@@ -5,16 +8,25 @@ interface Window {
   };
 }
 
+/**
+ * 高德地图实例类型别名。
+ */
 type AMapMap = InstanceType<AMapNamespace['Map']>;
 type AMapMarker = InstanceType<AMapNamespace['Marker']>;
 type AMapPolygon = InstanceType<AMapNamespace['Polygon']>;
 type AMapText = InstanceType<AMapNamespace['Text']>;
 
+/**
+ * 高德地图像素坐标声明。
+ */
 interface AMapPixel {
   x: number;
   y: number;
 }
 
+/**
+ * 高德地图文本样式声明。
+ */
 interface AMapTextStyle {
   'font-size'?: string;
   'font-weight'?: string;
@@ -24,6 +36,9 @@ interface AMapTextStyle {
   border?: string;
 }
 
+/**
+ * 高德地图文本覆盖物参数声明。
+ */
 interface AMapTextOptions {
   text?: string;
   position: [number, number];
@@ -31,6 +46,7 @@ interface AMapTextOptions {
   offset?: AMapPixel;
   style?: AMapTextStyle;
   zIndex?: number;
+  visible?: boolean;
 }
 
 interface AMapLngLatLike {
@@ -38,11 +54,17 @@ interface AMapLngLatLike {
   lat: number;
 }
 
+/**
+ * 带事件监听能力的高德地图对象基础声明。
+ */
 interface AMapEventCapable {
   on(eventName: string, handler: (...args: any[]) => void): void;
   off(eventName: string, handler: (...args: any[]) => void): void;
 }
 
+/**
+ * 高德地图实例初始化参数声明。
+ */
 interface AMapMapOptions {
   viewMode?: '2D' | '3D';
   zoom?: number;
@@ -64,6 +86,9 @@ interface AMapMapOptions {
   features?: string[];
 }
 
+/**
+ * 高德世界行政区图层样式参数声明。
+ */
 interface AMapDistrictLayerStyleOptions {
   'stroke-width'?: number;
   'stroke-color'?: string;
@@ -85,6 +110,9 @@ interface AMapDistrictLayerInstance {
   setStyles(styles: AMapDistrictLayerStyleOptions): void;
 }
 
+/**
+ * 高德地图点标记参数声明。
+ */
 interface AMapMarkerOptions {
   position: [number, number];
   anchor?: string;
@@ -95,6 +123,9 @@ interface AMapMarkerOptions {
   title?: string;
 }
 
+/**
+ * 高德地图多边形参数声明。
+ */
 interface AMapPolygonOptions {
   path: [number, number][];
   strokeColor?: string;
@@ -107,6 +138,9 @@ interface AMapPolygonOptions {
   visible?: boolean;
 }
 
+/**
+ * 高德地图 Map 类型声明。
+ */
 declare class AMapMapClass implements AMapEventCapable {
   constructor(container: HTMLElement, options?: AMapMapOptions);
   add(overlays: unknown | unknown[]): void;
@@ -124,22 +158,35 @@ declare class AMapMapClass implements AMapEventCapable {
   off(eventName: 'complete', handler: () => void): void;
 }
 
+/**
+ * 高德地图 Marker 类型声明。
+ */
 declare class AMapMarkerClass implements AMapEventCapable {
   constructor(options?: AMapMarkerOptions);
   setMap(map: AMapMap | null): void;
+  getMap(): AMapMap | null;
+  setContent(content: string): void;
+  setzIndex(zIndex: number): void;
   on(eventName: string, handler: (...args: any[]) => void): void;
   off(eventName: string, handler: (...args: any[]) => void): void;
 }
 
+/**
+ * 高德地图 Polygon 类型声明。
+ */
 declare class AMapPolygonClass implements AMapEventCapable {
   constructor(options?: AMapPolygonOptions);
   setMap(map: AMapMap | null): void;
+  setOptions(options: Partial<AMapPolygonOptions>): void;
   on(eventName: string, handler: (...args: any[]) => void): void;
   off(eventName: string, handler: (...args: any[]) => void): void;
   show(): void;
   hide(): void;
 }
 
+/**
+ * 高德地图世界行政区图层声明。
+ */
 declare class AMapDistrictLayerWorldClass implements AMapDistrictLayerInstance {
   constructor(options?: AMapDistrictLayerWorldOptions);
   setMap(map: AMapMap | null): void;
@@ -150,13 +197,22 @@ interface AMapDistrictLayerNamespace {
   World: typeof AMapDistrictLayerWorldClass;
 }
 
+/**
+ * 高德地图文本覆盖物声明。
+ */
 declare class AMapTextClass implements AMapEventCapable {
   constructor(options?: AMapTextOptions);
   setMap(map: AMapMap | null): void;
+  setOptions(options: Partial<AMapTextOptions>): void;
+  show(): void;
+  hide(): void;
   on(eventName: string, handler: (...args: any[]) => void): void;
   off(eventName: string, handler: (...args: any[]) => void): void;
 }
 
+/**
+ * 高德地图全局命名空间声明。
+ */
 interface AMapNamespace {
   Map: typeof AMapMapClass;
   Marker: typeof AMapMarkerClass;

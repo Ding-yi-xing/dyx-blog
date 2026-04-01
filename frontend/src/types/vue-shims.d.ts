@@ -1,3 +1,6 @@
+/**
+ * Vue 单文件组件与外部地图数据模块的类型补充声明。
+ */
 declare module '*.vue' {
   import type { DefineComponent } from 'vue';
   const component: DefineComponent<Record<string, never>, Record<string, never>, any>;
