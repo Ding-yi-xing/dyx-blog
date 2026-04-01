@@ -53,17 +53,35 @@ import type { DeviceTypeStat, VisitTrendPoint } from '@/api/modules/admin';
 
 use([CanvasRenderer, LineChart, PieChart, GridComponent, TooltipComponent, LegendComponent]);
 
+/**
+ * 后台仪表盘图表组件。
+ * 负责根据摘要接口返回的数据渲染访问趋势折线图与设备分布饼图。
+ */
 const props = defineProps<{
   trendPoints: VisitTrendPoint[];
   deviceStats: DeviceTypeStat[];
 }>();
 
+/**
+ * 判断是否存在可展示的趋势图数据。
+ */
 const hasTrendData = computed(() => props.trendPoints.some((item) => Number(item.visitCount) > 0));
+
+/**
+ * 判断是否存在可展示的设备分布数据。
+ */
 const hasDeviceData = computed(() => props.deviceStats.some((item) => Number(item.visitCount) > 0));
+
+/**
+ * 汇总最近七天总访问量，用于卡片头部展示。
+ */
 const recentSevenDaysVisits = computed(() =>
   props.trendPoints.reduce((total, item) => total + Number(item.visitCount ?? 0), 0)
 );
 
+/**
+ * 生成访问趋势折线图配置。
+ */
 const trendChartOption = computed(() => ({
   tooltip: {
     trigger: 'axis',
@@ -142,6 +160,9 @@ const trendChartOption = computed(() => ({
   ]
 }));
 
+/**
+ * 生成设备分布饼图配置。
+ */
 const deviceChartOption = computed(() => ({
   tooltip: {
     trigger: 'item',

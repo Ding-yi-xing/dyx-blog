@@ -203,6 +203,10 @@ import { getAdminMediaContentUrl } from "@/api/modules/admin";
 import { extractFileName } from "@/utils/media";
 import type { CropConfirmPayload, CropMode } from "@/types/media";
 
+/**
+ * 图片裁剪器实例的最小类型声明。
+ * 用于约束当前组件会访问到的 vue-cropper 内部方法与尺寸字段。
+ */
 interface CropperInstance {
   changeScale: (delta: number) => void;
   rotateLeft: () => void;
@@ -222,6 +226,10 @@ interface CropPreviewData {
   h?: number;
 }
 
+/**
+ * 图片裁剪弹窗组件。
+ * 负责根据不同业务裁剪模式渲染裁剪器、预览面板以及导出确认结果。
+ */
 const props = defineProps<{
   visible: boolean;
   imageUrl?: string;
@@ -234,6 +242,10 @@ const emit = defineEmits<{
   (event: "confirm", value: CropConfirmPayload): void;
 }>();
 
+/**
+ * 裁剪器运行时状态。
+ * 包括实例引用、导出状态、实时预览以及编辑行为标记。
+ */
 const cropperRef = ref<CropperInstance | null>(null);
 const exporting = ref(false);
 const cropperKey = ref(0);
@@ -241,6 +253,9 @@ const preview = ref<CropPreviewData>({});
 const edited = ref(false);
 const pointerStart = ref<{ x: number; y: number } | null>(null);
 
+/**
+ * 根据裁剪模式返回弹窗标题、说明文案与固定裁剪比例。
+ */
 const config = computed(() => {
   if (props.mode === "avatar") {
     return {
@@ -269,6 +284,9 @@ const config = computed(() => {
   };
 });
 
+/**
+ * 将后台存储路径转换为可预览的媒体访问地址。
+ */
 const cropSourceUrl = computed(() => {
   const imageUrl = props.imageUrl?.trim();
   return imageUrl ? getAdminMediaContentUrl(imageUrl) : "";
@@ -280,6 +298,9 @@ const previewFrameStyle = computed(() => ({
   overflow: "hidden",
 }));
 
+/**
+ * 监听弹窗显示状态与图片来源变化，重置裁剪器内部状态。
+ */
 watch(
   () => [props.visible, props.imageUrl, props.mode],
   async ([visible, imageUrl]) => {
@@ -299,14 +320,38 @@ watch(
   { immediate: true }
 );
 
+/**
+ * 同步 vue-cropper 实时输出的预览样式与尺寸数据。
+ *
+ * @param data 当前裁剪区域对应的预览结构。
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；仅更新本地预览状态。
+ * @author Dyx
+ */
 function handleRealtime(data: CropPreviewData): void {
   preview.value = data;
 }
 
+/**
+ * 记录首次按下指针时的位置，用于判断用户是否实际拖动过裁剪区域。
+ *
+ * @param event 当前指针事件对象。
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；仅记录本地指针起点。
+ * @author Dyx
+ */
 function handlePointerDown(event: PointerEvent): void {
   pointerStart.value = { x: event.clientX, y: event.clientY };
 }
 
+/**
+ * 在拖动过程中判断位移是否超过阈值，超过后标记为已编辑。
+ *
+ * @param event 当前指针事件对象。
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；仅更新是否已编辑的状态。
+ * @author Dyx
+ */
 function handlePointerMove(event: PointerEvent): void {
   if (!pointerStart.value || edited.value) {
     return;
@@ -318,19 +363,50 @@ function handlePointerMove(event: PointerEvent): void {
   }
 }
 
+/**
+ * 清理当前指针起点记录，结束一次拖动检测。
+ *
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；仅重置本地指针状态。
+ * @author Dyx
+ */
 function handlePointerUp(): void {
   pointerStart.value = null;
 }
 
+/**
+ * 手动将当前图片标记为已编辑。
+ * 供滚轮缩放等无法通过拖动距离判断的交互复用。
+ *
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；仅更新编辑标记。
+ * @author Dyx
+ */
 function markEdited(): void {
   edited.value = true;
 }
 
+/**
+ * 调整裁剪画面的缩放比例。
+ *
+ * @param delta 缩放增量，正数表示放大，负数表示缩小。
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；裁剪器未就绪时会安全跳过。
+ * @author Dyx
+ */
 function handleZoom(delta: number): void {
   edited.value = true;
   cropperRef.value?.changeScale(delta);
 }
 
+/**
+ * 按指定方向旋转裁剪画面。
+ *
+ * @param degree 旋转角度，正数向右旋转，负数向左旋转。
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；裁剪器未就绪时会安全跳过。
+ * @author Dyx
+ */
 function handleRotate(degree: number): void {
   edited.value = true;
   if (degree > 0) {
@@ -340,6 +416,15 @@ function handleRotate(degree: number): void {
   }
 }
 
+/**
+ * 在图片加载成功后，将裁剪框尺寸初始化为原图尺寸。
+ * 这样用户未做任何调整时，确认按钮会直接复用原图而不是输出新的裁剪结果。
+ *
+ * @param status vue-cropper 返回的图片加载状态。
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；内部尺寸字段不可用时会保持当前默认裁剪框。
+ * @author Dyx
+ */
 function handleImgLoad(status: string): void {
   if (status === "success") {
     // 图片加载成功后，将裁剪框设置为图片原始大小，实现默认全选
@@ -361,6 +446,13 @@ function handleImgLoad(status: string): void {
   }
 }
 
+/**
+ * 重置裁剪器与预览状态，并通过更新 key 强制重新创建裁剪实例。
+ *
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；仅重置本地状态。
+ * @author Dyx
+ */
 function handleReset(): void {
   cropperRef.value = null;
   preview.value = {};
@@ -369,6 +461,13 @@ function handleReset(): void {
   cropperKey.value += 1;
 }
 
+/**
+ * 确认当前裁剪结果，并根据是否真的编辑过决定复用原图还是导出新文件。
+ *
+ * @returns 返回异步处理结果；完成后会向父组件发出确认事件并关闭弹窗。
+ * @throws 该函数不会主动向外抛出异常；导出失败时会通过页面提示反馈。
+ * @author Dyx
+ */
 async function handleConfirm(): Promise<void> {
   if (exporting.value || !props.imageUrl) {
     return;
@@ -401,6 +500,13 @@ async function handleConfirm(): Promise<void> {
   }
 }
 
+/**
+ * 在弹窗关闭后清理裁剪器、预览与编辑状态，避免下次打开继承上次现场。
+ *
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；仅重置本地状态。
+ * @author Dyx
+ */
 function handleClosed(): void {
   cropperRef.value = null;
   preview.value = {};
@@ -409,6 +515,13 @@ function handleClosed(): void {
   cropperKey.value += 1;
 }
 
+/**
+ * 从裁剪器实例中异步导出当前裁剪区域的 Blob 数据。
+ *
+ * @returns 返回当前裁剪结果的 Blob；当裁剪器未就绪时返回 null。
+ * @throws 该函数不会主动抛出异常；导出结果通过 Promise resolve 返回。
+ * @author Dyx
+ */
 function getCropBlob(): Promise<Blob | null> {
   return new Promise((resolve) => {
     const cropper = cropperRef.value;
@@ -422,6 +535,14 @@ function getCropBlob(): Promise<Blob | null> {
   });
 }
 
+/**
+ * 移除文件名末尾的扩展名，用于生成裁剪后的输出文件名。
+ *
+ * @param fileName 原始文件名。
+ * @returns 返回去除扩展名后的文件名主体。
+ * @throws 该函数不会主动抛出异常；当文件名不包含扩展名时返回原值。
+ * @author Dyx
+ */
 function removeFileExtension(fileName: string): string {
   return fileName.replace(/\.[^.]+$/, "");
 }

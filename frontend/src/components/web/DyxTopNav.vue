@@ -131,11 +131,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { ref } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 
+/**
+ * 前台顶部导航组件。
+ * 负责桌面端导航、移动端抽屉菜单、品牌跳转以及主题切换入口展示。
+ */
 const props = defineProps<{
-  theme: "light" | "dark";
+  theme: 'light' | 'dark';
   toggleTheme: () => void;
   visible?: boolean;
 }>();
@@ -144,18 +148,35 @@ const route = useRoute();
 const router = useRouter();
 const mobileNavOpen = ref(false);
 
+/**
+ * 前台主导航项配置。
+ */
 const dyxNavItems = [
-  { path: "/blog", label: "博客" },
-  { path: "/moments", label: "动态" },
-  { path: "/guestbook", label: "留言" },
-  { path: "/about", label: "关于我" },
-  { path: "/resume", label: "简历" },
+  { path: '/blog', label: '博客' },
+  { path: '/moments', label: '动态' },
+  { path: '/guestbook', label: '留言' },
+  { path: '/about', label: '关于我' },
+  { path: '/resume', label: '简历' }
 ];
 
+/**
+ * 点击品牌名后跳转到首页。
+ *
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；导航失败会由路由自身处理。
+ * @author Dyx
+ */
 function handleBrandClick(): void {
-  void router.push("/");
+  void router.push('/');
 }
 
+/**
+ * 触发父级传入的主题切换逻辑。
+ *
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；仅调用外部传入的切换函数。
+ * @author Dyx
+ */
 function handleToggleTheme(): void {
   props.toggleTheme();
 }
