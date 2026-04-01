@@ -1,4 +1,8 @@
 <template>
+  <!--
+    后台首页更新节奏说明页。
+    当前用于说明第三屏采用自动聚合策略，并提供跳转到各内容管理页的快捷入口。
+  -->
   <section class="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
     <article class="rounded-[28px] bg-white p-6 shadow-sm">
       <h2 class="text-xl font-semibold text-slate-900">首页管理 / 更新节奏</h2>

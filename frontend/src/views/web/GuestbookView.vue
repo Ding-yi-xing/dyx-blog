@@ -76,6 +76,10 @@ import { createGuestbookMessage, getGuestbookData, recordSiteVisit, type Guestbo
 import { formatDateTime } from '@/utils/date';
 import { resolveErrorMessage } from '@/utils/error';
 
+/**
+ * 前台留言页。
+ * 负责展示留言介绍和公开留言列表，并提供访客提交留言能力。
+ */
 const guestbookData = ref<{ guestbookIntro?: string; messages?: GuestbookMessageData[] }>({});
 const submitting = ref(false);
 const form = reactive({
@@ -83,23 +87,51 @@ const form = reactive({
   publishChecked: true
 });
 
+/**
+ * 解析留言页介绍文案，未配置时回退到默认提示。
+ */
 const guestbookIntro = computed(
   () =>
     guestbookData.value.guestbookIntro ||
     '这里会保留一些来自访客的短留言。你可以只写正文，并自行选择这条留言是否公开展示。'
 );
+
+/**
+ * 获取当前公开留言列表。
+ */
 const messages = computed(() => guestbookData.value.messages ?? []);
 
+/**
+ * 重置留言提交表单。
+ *
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；仅恢复本地默认值。
+ * @author Dyx
+ */
 function resetForm(): void {
   form.content = '';
   form.publishChecked = true;
 }
 
+/**
+ * 获取留言页数据并刷新介绍文案与公开留言列表。
+ *
+ * @returns 返回异步加载结果；成功后会更新页面展示数据。
+ * @throws 该函数不会主动抛出同步异常；接口失败时会以 Promise reject 形式返回。
+ * @author Dyx
+ */
 async function loadGuestbookData(): Promise<void> {
   const response = await getGuestbookData();
   guestbookData.value = response.data ?? {};
 }
 
+/**
+ * 提交新的留言内容。
+ *
+ * @returns 返回异步提交结果；成功后会清空表单并刷新留言数据。
+ * @throws 该函数不会主动向外抛出异常；提交失败时会通过页面提示反馈。
+ * @author Dyx
+ */
 async function handleSubmit(): Promise<void> {
   if (submitting.value) {
     return;

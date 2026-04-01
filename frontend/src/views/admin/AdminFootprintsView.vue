@@ -130,6 +130,10 @@ interface FootprintTableRow extends FootprintData {
   raw: FootprintData;
 }
 
+/**
+ * 后台足迹管理页。
+ * 负责维护首页足迹点位列表，以及首页第二屏足迹文案配置。
+ */
 const rawList = ref<FootprintData[]>([]);
 const dialogVisible = ref(false);
 const saving = ref(false);
@@ -165,6 +169,9 @@ const systemConfigForm = reactive<SystemConfigData>({
   techSupportText: ''
 });
 
+/**
+ * 将后台原始足迹列表转换为表格展示所需的衍生字段。
+ */
 const footprints = computed<FootprintTableRow[]>(() =>
   rawList.value.map((item) => ({
     ...item,
@@ -175,6 +182,14 @@ const footprints = computed<FootprintTableRow[]>(() =>
   }))
 );
 
+/**
+ * 将系统配置接口返回的数据回填到足迹文案表单。
+ *
+ * @param data 系统配置数据。
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；缺失字段会回退到默认值。
+ * @author Dyx
+ */
 function applySystemConfig(data?: SystemConfigData): void {
   systemConfigForm.id = data?.id ?? 1;
   systemConfigForm.storageType = data?.storageType ?? 'local';
@@ -191,6 +206,13 @@ function applySystemConfig(data?: SystemConfigData): void {
   systemConfigForm.techSupportText = data?.techSupportText ?? '';
 }
 
+/**
+ * 重置足迹表单与地区选择状态，供新建和编辑前统一复用。
+ *
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；仅重置本地表单状态。
+ * @author Dyx
+ */
 function resetForm(): void {
   Object.assign(form, {
     id: undefined,
@@ -206,10 +228,26 @@ function resetForm(): void {
   regionSelection.value = [];
 }
 
+/**
+ * 根据足迹已有地区信息反推出级联选择器的选中路径。
+ *
+ * @param item 足迹数据对象。
+ * @returns 返回级联选择器需要的地区路径数组。
+ * @throws 该函数不会主动抛出异常；无法命中时返回空数组。
+ * @author Dyx
+ */
 function resolveSelectionFromFootprint(item: FootprintData): string[] {
   return findChinaRegionSelection(item.regionName, item.cityName);
 }
 
+/**
+ * 构建足迹 ID 到区县名称的映射表，供表格快速展示。
+ *
+ * @param list 足迹列表。
+ * @returns 返回按足迹 ID 建立的区县名称映射。
+ * @throws 该函数不会主动抛出异常；缺失主键的记录会被忽略。
+ * @author Dyx
+ */
 function buildDistrictMap(list: FootprintData[]): Record<number, string> {
   const nextMap: Record<number, string> = {};
   for (const item of list) {
@@ -221,6 +259,13 @@ function buildDistrictMap(list: FootprintData[]): Record<number, string> {
   return nextMap;
 }
 
+/**
+ * 同时加载足迹列表与系统配置，并刷新页面所需的所有数据源。
+ *
+ * @returns 返回异步加载结果；成功后会更新足迹表格和足迹文案表单。
+ * @throws 该函数不会主动抛出同步异常；接口失败时会以 Promise reject 形式返回。
+ * @author Dyx
+ */
 async function loadPageData(): Promise<void> {
   const [footprintResponse, systemConfigResponse] = await Promise.all([getAdminFootprints(), getAdminSystemConfig()]);
   const nextList = footprintResponse.data ?? [];
@@ -229,11 +274,26 @@ async function loadPageData(): Promise<void> {
   applySystemConfig(systemConfigResponse.data);
 }
 
+/**
+ * 打开新建足迹弹窗，并初始化为空表单。
+ *
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；仅重置表单并展示弹窗。
+ * @author Dyx
+ */
 function openCreateDialog(): void {
   resetForm();
   dialogVisible.value = true;
 }
 
+/**
+ * 打开编辑足迹弹窗，并将当前足迹数据回填到表单与地区选择器中。
+ *
+ * @param item 待编辑的足迹数据。
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；仅执行表单与地区回填。
+ * @author Dyx
+ */
 function openEditDialog(item: FootprintData): void {
   resetForm();
   Object.assign(form, {
@@ -244,7 +304,13 @@ function openEditDialog(item: FootprintData): void {
   dialogVisible.value = true;
 }
 
-
+/**
+ * 保存首页足迹区域的文案配置。
+ *
+ * @returns 返回异步保存结果。
+ * @throws 该函数不会主动向外抛出异常；保存失败时会通过页面提示反馈。
+ * @author Dyx
+ */
 async function handleSaveCopy(): Promise<void> {
   if (copySaving.value) {
     return;
@@ -267,6 +333,14 @@ async function handleSaveCopy(): Promise<void> {
   }
 }
 
+/**
+ * 保存当前足迹表单。
+ * 会把级联选择器中的省市结果转换为接口所需的 regionName 与 cityName 字段。
+ *
+ * @returns 返回异步保存结果。
+ * @throws 该函数不会主动向外抛出异常；地区未选择完整或保存失败时会通过页面提示反馈。
+ * @author Dyx
+ */
 async function handleSave(): Promise<void> {
   if (saving.value) {
     return;
@@ -296,6 +370,14 @@ async function handleSave(): Promise<void> {
   }
 }
 
+/**
+ * 删除指定足迹，并在用户确认后刷新当前列表。
+ *
+ * @param item 待删除的足迹数据。
+ * @returns 返回异步删除结果。
+ * @throws 该函数不会主动向外抛出异常；取消删除时会静默结束，失败时通过页面提示反馈。
+ * @author Dyx
+ */
 async function handleDelete(item: FootprintData): Promise<void> {
   try {
     await ElMessageBox.confirm(`确认删除足迹“${item.cityName}”吗？`, '删除确认', {

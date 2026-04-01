@@ -116,6 +116,10 @@ import {
 } from '@/api/modules/admin';
 import type { ProfileData, ProjectData } from '@/api/modules/site';
 
+/**
+ * 后台简历管理页。
+ * 负责维护简历 PDF、教育与工作经历，同时复用项目经历管理能力维护简历页项目列表。
+ */
 const savingProfile = ref(false);
 const savingProject = ref(false);
 const dialogVisible = ref(false);
@@ -149,6 +153,9 @@ const projectForm = reactive<Partial<ProjectData>>({
   published: 1
 });
 
+/**
+ * 将后台项目列表转换为表格展示所需的衍生字段。
+ */
 const projects = computed(() =>
   rawList.value.map((item) => ({
     ...item,
@@ -157,16 +164,37 @@ const projects = computed(() =>
   }))
 );
 
+/**
+ * 获取简历主信息并回填到页面表单。
+ *
+ * @returns 返回异步加载结果；成功后会刷新 PDF、教育和工作经历字段。
+ * @throws 该函数不会主动抛出同步异常；接口失败时会以 Promise reject 形式返回。
+ * @author Dyx
+ */
 async function loadProfile(): Promise<void> {
   const response = await getAdminProfile();
   Object.assign(form, response.data ?? {});
 }
 
+/**
+ * 获取项目经历列表并刷新表格数据源。
+ *
+ * @returns 返回异步加载结果；成功后会更新项目经历表格。
+ * @throws 该函数不会主动抛出同步异常；接口失败时会以 Promise reject 形式返回。
+ * @author Dyx
+ */
 async function loadProjects(): Promise<void> {
   const response = await getAdminProjects();
   rawList.value = response.data ?? [];
 }
 
+/**
+ * 重置项目经历表单，供新建和编辑前统一复用。
+ *
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；仅重置本地项目表单状态。
+ * @author Dyx
+ */
 function resetProjectForm(): void {
   Object.assign(projectForm, {
     id: undefined,
@@ -181,17 +209,39 @@ function resetProjectForm(): void {
   });
 }
 
+/**
+ * 打开新建项目弹窗，并初始化为空表单。
+ *
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；仅重置项目表单并展示弹窗。
+ * @author Dyx
+ */
 function openCreateDialog(): void {
   resetProjectForm();
   dialogVisible.value = true;
 }
 
+/**
+ * 打开编辑项目弹窗，并将当前项目数据回填到表单中。
+ *
+ * @param item 待编辑的项目数据。
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；仅执行项目表单回填。
+ * @author Dyx
+ */
 function openEditDialog(item: ProjectData): void {
   resetProjectForm();
   Object.assign(projectForm, item);
   dialogVisible.value = true;
 }
 
+/**
+ * 保存简历主信息。
+ *
+ * @returns 返回异步保存结果；成功后会回填接口返回的最新个人资料数据。
+ * @throws 该函数不会主动向外抛出异常；保存失败时加载状态会在 finally 中恢复。
+ * @author Dyx
+ */
 async function handleSaveProfile(): Promise<void> {
   if (savingProfile.value) {
     return;
@@ -206,6 +256,13 @@ async function handleSaveProfile(): Promise<void> {
   }
 }
 
+/**
+ * 保存当前项目经历表单。
+ *
+ * @returns 返回异步保存结果；成功后会刷新项目列表并关闭弹窗。
+ * @throws 该函数不会主动向外抛出异常；保存失败时会通过页面提示反馈。
+ * @author Dyx
+ */
 async function handleSaveProject(): Promise<void> {
   if (savingProject.value) {
     return;
@@ -223,6 +280,14 @@ async function handleSaveProject(): Promise<void> {
   }
 }
 
+/**
+ * 删除指定项目经历，并在确认后刷新当前列表。
+ *
+ * @param item 待删除的项目数据。
+ * @returns 返回异步删除结果。
+ * @throws 该函数不会主动向外抛出异常；取消删除时会静默结束，失败时通过页面提示反馈。
+ * @author Dyx
+ */
 async function handleDeleteProject(item: ProjectData): Promise<void> {
   try {
     await ElMessageBox.confirm(`确认删除项目“${item.name}”吗？`, '删除确认', {

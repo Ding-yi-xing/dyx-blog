@@ -117,6 +117,10 @@ import {
 import type { GuestbookMessageData } from '@/api/modules/site';
 import { resolveErrorMessage } from '@/utils/error';
 
+/**
+ * 后台留言管理页。
+ * 负责维护留言页介绍文案，并管理留言正文、公开状态和删除操作。
+ */
 const guestbookIntro = ref('');
 const messages = ref<GuestbookMessageData[]>([]);
 const savingIntro = ref(false);
@@ -128,13 +132,26 @@ const editForm = reactive<Partial<GuestbookMessageData>>({
   published: 1
 });
 
-
+/**
+ * 重置留言编辑弹窗中的本地表单状态。
+ *
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；仅清空当前编辑上下文。
+ * @author Dyx
+ */
 function resetEditForm(): void {
   editingId.value = null;
   editForm.content = '';
   editForm.published = 1;
 }
 
+/**
+ * 获取留言页配置与留言列表，并同步到当前页面。
+ *
+ * @returns 返回异步加载结果；成功后会更新介绍文案和留言列表。
+ * @throws 该函数不会主动抛出同步异常；接口失败时会以 Promise reject 形式返回。
+ * @author Dyx
+ */
 async function loadGuestbook(): Promise<void> {
   const response = await getAdminGuestbook();
   const data = (response.data ?? {}) as AdminGuestbookData;
@@ -142,6 +159,13 @@ async function loadGuestbook(): Promise<void> {
   messages.value = data.messages ?? [];
 }
 
+/**
+ * 保存留言页介绍文案。
+ *
+ * @returns 返回异步保存结果；成功后会重新加载当前留言配置。
+ * @throws 该函数不会主动向外抛出异常；保存失败时会通过页面提示反馈。
+ * @author Dyx
+ */
 async function handleSaveIntro(): Promise<void> {
   if (savingIntro.value) {
     return;
@@ -158,6 +182,14 @@ async function handleSaveIntro(): Promise<void> {
   }
 }
 
+/**
+ * 打开编辑留言弹窗，并回填当前留言内容。
+ *
+ * @param item 待编辑的留言数据。
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；仅执行本地表单回填。
+ * @author Dyx
+ */
 function openEditDialog(item: GuestbookMessageData): void {
   editingId.value = Number(item.id);
   editForm.content = item.content ?? '';
@@ -165,6 +197,13 @@ function openEditDialog(item: GuestbookMessageData): void {
   dialogVisible.value = true;
 }
 
+/**
+ * 保存当前留言编辑表单。
+ *
+ * @returns 返回异步保存结果；成功后会刷新留言列表并关闭弹窗。
+ * @throws 该函数不会主动向外抛出异常；保存失败时会通过页面提示反馈。
+ * @author Dyx
+ */
 async function handleSaveMessage(): Promise<void> {
   if (savingMessage.value || editingId.value === null) {
     return;
@@ -185,6 +224,14 @@ async function handleSaveMessage(): Promise<void> {
   }
 }
 
+/**
+ * 切换指定留言的公开状态。
+ *
+ * @param item 待切换状态的留言数据。
+ * @returns 返回异步更新结果；成功后会刷新留言列表。
+ * @throws 该函数不会主动向外抛出异常；更新失败时会通过页面提示反馈。
+ * @author Dyx
+ */
 async function handleTogglePublished(item: GuestbookMessageData): Promise<void> {
   try {
     await updateAdminGuestbookMessage(Number(item.id), {
@@ -197,6 +244,14 @@ async function handleTogglePublished(item: GuestbookMessageData): Promise<void> 
   }
 }
 
+/**
+ * 删除指定留言，并在确认后刷新当前列表。
+ *
+ * @param item 待删除的留言数据。
+ * @returns 返回异步删除结果。
+ * @throws 该函数不会主动向外抛出异常；取消删除时会静默结束，失败时通过页面提示反馈。
+ * @author Dyx
+ */
 async function handleDelete(item: GuestbookMessageData): Promise<void> {
   try {
     await ElMessageBox.confirm('确认删除这条留言吗？', '删除确认', {

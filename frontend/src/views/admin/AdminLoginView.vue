@@ -36,6 +36,10 @@ import { adminLogin } from '@/api/modules/admin';
 import { useAuthStore } from '@/stores/auth';
 import { resolveErrorMessage } from '@/utils/error';
 
+/**
+ * 后台登录页。
+ * 负责处理管理员账号登录、登录态写入以及登录后的安全跳转。
+ */
 const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
@@ -47,6 +51,14 @@ const form = reactive({
   password: ''
 });
 
+/**
+ * 规范化登录后的跳转地址，只允许站内后台路径。
+ *
+ * @param value 路由查询参数中的 redirect 值。
+ * @returns 返回安全可用的后台跳转路径；不合法时回退到默认仪表盘。
+ * @throws 该函数不会主动抛出异常；非法路径会直接回退到默认值。
+ * @author Dyx
+ */
 function resolveRedirectPath(value: unknown): string {
   if (typeof value !== 'string') {
     return DEFAULT_REDIRECT_PATH;
@@ -61,6 +73,13 @@ function resolveRedirectPath(value: unknown): string {
   return normalized;
 }
 
+/**
+ * 提交后台登录请求，并在成功后写入登录态与跳转到目标后台页面。
+ *
+ * @returns 返回异步登录结果。
+ * @throws 该函数不会主动向外抛出异常；登录失败时会通过页面提示反馈。
+ * @author Dyx
+ */
 async function handleLogin(): Promise<void> {
   if (submitting.value) {
     return;

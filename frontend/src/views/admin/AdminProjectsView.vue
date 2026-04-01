@@ -71,6 +71,10 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import { deleteAdminProject, getAdminProjects, saveAdminProject } from '@/api/modules/admin';
 import type { ProjectData } from '@/api/modules/site';
 
+/**
+ * 后台项目管理页。
+ * 负责展示项目列表，并提供项目的新建、编辑与删除流程。
+ */
 const rawList = ref<ProjectData[]>([]);
 const dialogVisible = ref(false);
 const saving = ref(false);
@@ -87,6 +91,9 @@ const form = reactive<Partial<ProjectData>>({
   published: 1
 });
 
+/**
+ * 将后台原始项目列表转换为表格展示所需的衍生字段。
+ */
 const projects = computed(() =>
   rawList.value.map((item) => ({
     ...item,
@@ -95,6 +102,13 @@ const projects = computed(() =>
   }))
 );
 
+/**
+ * 重置项目表单，供新建与编辑前复用。
+ *
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；仅重置本地表单状态。
+ * @author Dyx
+ */
 function resetForm(): void {
   Object.assign(form, {
     id: undefined,
@@ -110,7 +124,11 @@ function resetForm(): void {
 }
 
 /**
- * 获取后台项目列表。
+ * 获取后台项目列表并刷新表格数据源。
+ *
+ * @returns 返回异步加载结果；成功后会更新页面表格数据。
+ * @throws 该函数不会主动抛出同步异常；接口失败时会以 Promise reject 形式返回。
+ * @author Dyx
  */
 async function loadProjects(): Promise<void> {
   const response = await getAdminProjects();
@@ -118,7 +136,11 @@ async function loadProjects(): Promise<void> {
 }
 
 /**
- * 打开新建弹窗。
+ * 打开新建项目弹窗，并初始化为空表单。
+ *
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；仅重置表单并展示弹窗。
+ * @author Dyx
  */
 function openCreateDialog(): void {
   resetForm();
@@ -126,8 +148,12 @@ function openCreateDialog(): void {
 }
 
 /**
- * 打开编辑弹窗。
- * @param item 当前项目数据。
+ * 打开编辑项目弹窗，并将当前项目数据回填到表单中。
+ *
+ * @param item 待编辑的项目数据。
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；仅执行表单回填。
+ * @author Dyx
  */
 function openEditDialog(item: ProjectData): void {
   resetForm();
@@ -136,7 +162,12 @@ function openEditDialog(item: ProjectData): void {
 }
 
 /**
- * 保存项目数据。
+ * 保存当前项目表单。
+ * 新建与编辑共用同一套提交逻辑，成功后会刷新列表并关闭弹窗。
+ *
+ * @returns 返回异步保存结果。
+ * @throws 该函数不会主动向外抛出异常；保存失败时会通过页面提示反馈。
+ * @author Dyx
  */
 async function handleSave(): Promise<void> {
   if (saving.value) {
@@ -156,8 +187,12 @@ async function handleSave(): Promise<void> {
 }
 
 /**
- * 删除项目数据。
- * @param item 当前项目数据。
+ * 删除指定项目，并在用户确认后刷新当前列表。
+ *
+ * @param item 待删除的项目数据。
+ * @returns 返回异步删除结果。
+ * @throws 该函数不会主动向外抛出异常；取消删除时会静默结束，失败时通过页面提示反馈。
+ * @author Dyx
  */
 async function handleDelete(item: ProjectData): Promise<void> {
   try {

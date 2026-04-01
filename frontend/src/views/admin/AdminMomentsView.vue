@@ -73,6 +73,10 @@ import { deleteAdminMoment, getAdminMoments, saveAdminMoment } from '@/api/modul
 import type { MomentData } from '@/api/modules/site';
 import { parseImageUrls, stringifyImageUrls } from '@/utils/media';
 
+/**
+ * 后台动态管理页。
+ * 负责展示动态列表，并提供动态的新建、编辑与删除流程。
+ */
 const rawList = ref<MomentData[]>([]);
 const dialogVisible = ref(false);
 const saving = ref(false);
@@ -89,6 +93,9 @@ const form = reactive<Partial<MomentData>>({
   published: 1
 });
 
+/**
+ * 将后台原始动态列表转换为表格展示所需的衍生字段。
+ */
 const moments = computed(() =>
   rawList.value.map((item) => ({
     ...item,
@@ -98,6 +105,13 @@ const moments = computed(() =>
   }))
 );
 
+/**
+ * 重置动态表单与已选媒体列表，供新建和编辑前统一复用。
+ *
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；仅重置本地表单状态。
+ * @author Dyx
+ */
 function resetForm(): void {
   Object.assign(form, {
     id: undefined,
@@ -112,16 +126,38 @@ function resetForm(): void {
   selectedMediaUrls.value = [];
 }
 
+/**
+ * 获取后台动态列表并刷新表格数据源。
+ *
+ * @returns 返回异步加载结果；成功后会更新页面表格数据。
+ * @throws 该函数不会主动抛出同步异常；接口失败时会以 Promise reject 形式返回。
+ * @author Dyx
+ */
 async function loadMoments(): Promise<void> {
   const response = await getAdminMoments();
   rawList.value = response.data ?? [];
 }
 
+/**
+ * 打开新建动态弹窗，并初始化为空表单。
+ *
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；仅重置表单并展示弹窗。
+ * @author Dyx
+ */
 function openCreateDialog(): void {
   resetForm();
   dialogVisible.value = true;
 }
 
+/**
+ * 打开编辑动态弹窗，并将当前动态数据回填到表单中。
+ *
+ * @param item 待编辑的动态数据。
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；仅执行表单回填。
+ * @author Dyx
+ */
 function openEditDialog(item: MomentData): void {
   resetForm();
   Object.assign(form, item);
@@ -129,6 +165,14 @@ function openEditDialog(item: MomentData): void {
   dialogVisible.value = true;
 }
 
+/**
+ * 保存当前动态表单。
+ * 新建与编辑共用同一套提交逻辑，成功后会刷新列表并关闭弹窗。
+ *
+ * @returns 返回异步保存结果。
+ * @throws 该函数不会主动向外抛出异常；保存失败时会通过页面提示反馈。
+ * @author Dyx
+ */
 async function handleSave(): Promise<void> {
   if (saving.value) {
     return;
@@ -149,6 +193,14 @@ async function handleSave(): Promise<void> {
   }
 }
 
+/**
+ * 删除指定动态，并在用户确认后刷新当前列表。
+ *
+ * @param item 待删除的动态数据。
+ * @returns 返回异步删除结果。
+ * @throws 该函数不会主动向外抛出异常；取消删除时会静默结束，失败时通过页面提示反馈。
+ * @author Dyx
+ */
 async function handleDelete(item: MomentData): Promise<void> {
   try {
     await ElMessageBox.confirm(`确认删除动态“${item.title}”吗？`, '删除确认', {

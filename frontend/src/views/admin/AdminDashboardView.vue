@@ -95,9 +95,16 @@ const AdminDashboardCharts = defineAsyncComponent(
   () => import('@/components/admin/AdminDashboardCharts.vue')
 );
 
+/**
+ * 后台仪表盘页面。
+ * 负责汇总展示站点核心统计、访问趋势图表和热门页面排行。
+ */
 const loading = ref(false);
 const summary = ref<DashboardSummaryData>({});
 
+/**
+ * 从摘要数据中提取访问趋势、设备分布和热门页面列表。
+ */
 const trendPoints = computed<VisitTrendPoint[]>(() => summary.value.dailySiteVisits ?? []);
 const deviceStats = computed<DeviceTypeStat[]>(() => summary.value.deviceTypeDistribution ?? []);
 const topPages = computed<PageVisitStat[]>(() => summary.value.topVisitedPages ?? []);
@@ -172,6 +179,14 @@ const summaryCards = computed(() => [
   }
 ]);
 
+/**
+ * 生成热门页面排行进度条宽度。
+ *
+ * @param value 当前页面访问次数。
+ * @returns 返回用于进度条宽度的百分比，最小保留可见宽度。
+ * @throws 该函数不会主动抛出异常；当最大值不存在时返回 0。
+ * @author Dyx
+ */
 function resolvePageBarWidth(value: number): number {
   if (!maxTopPageVisits.value) {
     return 0;
@@ -179,6 +194,14 @@ function resolvePageBarWidth(value: number): number {
   return Math.max((Number(value ?? 0) / maxTopPageVisits.value) * 100, 8);
 }
 
+/**
+ * 根据排行名次返回徽章样式。
+ *
+ * @param index 当前排行索引。
+ * @returns 返回对应名次的徽章 class。
+ * @throws 该函数不会主动抛出异常；未命中前三名时返回默认样式。
+ * @author Dyx
+ */
 function rankBadgeClass(index: number): string {
   if (index === 0) {
     return 'bg-slate-950';
@@ -192,6 +215,14 @@ function rankBadgeClass(index: number): string {
   return 'bg-slate-300 text-slate-700';
 }
 
+/**
+ * 将访问时间格式化为适合后台列表展示的短日期时间。
+ *
+ * @param value 原始访问时间字符串。
+ * @returns 返回格式化后的时间；为空时返回占位文案。
+ * @throws 该函数不会主动抛出异常；仅执行字符串替换与截断。
+ * @author Dyx
+ */
 function formatDateTime(value?: string): string {
   if (!value) {
     return '暂无时间';
@@ -199,6 +230,13 @@ function formatDateTime(value?: string): string {
   return value.replace('T', ' ').slice(0, 16);
 }
 
+/**
+ * 获取后台仪表盘摘要数据。
+ *
+ * @returns 返回异步加载结果；成功后会刷新统计卡片、图表与热门页面数据。
+ * @throws 该函数不会主动抛出同步异常；接口失败时会以 Promise reject 形式返回。
+ * @author Dyx
+ */
 async function loadDashboardSummary(): Promise<void> {
   loading.value = true;
   try {

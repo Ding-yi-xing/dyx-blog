@@ -111,6 +111,10 @@ import {
 import { resolveErrorMessage } from '@/utils/error';
 import { formatDateTime } from '@/utils/date';
 
+/**
+ * 后台访问日志管理页。
+ * 负责按条件查询访问日志，并提供单条删除、批量删除与分页浏览能力。
+ */
 const logs = ref<RecentVisitRecord[]>([]);
 const selectedIds = ref<number[]>([]);
 const tableRef = ref<{ clearSelection: () => void } | null>(null);
@@ -143,6 +147,13 @@ const deviceTypeOptions = [
   { label: '未知设备', value: 'UNKNOWN' }
 ];
 
+/**
+ * 根据当前筛选器和分页状态构建日志查询参数。
+ *
+ * @returns 返回访问日志接口需要的查询参数对象。
+ * @throws 该函数不会主动抛出异常；仅执行本地参数整理。
+ * @author Dyx
+ */
 function buildQueryParams(): AdminVisitLogQuery {
   return {
     startTime: filters.timeRange[0] || undefined,
@@ -155,6 +166,13 @@ function buildQueryParams(): AdminVisitLogQuery {
   };
 }
 
+/**
+ * 获取访问日志列表并同步分页信息。
+ *
+ * @returns 返回异步加载结果；成功后会更新日志列表、总数和当前分页状态。
+ * @throws 该函数不会主动抛出同步异常；接口失败时会以 Promise reject 形式返回。
+ * @author Dyx
+ */
 async function loadVisitLogs(): Promise<void> {
   const response = await getAdminVisitLogs(buildQueryParams());
   const data = (response as {
@@ -177,15 +195,38 @@ async function loadVisitLogs(): Promise<void> {
   }
 }
 
+/**
+ * 清空表格选中状态与本地已选日志 ID。
+ *
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；仅重置本地选择状态。
+ * @author Dyx
+ */
 function resetSelection(): void {
   tableRef.value?.clearSelection();
   selectedIds.value = [];
 }
 
+/**
+ * 同步表格多选结果到本地 ID 列表。
+ *
+ * @param selection 当前表格选中的访问日志集合。
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；非法 ID 会在转换时被过滤。
+ * @author Dyx
+ */
 function handleSelectionChange(selection: RecentVisitRecord[]): void {
   selectedIds.value = selection.map((item) => Number(item.id)).filter((id) => !Number.isNaN(id));
 }
 
+/**
+ * 删除单条访问日志，并在确认后刷新列表。
+ *
+ * @param item 待删除的访问日志数据。
+ * @returns 返回异步删除结果。
+ * @throws 该函数不会主动向外抛出异常；取消删除时会静默结束，失败时通过页面提示反馈。
+ * @author Dyx
+ */
 async function handleDelete(item: RecentVisitRecord): Promise<void> {
   try {
     await ElMessageBox.confirm(`确认删除 ${item.pageLabel} 的这条访问日志吗？`, '删除确认', {
@@ -203,6 +244,13 @@ async function handleDelete(item: RecentVisitRecord): Promise<void> {
   }
 }
 
+/**
+ * 批量删除当前选中的访问日志。
+ *
+ * @returns 返回异步删除结果；成功后会刷新列表并清空选中状态。
+ * @throws 该函数不会主动向外抛出异常；取消删除时会静默结束，失败时通过页面提示反馈。
+ * @author Dyx
+ */
 async function handleBatchDelete(): Promise<void> {
   if (!selectedIds.value.length) {
     return;
@@ -223,12 +271,28 @@ async function handleBatchDelete(): Promise<void> {
   }
 }
 
+/**
+ * 切换分页页码并重新加载数据。
+ *
+ * @param newPage 新的页码。
+ * @returns 返回异步处理结果。
+ * @throws 该函数不会主动向外抛出异常；接口失败时会以 Promise reject 形式返回。
+ * @author Dyx
+ */
 async function handlePageChange(newPage: number): Promise<void> {
   page.value = newPage;
   await loadVisitLogs();
   resetSelection();
 }
 
+/**
+ * 切换每页条数并回到第一页重新查询。
+ *
+ * @param newSize 新的分页大小。
+ * @returns 返回异步处理结果。
+ * @throws 该函数不会主动向外抛出异常；接口失败时会以 Promise reject 形式返回。
+ * @author Dyx
+ */
 async function handlePageSizeChange(newSize: number): Promise<void> {
   pageSize.value = newSize;
   page.value = 1;
@@ -236,12 +300,26 @@ async function handlePageSizeChange(newSize: number): Promise<void> {
   resetSelection();
 }
 
+/**
+ * 按当前筛选条件重新查询访问日志。
+ *
+ * @returns 返回异步查询结果；成功后会重置到第一页并刷新列表。
+ * @throws 该函数不会主动向外抛出异常；接口失败时会以 Promise reject 形式返回。
+ * @author Dyx
+ */
 async function handleQuery(): Promise<void> {
   page.value = 1;
   await loadVisitLogs();
   resetSelection();
 }
 
+/**
+ * 重置筛选条件并重新加载访问日志。
+ *
+ * @returns 返回异步处理结果；成功后会恢复默认筛选状态。
+ * @throws 该函数不会主动向外抛出异常；接口失败时会以 Promise reject 形式返回。
+ * @author Dyx
+ */
 async function handleReset(): Promise<void> {
   filters.timeRange = [];
   filters.pageKey = '';

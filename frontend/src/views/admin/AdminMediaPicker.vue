@@ -214,6 +214,10 @@ import {
 import { resolveErrorMessage } from "@/utils/error";
 import BusinessImageCropper from "@/components/admin/BusinessImageCropper.vue";
 
+/**
+ * 后台媒体选择器。
+ * 负责展示已选媒体、加载媒体库、处理上传，并支持单选、多选和图片裁剪流程。
+ */
 const props = withDefaults(
   defineProps<{
     modelValue?: string | string[];
@@ -236,6 +240,9 @@ const emit = defineEmits<{
   (event: "update:modelValue", value: string | string[]): void;
 }>();
 
+/**
+ * 媒体选择弹窗与裁剪流程的运行时状态。
+ */
 const dialogVisible = ref(false);
 const loading = ref(false);
 const uploading = ref(false);
@@ -246,12 +253,28 @@ const cropperVisible = ref(false);
 const pendingCropUrl = ref("");
 const pendingCropName = ref("");
 
+/**
+ * 打开图片裁剪弹窗，并记录当前待裁剪媒体的地址与文件名。
+ *
+ * @param item 当前选中的媒体项。
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；仅更新裁剪弹窗状态。
+ * @author Dyx
+ */
 function openCropper(item: MediaPickerItem): void {
   pendingCropUrl.value = item.fileUrl || "";
   pendingCropName.value = item.originalName || item.fileName || "";
   cropperVisible.value = true;
 }
 
+/**
+ * 处理图片裁剪确认结果，并在需要时上传新图片后回填当前选择。
+ *
+ * @param payload 图片裁剪组件返回的确认结果。
+ * @returns 返回异步处理结果。
+ * @throws 该函数不会主动向外抛出异常；上传失败时会通过页面提示反馈。
+ * @author Dyx
+ */
 async function handleCropConfirm(payload: CropConfirmPayload): Promise<void> {
   if (!payload.edited) {
     cropperVisible.value = false;
@@ -279,6 +302,9 @@ async function handleCropConfirm(payload: CropConfirmPayload): Promise<void> {
   }
 }
 
+/**
+ * 规范化当前外部传入的已选值，统一转换为字符串数组进行内部处理。
+ */
 const selectedUrls = computed(() => {
   if (Array.isArray(props.modelValue)) {
     return props.modelValue.filter(Boolean);
@@ -286,6 +312,9 @@ const selectedUrls = computed(() => {
   return props.modelValue ? [props.modelValue] : [];
 });
 
+/**
+ * 在外部选中值发生变化时，同步刷新弹窗内部草稿选择。
+ */
 watch(
   () => props.modelValue,
   () => {
@@ -296,16 +325,38 @@ watch(
   { immediate: true, deep: true }
 );
 
+/**
+ * 按组件模式向外同步当前选中的媒体地址。
+ *
+ * @param urls 当前选中的媒体地址数组。
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；单选模式下会仅输出第一项。
+ * @author Dyx
+ */
 function emitValue(urls: string[]): void {
   emit("update:modelValue", props.multiple ? urls : urls[0] ?? "");
 }
 
+/**
+ * 打开媒体库弹窗，并拉取最新媒体列表。
+ *
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；媒体列表加载失败会在异步请求阶段体现。
+ * @author Dyx
+ */
 function openDialog(): void {
   draftUrls.value = [...selectedUrls.value];
   dialogVisible.value = true;
   void loadMediaList();
 }
 
+/**
+ * 获取后台媒体资源列表，并转换为选择器使用的轻量结构。
+ *
+ * @returns 返回异步加载结果；成功后会更新弹窗中的媒体卡片数据。
+ * @throws 该函数不会主动抛出同步异常；接口失败时会以 Promise reject 形式返回。
+ * @author Dyx
+ */
 async function loadMediaList(): Promise<void> {
   loading.value = true;
   try {
@@ -326,10 +377,27 @@ async function loadMediaList(): Promise<void> {
   }
 }
 
+/**
+ * 判断指定媒体地址是否已存在于当前草稿选择中。
+ *
+ * @param url 待判断的媒体地址。
+ * @returns 已选中时返回 true，否则返回 false。
+ * @throws 该函数不会主动抛出异常；空地址会直接返回 false。
+ * @author Dyx
+ */
 function isSelected(url?: string): boolean {
   return !!url && draftUrls.value.includes(url);
 }
 
+/**
+ * 切换媒体卡片的选择状态。
+ * 单选模式会直接替换当前选择，多选模式会执行增删切换。
+ *
+ * @param url 当前点击的媒体地址。
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；空地址会被直接忽略。
+ * @author Dyx
+ */
 function toggleMedia(url?: string): void {
   if (!url) {
     return;
@@ -345,21 +413,51 @@ function toggleMedia(url?: string): void {
   draftUrls.value = [url];
 }
 
+/**
+ * 确认当前草稿选择，并同步回外层 v-model。
+ *
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；仅同步当前已选媒体并关闭弹窗。
+ * @author Dyx
+ */
 function confirmSelection(): void {
   emitValue([...draftUrls.value]);
   dialogVisible.value = false;
 }
 
+/**
+ * 从当前已选结果中移除指定位置的媒体。
+ *
+ * @param index 待移除项的索引位置。
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；仅更新外层选中值。
+ * @author Dyx
+ */
 function removeAt(index: number): void {
   const next = [...selectedUrls.value];
   next.splice(index, 1);
   emitValue(next);
 }
 
+/**
+ * 清空当前所有已选媒体。
+ *
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；仅向外同步空选择。
+ * @author Dyx
+ */
 function clearSelection(): void {
   emitValue([]);
 }
 
+/**
+ * 处理媒体上传请求，并在上传成功后刷新媒体库和当前草稿选择。
+ *
+ * @param options Element Plus 上传组件传入的请求参数。
+ * @returns 返回异步上传结果。
+ * @throws 该函数不会主动向外抛出异常；上传失败时会通过页面提示反馈。
+ * @author Dyx
+ */
 async function handleUpload(options: UploadRequestOptions): Promise<void> {
   uploading.value = true;
   try {

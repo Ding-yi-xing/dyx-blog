@@ -232,6 +232,10 @@ interface CropConfirmPayload {
   originalUrl?: string;
 }
 
+/**
+ * 后台首页首屏管理页。
+ * 负责维护首屏文字区块顺序、标签组内容，以及背景图和人物图的裁剪上传流程。
+ */
 const contentBlockTypes = ['eyebrow', 'title', 'subtitle', 'tags'] as const;
 const blockLabelMap: Record<HeroBlock['type'], string> = {
   eyebrow: '小标题',
@@ -279,12 +283,26 @@ const form = reactive<ProfileData>({
   resumePdfUrl: ''
 });
 
+/**
+ * 拆分出左侧可排序的文本与标签区块。
+ */
 const leftHeroBlocks = computed(() => heroBlocks.value.filter((block): block is HeroTextBlock | HeroTagsBlock => block.type !== 'image'));
+
+/**
+ * 获取首屏右侧图片区块配置。
+ */
 const imageBlock = computed(() => heroBlocks.value.find((block): block is HeroImageBlock => block.type === 'image'));
+
+/**
+ * 解析当前表单中的首屏配置，供右侧预览区域直接消费。
+ */
 const previewHeroConfig = computed(() => parseHeroConfig(form));
 const previewLeftBlocks = computed(() => previewHeroConfig.value.blocks.filter((block): block is HeroTextBlock | HeroTagsBlock => block.type !== 'image'));
 const previewImageBlock = computed(() => previewHeroConfig.value.blocks.find((block): block is HeroImageBlock => block.type === 'image'));
 
+/**
+ * 生成预览区域的背景图样式。
+ */
 const previewBackgroundStyle = computed(() => {
   const backgroundImageUrl = previewImageBlock.value?.backgroundImageUrl?.trim();
   if (!backgroundImageUrl) {
@@ -294,6 +312,10 @@ const previewBackgroundStyle = computed(() => {
     backgroundImage: `url(${backgroundImageUrl})`
   };
 });
+
+/**
+ * 根据是否存在人物图决定预览区域的栅格布局。
+ */
 const previewGridClass = computed(() => (previewImageBlock.value?.imageUrl ? 'lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-stretch' : 'lg:grid-cols-1'));
 
 watch(
@@ -304,6 +326,14 @@ watch(
   { deep: true }
 );
 
+/**
+ * 深拷贝单个首屏区块，避免拖拽排序或预览编辑时污染原对象引用。
+ *
+ * @param block 待复制的首屏区块。
+ * @returns 返回复制后的新区块对象。
+ * @throws 该函数不会主动抛出异常；仅执行本地对象复制。
+ * @author Dyx
+ */
 function cloneHeroBlock(block: HeroBlock): HeroBlock {
   if (block.type === 'image') {
     return { ...block };
@@ -317,6 +347,15 @@ function cloneHeroBlock(block: HeroBlock): HeroBlock {
   return { ...block };
 }
 
+/**
+ * 规范化首屏配置区块。
+ * 会把解析结果与默认配置合并，确保缺失区块、重复区块和图片区块位置都能被修正。
+ *
+ * @param profile 个人资料与首屏配置数据。
+ * @returns 返回可直接供页面编辑的标准化区块数组。
+ * @throws 该函数不会主动抛出异常；异常数据会回退到默认配置。
+ * @author Dyx
+ */
 function normalizeHeroBlocks(profile?: ProfileData): HeroBlock[] {
   const defaultBlocks = createDefaultHeroConfig(profile).blocks.map((block) => cloneHeroBlock(block));
   const parsedBlocks = parseHeroConfig(profile).blocks.map((block) => cloneHeroBlock(block));
@@ -389,6 +428,14 @@ function normalizeHeroBlocks(profile?: ProfileData): HeroBlock[] {
   return nextImageBlock ? [...nextLeftBlocks, nextImageBlock] : nextLeftBlocks;
 }
 
+/**
+ * 按新的左侧区块顺序重建完整的首屏区块列表，并保留右侧图片区块。
+ *
+ * @param nextLeftBlocks 调整后的左侧文本与标签区块集合。
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；仅同步本地区块状态。
+ * @author Dyx
+ */
 function rebuildHeroBlocks(nextLeftBlocks: Array<HeroTextBlock | HeroTagsBlock>): void {
   const nextBlocks = nextLeftBlocks.map((block) => cloneHeroBlock({ ...block, column: 'left' }));
   if (imageBlock.value) {
@@ -397,6 +444,14 @@ function rebuildHeroBlocks(nextLeftBlocks: Array<HeroTextBlock | HeroTagsBlock>)
   heroBlocks.value = nextBlocks;
 }
 
+/**
+ * 把当前区块编辑结果同步回表单字段。
+ * 同时兼容旧字段 heroTitle、heroSubtitle 与 siteTitle，便于后端统一保存。
+ *
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；仅执行本地序列化。
+ * @author Dyx
+ */
 function syncHeroConfigToForm(): void {
   const blocks = heroBlocks.value.map((block) => cloneHeroBlock(block));
   form.heroConfig = JSON.stringify({ version: 1, blocks });
@@ -405,27 +460,67 @@ function syncHeroConfigToForm(): void {
   form.heroSubtitle = findTextBlockValue('subtitle');
 }
 
+/**
+ * 读取指定文本区块的当前文案。
+ *
+ * @param type 文本区块类型。
+ * @returns 返回对应区块文本；未命中时返回空字符串。
+ * @throws 该函数不会主动抛出异常；仅执行本地查找。
+ * @author Dyx
+ */
 function findTextBlockValue(type: HeroTextBlock['type']): string {
   const block = heroBlocks.value.find((item): item is HeroTextBlock => item.type === type);
   return block?.text || '';
 }
 
+/**
+ * 判断当前区块是否为文本输入区块。
+ */
 function isTextBlock(block: HeroBlock): block is HeroTextBlock {
   return block.type === 'eyebrow' || block.type === 'title' || block.type === 'subtitle';
 }
 
+/**
+ * 判断当前区块是否为标签组区块。
+ */
 function isTagsBlock(block: HeroBlock): block is HeroTagsBlock {
   return block.type === 'tags';
 }
 
+/**
+ * 将标签数组格式化为多行文本，供文本域编辑。
+ *
+ * @param items 标签项数组。
+ * @returns 返回换行连接后的标签文本。
+ * @throws 该函数不会主动抛出异常；仅执行本地格式化。
+ * @author Dyx
+ */
 function formatTagItems(items: string[]): string {
   return items.join('\n');
 }
 
+/**
+ * 处理标签文本域输入，并同步更新标签组内容。
+ *
+ * @param block 待更新的标签区块。
+ * @param value 输入框中的最新值。
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；仅执行字符串标准化。
+ * @author Dyx
+ */
 function handleTagItemsInput(block: HeroTagsBlock, value: string | number): void {
   updateTagItems(block, String(value ?? ''));
 }
 
+/**
+ * 将原始标签输入按换行或逗号切分，并限制数量和单项长度。
+ *
+ * @param block 待更新的标签区块。
+ * @param value 原始标签输入文本。
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；仅执行本地清洗与裁剪。
+ * @author Dyx
+ */
 function updateTagItems(block: HeroTagsBlock, value: string): void {
   block.items = value
     .split(/\r?\n|,/)
@@ -435,6 +530,14 @@ function updateTagItems(block: HeroTagsBlock, value: string): void {
     .map((item) => item.slice(0, TAG_ITEM_MAX_LENGTH));
 }
 
+/**
+ * 选择并准备裁剪横幅背景图。
+ *
+ * @param value 媒体选择器返回的背景图地址。
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；仅更新裁剪上下文或直接清空图片。
+ * @author Dyx
+ */
 function handleBackgroundSelect(value: string | string[] | undefined): void {
   const nextUrl = typeof value === 'string' ? value.trim() : value?.[0]?.trim() || '';
   if (!imageBlock.value) {
@@ -453,6 +556,14 @@ function handleBackgroundSelect(value: string | string[] | undefined): void {
   backgroundCropperVisible.value = true;
 }
 
+/**
+ * 选择并准备裁剪首屏人物图。
+ *
+ * @param value 媒体选择器返回的人物图地址。
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；仅更新裁剪上下文或直接清空图片。
+ * @author Dyx
+ */
 function handlePortraitSelect(value: string | string[] | undefined): void {
   const nextUrl = typeof value === 'string' ? value.trim() : value?.[0]?.trim() || '';
   if (!imageBlock.value) {
@@ -471,6 +582,14 @@ function handlePortraitSelect(value: string | string[] | undefined): void {
   portraitCropperVisible.value = true;
 }
 
+/**
+ * 同步背景图裁剪弹窗显隐状态，并在关闭时清理待处理上下文。
+ *
+ * @param value 裁剪弹窗新的显示状态。
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；仅更新本地状态。
+ * @author Dyx
+ */
 function handleBackgroundCropperVisibleChange(value: boolean): void {
   backgroundCropperVisible.value = value;
   if (!value) {
@@ -479,6 +598,14 @@ function handleBackgroundCropperVisibleChange(value: boolean): void {
   }
 }
 
+/**
+ * 同步人物图裁剪弹窗显隐状态，并在关闭时清理待处理上下文。
+ *
+ * @param value 裁剪弹窗新的显示状态。
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；仅更新本地状态。
+ * @author Dyx
+ */
 function handlePortraitCropperVisibleChange(value: boolean): void {
   portraitCropperVisible.value = value;
   if (!value) {
@@ -487,6 +614,15 @@ function handlePortraitCropperVisibleChange(value: boolean): void {
   }
 }
 
+/**
+ * 处理背景图裁剪确认结果。
+ * 未裁剪时直接使用原图，裁剪后则上传新文件并更新背景图地址。
+ *
+ * @param payload 裁剪组件返回的确认结果。
+ * @returns 返回异步处理结果。
+ * @throws 该函数不会主动向外抛出异常；上传失败时会通过页面提示反馈。
+ * @author Dyx
+ */
 async function handleBackgroundCropConfirm(payload: CropConfirmPayload): Promise<void> {
   if (!imageBlock.value) {
     return;
@@ -509,6 +645,15 @@ async function handleBackgroundCropConfirm(payload: CropConfirmPayload): Promise
   }
 }
 
+/**
+ * 处理人物图裁剪确认结果。
+ * 未裁剪时直接使用原图，裁剪后则上传新文件并更新人物图地址。
+ *
+ * @param payload 裁剪组件返回的确认结果。
+ * @returns 返回异步处理结果。
+ * @throws 该函数不会主动向外抛出异常；上传失败时会通过页面提示反馈。
+ * @author Dyx
+ */
 async function handlePortraitCropConfirm(payload: CropConfirmPayload): Promise<void> {
   if (!imageBlock.value) {
     return;
@@ -531,6 +676,15 @@ async function handlePortraitCropConfirm(payload: CropConfirmPayload): Promise<v
   }
 }
 
+/**
+ * 按方向移动左侧区块顺序。
+ *
+ * @param blockId 待移动区块 ID。
+ * @param direction 移动方向，-1 表示上移，1 表示下移。
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；越界移动会被直接忽略。
+ * @author Dyx
+ */
 function moveBlock(blockId: string, direction: number): void {
   const nextLeftBlocks = leftHeroBlocks.value.map((block) => cloneHeroBlock(block) as HeroTextBlock | HeroTagsBlock);
   const currentIndex = nextLeftBlocks.findIndex((block) => block.id === blockId);
@@ -543,10 +697,26 @@ function moveBlock(blockId: string, direction: number): void {
   rebuildHeroBlocks(nextLeftBlocks);
 }
 
+/**
+ * 记录当前正在拖拽的区块 ID。
+ *
+ * @param blockId 正在拖拽的区块 ID。
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；仅更新本地拖拽状态。
+ * @author Dyx
+ */
 function handleBlockDragStart(blockId: string): void {
   draggingBlockId.value = blockId;
 }
 
+/**
+ * 处理区块拖拽放置，并按目标位置重排左侧区块顺序。
+ *
+ * @param targetBlockId 放置目标区块 ID。
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；非法拖拽目标会被直接忽略。
+ * @author Dyx
+ */
 function handleBlockDrop(targetBlockId: string): void {
   const sourceBlockId = draggingBlockId.value;
   draggingBlockId.value = null;
@@ -566,18 +736,38 @@ function handleBlockDrop(targetBlockId: string): void {
   rebuildHeroBlocks(nextLeftBlocks);
 }
 
+/**
+ * 拖拽结束时清理当前拖拽状态。
+ *
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；仅重置本地状态。
+ * @author Dyx
+ */
 function handleDragEnd(): void {
   draggingBlockId.value = null;
 }
 
+/**
+ * 判断区块是否位于左侧列表首位。
+ */
 function isFirstBlock(blockId: string): boolean {
   return leftHeroBlocks.value[0]?.id === blockId;
 }
 
+/**
+ * 判断区块是否位于左侧列表末位。
+ */
 function isLastBlock(blockId: string): boolean {
   return leftHeroBlocks.value[leftHeroBlocks.value.length - 1]?.id === blockId;
 }
 
+/**
+ * 获取首页首屏配置并标准化为可编辑区块。
+ *
+ * @returns 返回异步加载结果；成功后会更新首屏表单与区块列表。
+ * @throws 该函数不会主动向外抛出异常；失败时会通过页面提示反馈。
+ * @author Dyx
+ */
 async function loadProfile(): Promise<void> {
   try {
     const response = await getAdminHeroProfile();
@@ -588,6 +778,14 @@ async function loadProfile(): Promise<void> {
   }
 }
 
+/**
+ * 保存当前首页首屏配置。
+ * 提交前会先把区块结构同步回 heroConfig 与兼容字段，再请求后台保存。
+ *
+ * @returns 返回异步保存结果；成功后会回填最新首屏配置并刷新区块结构。
+ * @throws 该函数不会主动向外抛出异常；保存失败时会通过页面提示反馈。
+ * @author Dyx
+ */
 async function handleSave(): Promise<void> {
   if (saving.value) {
     return;

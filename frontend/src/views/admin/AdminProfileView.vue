@@ -79,6 +79,10 @@ interface CropConfirmPayload {
   originalUrl?: string;
 }
 
+/**
+ * 后台“关于我”资料管理页。
+ * 负责维护头像、关于我内容和联系方式，并处理头像裁剪上传流程。
+ */
 const saving = ref(false);
 const avatarCropperVisible = ref(false);
 const pendingAvatarUrl = ref('');
@@ -102,6 +106,13 @@ const form = reactive<ProfileData>({
   contactMethods: ''
 });
 
+/**
+ * 创建一条空的联系方式记录，供列表新增时复用。
+ *
+ * @returns 返回空白联系方式对象。
+ * @throws 该函数不会主动抛出异常；仅返回本地默认值。
+ * @author Dyx
+ */
 function createEmptyContact(): ContactMethodData {
   return {
     type: '',
@@ -110,14 +121,37 @@ function createEmptyContact(): ContactMethodData {
   };
 }
 
+/**
+ * 在联系方式列表末尾新增一条空记录。
+ *
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；仅更新本地列表。
+ * @author Dyx
+ */
 function addContact(): void {
   contactMethods.value = [...contactMethods.value, createEmptyContact()];
 }
 
+/**
+ * 删除指定下标的联系方式记录。
+ *
+ * @param index 待删除项的下标。
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；越界下标会自然得到过滤后的原列表。
+ * @author Dyx
+ */
 function removeContact(index: number): void {
   contactMethods.value = contactMethods.value.filter((_, currentIndex) => currentIndex !== index);
 }
 
+/**
+ * 从联系方式扩展列表中回填旧版兼容字段值。
+ *
+ * @param types 需要匹配的类型关键词列表。
+ * @returns 返回首个匹配项的联系方式值；未命中时返回空字符串。
+ * @throws 该函数不会主动抛出异常；仅执行本地查找。
+ * @author Dyx
+ */
 function findLegacyContactValue(types: string[]): string {
   return contactMethods.value.find((item) => {
     const normalized = `${item.type || ''} ${item.label || ''}`.toLowerCase();
@@ -125,6 +159,15 @@ function findLegacyContactValue(types: string[]): string {
   })?.value?.trim() || '';
 }
 
+/**
+ * 处理头像地址选择。
+ * 当新头像与当前头像不同步时，会先打开裁剪弹窗确认。
+ *
+ * @param value 媒体选择器返回的头像地址或地址数组。
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；仅更新本地头像裁剪上下文。
+ * @author Dyx
+ */
 function handleAvatarSelect(value: string | string[]): void {
   const nextUrl = typeof value === 'string' ? value.trim() : value[0]?.trim() || '';
   if (!nextUrl) {
@@ -140,6 +183,14 @@ function handleAvatarSelect(value: string | string[]): void {
   avatarCropperVisible.value = true;
 }
 
+/**
+ * 同步头像裁剪弹窗显隐状态，并在关闭时清理待处理头像上下文。
+ *
+ * @param value 裁剪弹窗新的显示状态。
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；仅更新本地状态。
+ * @author Dyx
+ */
 function handleAvatarCropperVisibleChange(value: boolean): void {
   avatarCropperVisible.value = value;
   if (!value) {
@@ -148,6 +199,15 @@ function handleAvatarCropperVisibleChange(value: boolean): void {
   }
 }
 
+/**
+ * 处理头像裁剪确认结果。
+ * 未裁剪时直接使用原图，裁剪后则上传新文件并回填头像地址。
+ *
+ * @param payload 裁剪组件返回的确认结果。
+ * @returns 返回异步处理结果。
+ * @throws 该函数不会主动向外抛出异常；上传失败时会通过页面提示反馈。
+ * @author Dyx
+ */
 async function handleAvatarCropConfirm(payload: CropConfirmPayload): Promise<void> {
   if (!payload.edited) {
     form.avatarUrl = payload.originalUrl ?? pendingAvatarUrl.value ?? form.avatarUrl;
@@ -167,12 +227,27 @@ async function handleAvatarCropConfirm(payload: CropConfirmPayload): Promise<voi
   }
 }
 
+/**
+ * 获取个人资料并同步联系方式扩展字段。
+ *
+ * @returns 返回异步加载结果；成功后会回填资料表单和联系方式列表。
+ * @throws 该函数不会主动抛出同步异常；接口失败时会以 Promise reject 形式返回。
+ * @author Dyx
+ */
 async function loadProfile(): Promise<void> {
   const response = await getAdminProfile();
   Object.assign(form, response.data ?? {});
   contactMethods.value = resolveProfileContactMethods(response.data ?? {});
 }
 
+/**
+ * 保存当前个人资料表单。
+ * 提交前会把联系方式列表同步回兼容字段和 contactMethods 字符串字段。
+ *
+ * @returns 返回异步保存结果；成功后会回填接口返回的最新资料。
+ * @throws 该函数不会主动向外抛出异常；保存失败时加载状态会在 finally 中恢复。
+ * @author Dyx
+ */
 async function handleSave(): Promise<void> {
   if (saving.value) {
     return;

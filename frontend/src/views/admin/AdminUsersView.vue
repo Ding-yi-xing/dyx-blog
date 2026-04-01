@@ -60,6 +60,10 @@ import { deleteAdminUser, getAdminUsers, saveAdminUser, type AdminListUserData }
 import { useAuthStore } from '@/stores/auth';
 import { resolveErrorMessage } from '@/utils/error';
 
+/**
+ * 后台用户管理页。
+ * 负责展示用户列表，并提供用户的新建、编辑与删除流程。
+ */
 const authStore = useAuthStore();
 const rawList = ref<AdminListUserData[]>([]);
 const dialogVisible = ref(false);
@@ -74,6 +78,9 @@ const form = reactive<Partial<AdminListUserData>>({
   enabled: 1
 });
 
+/**
+ * 将后台原始用户列表转换为表格展示所需的衍生字段。
+ */
 const users = computed(() =>
   rawList.value.map((item) => ({
     ...item,
@@ -84,6 +91,13 @@ const users = computed(() =>
   }))
 );
 
+/**
+ * 重置用户表单，供新建与编辑前复用。
+ *
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；仅重置本地表单状态。
+ * @author Dyx
+ */
 function resetForm(): void {
   Object.assign(form, {
     id: undefined,
@@ -95,23 +109,52 @@ function resetForm(): void {
   });
 }
 
+/**
+ * 获取后台用户列表并刷新表格数据源。
+ *
+ * @returns 返回异步加载结果；成功后会更新页面表格数据。
+ * @throws 该函数不会主动抛出同步异常；接口失败时会以 Promise reject 形式返回。
+ * @author Dyx
+ */
 async function loadUsers(): Promise<void> {
   const response = await getAdminUsers();
   rawList.value = response.data ?? [];
 }
 
+/**
+ * 打开新建用户弹窗，并初始化为空表单。
+ *
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；仅重置表单并展示弹窗。
+ * @author Dyx
+ */
 function openCreateDialog(): void {
   resetForm();
   dialogVisible.value = true;
 }
 
+/**
+ * 打开编辑用户弹窗，并将当前用户数据回填到表单中。
+ *
+ * @param item 待编辑的用户数据。
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；密码字段会被重置为空以避免回显旧密码。
+ * @author Dyx
+ */
 function openEditDialog(item: AdminListUserData): void {
   resetForm();
   Object.assign(form, item, { password: '' });
   dialogVisible.value = true;
 }
 
-
+/**
+ * 保存当前用户表单。
+ * 新建与编辑共用同一套提交逻辑，成功后会刷新列表并关闭弹窗。
+ *
+ * @returns 返回异步保存结果。
+ * @throws 该函数不会主动向外抛出异常；保存失败时会通过页面提示反馈。
+ * @author Dyx
+ */
 async function handleSave(): Promise<void> {
   if (saving.value) {
     return;
@@ -129,6 +172,14 @@ async function handleSave(): Promise<void> {
   }
 }
 
+/**
+ * 删除指定用户，并在用户确认后刷新当前列表。
+ *
+ * @param item 待删除的用户数据。
+ * @returns 返回异步删除结果。
+ * @throws 该函数不会主动向外抛出异常；取消删除时会静默结束，失败时通过页面提示反馈。
+ * @author Dyx
+ */
 async function handleDelete(item: AdminListUserData): Promise<void> {
   try {
     await ElMessageBox.confirm(`确认删除用户“${item.displayName || item.username}”吗？`, '删除确认', {

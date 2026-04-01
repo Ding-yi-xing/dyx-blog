@@ -83,10 +83,17 @@ import type { MediaData } from '@/api/modules/admin';
 import { extractFileName, isImageUrl, isPdfUrl } from '@/utils/media';
 import { resolveErrorMessage } from '@/utils/error';
 
+/**
+ * 后台媒体资源管理页。
+ * 负责展示媒体库列表，并提供导入 uploads、上传新文件、预览和删除能力。
+ */
 const importing = ref(false);
 const uploading = ref(false);
 const mediaRawList = ref<MediaData[]>([]);
 
+/**
+ * 将后台媒体列表转换为表格展示所需的衍生字段。
+ */
 const mediaList = computed(() =>
   mediaRawList.value.map((item) => ({
     ...item,
@@ -95,6 +102,14 @@ const mediaList = computed(() =>
   }))
 );
 
+/**
+ * 将字节大小格式化为便于后台表格阅读的文本。
+ *
+ * @param size 文件大小，单位为字节。
+ * @returns 返回 KB 或 MB 文本；缺失时返回 0KB。
+ * @throws 该函数不会主动抛出异常；仅执行本地格式化。
+ * @author Dyx
+ */
 function formatFileSize(size?: number): string {
   if (!size) {
     return '0KB';
@@ -105,11 +120,25 @@ function formatFileSize(size?: number): string {
   return `${Math.max(1, Math.round(size / 1024))}KB`;
 }
 
+/**
+ * 获取后台媒体库列表并刷新表格数据源。
+ *
+ * @returns 返回异步加载结果；成功后会更新页面媒体列表。
+ * @throws 该函数不会主动抛出同步异常；接口失败时会以 Promise reject 形式返回。
+ * @author Dyx
+ */
 async function loadMediaList(): Promise<void> {
   const response = await getAdminMedia();
   mediaRawList.value = response.data ?? [];
 }
 
+/**
+ * 导入 uploads 目录中尚未登记到媒体库的历史文件。
+ *
+ * @returns 返回异步导入结果；成功后会提示导入数量并刷新列表。
+ * @throws 该函数不会主动向外抛出异常；导入失败时会通过页面提示反馈。
+ * @author Dyx
+ */
 async function handleImportExisting(): Promise<void> {
   if (importing.value) {
     return;
@@ -127,6 +156,14 @@ async function handleImportExisting(): Promise<void> {
   }
 }
 
+/**
+ * 上传用户选中的新媒体文件。
+ *
+ * @param options Element Plus 上传组件传入的请求上下文。
+ * @returns 返回异步上传结果；成功后会刷新媒体列表。
+ * @throws 该函数不会主动向外抛出异常；上传失败时会通过页面提示反馈。
+ * @author Dyx
+ */
 async function handleUpload(options: UploadRequestOptions): Promise<void> {
   if (uploading.value) {
     return;
@@ -143,6 +180,15 @@ async function handleUpload(options: UploadRequestOptions): Promise<void> {
   }
 }
 
+/**
+ * 根据媒体类型打开预览。
+ * 图片以内嵌弹窗展示，其他文件交由新窗口打开。
+ *
+ * @param url 待预览的媒体地址。
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；仅执行前端预览逻辑。
+ * @author Dyx
+ */
 function openPreview(url: string): void {
   if (isImageUrl(url)) {
     void ElMessageBox.alert(h('img', {
@@ -164,6 +210,14 @@ function openPreview(url: string): void {
   void window.open(url, '_blank', 'noopener,noreferrer');
 }
 
+/**
+ * 删除指定媒体，并在确认后刷新当前列表。
+ *
+ * @param item 待删除的媒体数据。
+ * @returns 返回异步删除结果。
+ * @throws 该函数不会主动向外抛出异常；取消删除时会静默结束，失败时通过页面提示反馈。
+ * @author Dyx
+ */
 async function handleDelete(item: MediaData): Promise<void> {
   const displayName = item.originalName || item.fileName || '该媒体';
   try {

@@ -160,54 +160,81 @@
 </template>
 
 <script setup lang="ts">
-import { ElMessage } from "element-plus";
-import { onMounted, reactive, ref } from "vue";
+import { ElMessage } from 'element-plus';
+import { onMounted, reactive, ref } from 'vue';
 import {
   getAdminSystemConfig,
   updateAdminSystemConfig,
-  type SystemConfigData,
-} from "@/api/modules/admin";
-import { resolveErrorMessage } from "@/utils/error";
+  type SystemConfigData
+} from '@/api/modules/admin';
+import { resolveErrorMessage } from '@/utils/error';
 
+/**
+ * 后台系统配置页。
+ * 负责维护媒体存储方式、OSS 参数以及首页第三屏页脚展示文案。
+ */
 const saving = ref(false);
 const form = reactive<SystemConfigData>({
   id: 1,
-  storageType: "local",
+  storageType: 'local',
   ossEndpoint: undefined,
   ossRegion: undefined,
   ossBucketName: undefined,
   ossPublicUrlPrefix: undefined,
-  ossBaseDir: "",
-  copyrightText: "",
-  techSupportText: "",
+  ossBaseDir: '',
+  copyrightText: '',
+  techSupportText: '',
   ossEndpointConfigured: false,
   ossRegionConfigured: false,
   ossBucketNameConfigured: false,
-  ossPublicUrlPrefixConfigured: false,
+  ossPublicUrlPrefixConfigured: false
 });
 
+/**
+ * 将系统配置接口返回的数据回填到表单。
+ * 对敏感配置项采用“显示配置状态 + 保留已有输入”的方式，避免误清空。
+ *
+ * @param data 系统配置数据。
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；缺失字段会回退到默认值或保留当前输入。
+ * @author Dyx
+ */
 function applyFormData(data?: SystemConfigData): void {
   form.id = data?.id ?? 1;
   form.storageType =
-    (data?.storageType as "local" | "oss" | undefined) ?? form.storageType ?? "local";
+    (data?.storageType as 'local' | 'oss' | undefined) ?? form.storageType ?? 'local';
   form.ossEndpoint = data?.ossEndpoint ?? form.ossEndpoint;
   form.ossRegion = data?.ossRegion ?? form.ossRegion;
   form.ossBucketName = data?.ossBucketName ?? form.ossBucketName;
   form.ossPublicUrlPrefix = data?.ossPublicUrlPrefix ?? form.ossPublicUrlPrefix;
-  form.ossBaseDir = data?.ossBaseDir ?? "";
-  form.copyrightText = data?.copyrightText ?? "";
-  form.techSupportText = data?.techSupportText ?? "";
+  form.ossBaseDir = data?.ossBaseDir ?? '';
+  form.copyrightText = data?.copyrightText ?? '';
+  form.techSupportText = data?.techSupportText ?? '';
   form.ossEndpointConfigured = Boolean(data?.ossEndpointConfigured);
   form.ossRegionConfigured = Boolean(data?.ossRegionConfigured);
   form.ossBucketNameConfigured = Boolean(data?.ossBucketNameConfigured);
   form.ossPublicUrlPrefixConfigured = Boolean(data?.ossPublicUrlPrefixConfigured);
 }
 
+/**
+ * 获取当前系统配置并回填页面表单。
+ *
+ * @returns 返回异步加载结果；成功后会更新存储配置和页脚文案字段。
+ * @throws 该函数不会主动抛出同步异常；接口失败时会以 Promise reject 形式返回。
+ * @author Dyx
+ */
 async function loadSystemConfig(): Promise<void> {
   const response = await getAdminSystemConfig();
   applyFormData(response.data);
 }
 
+/**
+ * 根据当前表单构建保存系统配置所需的提交参数。
+ *
+ * @returns 返回系统配置保存载荷。
+ * @throws 该函数不会主动抛出异常；仅读取当前表单状态。
+ * @author Dyx
+ */
 function buildPayload(): SystemConfigData {
   return {
     id: form.id,
@@ -218,10 +245,17 @@ function buildPayload(): SystemConfigData {
     ossPublicUrlPrefix: form.ossPublicUrlPrefix,
     ossBaseDir: form.ossBaseDir,
     copyrightText: form.copyrightText,
-    techSupportText: form.techSupportText,
+    techSupportText: form.techSupportText
   };
 }
 
+/**
+ * 保存当前系统配置。
+ *
+ * @returns 返回异步保存结果；成功后会回填接口返回的最新配置状态。
+ * @throws 该函数不会主动向外抛出异常；保存失败时会通过页面提示反馈。
+ * @author Dyx
+ */
 async function handleSave(): Promise<void> {
   if (saving.value) {
     return;
@@ -230,9 +264,9 @@ async function handleSave(): Promise<void> {
   try {
     const response = await updateAdminSystemConfig(buildPayload());
     applyFormData(response.data);
-    ElMessage.success("系统配置保存成功");
+    ElMessage.success('系统配置保存成功');
   } catch (error) {
-    ElMessage.error(resolveErrorMessage(error, "系统配置保存失败"));
+    ElMessage.error(resolveErrorMessage(error, '系统配置保存失败'));
   } finally {
     saving.value = false;
   }

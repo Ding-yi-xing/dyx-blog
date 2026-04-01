@@ -82,6 +82,10 @@ import type { WorkData } from '@/api/modules/site';
 import { isImageUrl, parseImageUrls, stringifyImageUrls } from '@/utils/media';
 import AdminMediaPicker from '@/views/admin/AdminMediaPicker.vue';
 
+/**
+ * 后台作品管理页。
+ * 负责加载作品列表，并提供作品的新建、编辑与删除能力。
+ */
 const rawList = ref<WorkData[]>([]);
 const dialogVisible = ref(false);
 const saving = ref(false);
@@ -100,6 +104,9 @@ const form = reactive<Partial<WorkData>>({
   published: 1
 });
 
+/**
+ * 将后台原始作品列表转换为表格展示所需的衍生字段。
+ */
 const works = computed(() =>
   rawList.value.map((item) => ({
     ...item,
@@ -111,6 +118,15 @@ const works = computed(() =>
   }))
 );
 
+/**
+ * 统计作品关联的有效图片数量。
+ * 会合并封面图、视频封面与图集中的图片地址，并自动去重。
+ *
+ * @param item 作品数据对象。
+ * @returns 返回当前作品可展示的图片数量。
+ * @throws 该函数不会主动抛出异常；无效地址会在过滤阶段被忽略。
+ * @author Dyx
+ */
 function resolveImageCount(item: WorkData): number {
   return new Set([
     item.coverImage,
@@ -119,6 +135,13 @@ function resolveImageCount(item: WorkData): number {
   ].filter((url): url is string => !!url && isImageUrl(url))).size;
 }
 
+/**
+ * 重置作品表单与已选图集，供新建和编辑前统一复用。
+ *
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；仅重置本地表单状态。
+ * @author Dyx
+ */
 function resetForm(): void {
   Object.assign(form, {
     id: undefined,
@@ -135,16 +158,38 @@ function resetForm(): void {
   selectedImageUrls.value = [];
 }
 
+/**
+ * 获取后台作品列表并刷新表格数据源。
+ *
+ * @returns 返回异步加载结果；成功后会更新页面表格数据。
+ * @throws 该函数不会主动抛出同步异常；接口失败时会以 Promise reject 形式返回。
+ * @author Dyx
+ */
 async function loadWorks(): Promise<void> {
   const response = await getAdminWorks();
   rawList.value = response.data ?? [];
 }
 
+/**
+ * 打开新建作品弹窗，并初始化为空表单。
+ *
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；仅重置表单并展示弹窗。
+ * @author Dyx
+ */
 function openCreateDialog(): void {
   resetForm();
   dialogVisible.value = true;
 }
 
+/**
+ * 打开编辑作品弹窗，并将当前作品数据回填到表单中。
+ *
+ * @param item 待编辑的作品数据。
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；图集地址会在回填前完成过滤。
+ * @author Dyx
+ */
 function openEditDialog(item: WorkData): void {
   resetForm();
   Object.assign(form, item);
@@ -152,6 +197,14 @@ function openEditDialog(item: WorkData): void {
   dialogVisible.value = true;
 }
 
+/**
+ * 保存当前作品表单。
+ * 新建与编辑共用同一套提交逻辑，成功后会刷新列表并关闭弹窗。
+ *
+ * @returns 返回异步保存结果。
+ * @throws 该函数不会主动向外抛出异常；保存失败时会通过页面提示反馈。
+ * @author Dyx
+ */
 async function handleSave(): Promise<void> {
   if (saving.value) {
     return;
@@ -172,6 +225,14 @@ async function handleSave(): Promise<void> {
   }
 }
 
+/**
+ * 删除指定作品，并在用户确认后刷新当前列表。
+ *
+ * @param item 待删除的作品数据。
+ * @returns 返回异步删除结果。
+ * @throws 该函数不会主动向外抛出异常；取消删除时会静默结束，失败时通过页面提示反馈。
+ * @author Dyx
+ */
 async function handleDelete(item: WorkData): Promise<void> {
   try {
     await ElMessageBox.confirm(`确认删除作品“${item.title}”吗？`, '删除确认', {

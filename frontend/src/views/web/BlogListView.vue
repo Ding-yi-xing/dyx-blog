@@ -59,8 +59,19 @@ import { onMounted, ref } from 'vue';
 import { getPosts, recordSiteVisit, type PostData } from '@/api/modules/site';
 import { formatDateYmd } from '@/utils/date';
 
+/**
+ * 前台博客列表页。
+ * 负责加载全部已发布文章，并在页面进入时记录站点访问日志。
+ */
 const posts = ref<PostData[]>([]);
 
+/**
+ * 获取文章列表并刷新页面数据源。
+ *
+ * @returns 返回异步加载结果；成功后会更新文章列表。
+ * @throws 该函数不会主动抛出同步异常；接口失败时会以 Promise reject 形式返回。
+ * @author Dyx
+ */
 async function loadPosts(): Promise<void> {
   const response = await getPosts();
   posts.value = response.data ?? [];
