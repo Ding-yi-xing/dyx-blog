@@ -24,3 +24,12 @@ backend/uploads/
 
 # Claude
 .claude/
+
+# Playwright
+.playwright-mcp/
+
+# Trae
+.trae/
+
+# Compiled files
+Palindrome.class
