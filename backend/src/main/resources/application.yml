@@ -3,7 +3,7 @@ server:
 
 spring:
   profiles:
-    active: # 默认激活开发环境配置
+    active: prod# 默认激活开发环境配置
   application:
     name: dyx-blog
   datasource:
