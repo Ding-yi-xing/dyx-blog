@@ -33,3 +33,6 @@ backend/uploads/
 
 # Compiled files
 Palindrome.class
+
+# Map screenshots
+map-*.png
