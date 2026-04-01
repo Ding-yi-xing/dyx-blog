@@ -40,6 +40,12 @@ import java.util.Map;
 /**
  * 后台管理控制器。
  * 提供仪表盘、内容管理、资料管理与媒体管理接口。
+ * <p>
+ * 该控制器统一承接后台页面的 CRUD 请求，并把具体业务校验、权限控制和缓存处理下沉到服务层。
+ * 控制器层仅负责参数接收、路径变量回填和统一响应包装。
+ * </p>
+ *
+ * @author Dyx
  */
 @RestController
 @RequiredArgsConstructor

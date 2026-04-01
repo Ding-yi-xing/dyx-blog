@@ -15,7 +15,7 @@ import java.util.List;
 
 /**
  * Web MVC 配置类。
- * 用于注册跨域、鉴权拦截器和媒体资源访问映射。
+ * 统一注册跨域规则、后台 JWT 拦截器以及本地媒体资源映射。
  */
 @Configuration
 @RequiredArgsConstructor
@@ -29,8 +29,6 @@ public class WebMvcConfig implements WebMvcConfigurer {
      * 注册系统使用的密码编码器。
      *
      * @return 基于 BCrypt 算法的密码编码器实例，用于登录校验与用户密码存储。
-     * @throws IllegalArgumentException 当前实现不会主动抛出该异常；若 Spring 容器初始化参数异常，则由框架启动流程抛出。
-     * @author Dyx
      */
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -39,6 +37,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     /**
      * 配置跨域规则。
+     * 允许来源列表来自安全配置属性，便于按环境统一调整。
      *
      * @param registry 跨域注册器。
      */
@@ -53,7 +52,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
     }
 
     /**
-     * 注册鉴权拦截器。
+     * 注册后台接口的 JWT 鉴权拦截器。
      *
      * @param registry 拦截器注册器。
      */
@@ -66,6 +65,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     /**
      * 配置本地上传文件的静态资源访问映射。
+     * 仅在本地存储模式下由文件访问前缀映射到上传目录。
      *
      * @param registry 资源处理器注册器。
      */
