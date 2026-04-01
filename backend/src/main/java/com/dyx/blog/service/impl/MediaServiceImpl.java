@@ -55,6 +55,12 @@ import java.util.stream.Stream;
 
 /**
  * 媒体资源服务实现类。
+ * <p>
+ * 负责媒体上传、历史文件导入、媒体代理读取、引用校验和多存储实现切换。
+ * 同时包含对文件类型、图片内容、远程地址安全性和引用关系的统一校验逻辑。
+ * </p>
+ *
+ * @author Dyx
  */
 @Service
 @RequiredArgsConstructor
@@ -222,6 +228,17 @@ public class MediaServiceImpl implements MediaService {
         dyxMediaMapper.deleteById(id);
     }
 
+    /**
+     * 校验上传文件的大小、扩展名、媒体类型与图片内容。
+     * <p>
+     * 对图片文件会进一步尝试解析真实内容，避免伪造扩展名或损坏文件进入媒体库。
+     * </p>
+     *
+     * @param file 待上传的媒体文件。
+     * @return 无返回值。
+     * @throws BusinessException 当文件为空、超出大小限制、类型不受支持或图片内容校验失败时抛出。
+     * @author Dyx
+     */
     private void validateUpload(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new BusinessException("上传文件不能为空");
@@ -243,6 +260,15 @@ public class MediaServiceImpl implements MediaService {
         }
     }
 
+    /**
+     * 校验本地导入文件的大小、媒体类型与图片内容是否合法。
+     *
+     * @param filePath  待导入的文件路径。
+     * @param mediaType 文件探测得到的媒体类型。
+     * @return 无返回值。
+     * @throws BusinessException 当文件为空、超限、类型不安全或图片内容校验失败时抛出。
+     * @author Dyx
+     */
     private void validateImportedFile(Path filePath, String mediaType) {
         try {
             long fileSize = Files.size(filePath);
@@ -304,6 +330,14 @@ public class MediaServiceImpl implements MediaService {
         return originalFilename.replace("\r", "").replace("\n", "").trim();
     }
 
+    /**
+     * 代理读取本地存储中的媒体文件，并返回适合浏览器内联展示的响应。
+     *
+     * @param media 媒体记录对象。
+     * @return 包含媒体字节内容的 HTTP 响应。
+     * @throws BusinessException 当本地文件不存在或读取失败时抛出。
+     * @author Dyx
+     */
     private ResponseEntity<byte[]> proxyLocalMedia(Media media) {
         try {
             Path path = resolveLocalFilePath(media);
@@ -318,6 +352,14 @@ public class MediaServiceImpl implements MediaService {
         }
     }
 
+    /**
+     * 代理读取远程存储中的媒体文件，并对远程地址安全性进行前置校验。
+     *
+     * @param media 媒体记录对象。
+     * @return 包含媒体字节内容的 HTTP 响应。
+     * @throws BusinessException 当远程地址不受信任、请求失败或响应内容异常时抛出。
+     * @author Dyx
+     */
     private ResponseEntity<byte[]> proxyRemoteMedia(Media media) {
         URI remoteUri = validateRemoteMediaUri(media.getFileUrl());
         try {
@@ -369,6 +411,14 @@ public class MediaServiceImpl implements MediaService {
         return resolvedPath;
     }
 
+    /**
+     * 校验远程媒体地址，仅允许 HTTPS 且拒绝本地、私网和回环地址。
+     *
+     * @param fileUrl 待校验的远程媒体地址。
+     * @return 返回规范化后的远程 URI。
+     * @throws BusinessException 当链接为空、格式非法或指向不受信任主机时抛出。
+     * @author Dyx
+     */
     private URI validateRemoteMediaUri(String fileUrl) {
         if (!StringUtils.hasText(fileUrl)) {
             throw new BusinessException("媒体资源链接无效");
@@ -392,6 +442,14 @@ public class MediaServiceImpl implements MediaService {
         }
     }
 
+    /**
+     * 判断远程主机是否属于应拒绝访问的本地或私网地址。
+     *
+     * @param host 远程主机名或 IP。
+     * @return 命中本地、私网、链路本地或其他不受信任地址时返回 true。
+     * @throws BusinessException 该方法本身不主动抛出业务异常；域名解析异常时按不受信任处理。
+     * @author Dyx
+     */
     private boolean isDisallowedRemoteHost(String host) {
         if (!StringUtils.hasText(host)) {
             return true;

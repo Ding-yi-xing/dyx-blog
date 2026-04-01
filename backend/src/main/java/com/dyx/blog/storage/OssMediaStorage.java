@@ -28,13 +28,17 @@ import java.util.List;
 
 /**
  * 阿里云 OSS 媒体存储实现。
+ * 负责根据系统配置与环境变量凭证完成对象上传、删除、存在性检查与对象列表读取。
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class OssMediaStorage implements MediaStorage {
 
+    /** 环境变量中的 OSS Access Key ID 键名。 */
     private static final String OSS_ACCESS_KEY_ID = "OSS_ACCESS_KEY_ID";
+
+    /** 环境变量中的 OSS Access Key Secret 键名。 */
     private static final String OSS_ACCESS_KEY_SECRET = "OSS_ACCESS_KEY_SECRET";
 
     private final AdminService dyxAdminService;
@@ -44,6 +48,10 @@ public class OssMediaStorage implements MediaStorage {
         return "oss";
     }
 
+    /**
+     * 上传文件到 OSS，并返回对象键与公网访问地址。
+     * 对象键会基于系统配置中的基础目录与业务层传入的文件名拼接生成。
+     */
     @Override
     public MediaStorageResult upload(MultipartFile file, String storedFileName) {
         SystemConfig systemConfig = requireOssConfig();
@@ -73,6 +81,10 @@ public class OssMediaStorage implements MediaStorage {
         }
     }
 
+    /**
+     * 删除 OSS 中的目标对象。
+     * 优先使用 fileName 作为对象键，fileUrl 仅在缺少 fileName 时用于反推对象键。
+     */
     @Override
     public void delete(String fileName, String fileUrl) {
         SystemConfig systemConfig = requireOssConfig();
@@ -97,6 +109,10 @@ public class OssMediaStorage implements MediaStorage {
         }
     }
 
+    /**
+     * 检查 OSS 对象是否存在。
+     * 当 OSS 配置缺失或检查过程异常时，保守返回 true，避免业务层误判为可安全删除。
+     */
     @Override
     public boolean exists(String fileName, String fileUrl) {
         SystemConfig systemConfig = dyxAdminService.getSystemConfig();
@@ -120,6 +136,10 @@ public class OssMediaStorage implements MediaStorage {
         }
     }
 
+    /**
+     * 列出当前 Bucket 基础目录下的全部对象。
+     * 返回结果会过滤目录占位对象，并补齐可访问 URL、推断内容类型与最后修改时间。
+     */
     public List<StoredObject> listStoredObjects() {
         SystemConfig systemConfig = requireOssConfig();
         OSSClient ossClient = null;
@@ -170,10 +190,16 @@ public class OssMediaStorage implements MediaStorage {
         }
     }
 
+    /**
+     * 判断运行环境中是否已配置 OSS 访问凭证。
+     */
     public static boolean hasConfiguredCredentials() {
         return StringUtils.hasText(readCredential(OSS_ACCESS_KEY_ID)) && StringUtils.hasText(readCredential(OSS_ACCESS_KEY_SECRET));
     }
 
+    /**
+     * 使用当前系统配置与环境变量凭证创建 OSS 客户端。
+     */
     private OSSClient buildClient(SystemConfig systemConfig) {
         String accessKeyId = readCredential(OSS_ACCESS_KEY_ID);
         String accessKeySecret = readCredential(OSS_ACCESS_KEY_SECRET);
@@ -189,6 +215,9 @@ public class OssMediaStorage implements MediaStorage {
                 .build();
     }
 
+    /**
+     * 读取并校验 OSS 所需系统配置。
+     */
     private SystemConfig requireOssConfig() {
         SystemConfig systemConfig = dyxAdminService.getSystemConfig();
         if (systemConfig == null) {
@@ -206,6 +235,10 @@ public class OssMediaStorage implements MediaStorage {
         return systemConfig;
     }
 
+    /**
+     * 推导 OSS 所属地域。
+     * 优先使用显式配置，未配置时再尝试从 Endpoint 主机名中解析。
+     */
     private String resolveRegion(SystemConfig systemConfig) {
         if (StringUtils.hasText(systemConfig.getOssRegion())) {
             return systemConfig.getOssRegion().trim();
@@ -229,11 +262,18 @@ public class OssMediaStorage implements MediaStorage {
         return firstLabel;
     }
 
+    /**
+     * 基于基础目录与存储文件名拼接对象键。
+     */
     private String buildObjectKey(SystemConfig systemConfig, String storedFileName) {
         String baseDir = normalizeBaseDir(systemConfig.getOssBaseDir());
         return StringUtils.hasText(baseDir) ? baseDir + storedFileName : storedFileName;
     }
 
+    /**
+     * 生成对象的公网访问地址。
+     * 优先使用显式配置的访问前缀，未配置时按 Bucket 与 Endpoint 默认拼接。
+     */
     private String buildPublicUrl(SystemConfig systemConfig, String objectKey) {
         String publicUrlPrefix = normalizeUrlPrefix(systemConfig.getOssPublicUrlPrefix());
         if (StringUtils.hasText(publicUrlPrefix)) {
@@ -242,6 +282,9 @@ public class OssMediaStorage implements MediaStorage {
         return buildDefaultPublicUrlPrefix(systemConfig) + objectKey;
     }
 
+    /**
+     * 根据文件名或访问地址解析 OSS 对象键。
+     */
     private String resolveObjectKey(SystemConfig systemConfig, String fileName, String fileUrl) {
         if (StringUtils.hasText(fileName)) {
             return fileName.trim();
@@ -264,6 +307,9 @@ public class OssMediaStorage implements MediaStorage {
         return fileUrl;
     }
 
+    /**
+     * 规范化基础目录，统一为不带前导斜杠、带结尾斜杠的形式。
+     */
     private String normalizeBaseDir(String baseDir) {
         if (!StringUtils.hasText(baseDir)) {
             return "";
@@ -275,6 +321,9 @@ public class OssMediaStorage implements MediaStorage {
         return normalized.isEmpty() ? "" : (normalized.endsWith("/") ? normalized : normalized + "/");
     }
 
+    /**
+     * 规范化公网访问前缀，统一补齐单个结尾斜杠。
+     */
     private String normalizeUrlPrefix(String prefix) {
         if (!StringUtils.hasText(prefix)) {
             return "";
@@ -282,6 +331,9 @@ public class OssMediaStorage implements MediaStorage {
         return prefix.trim().replaceAll("/+$", "") + "/";
     }
 
+    /**
+     * 提取 Endpoint 主机名，去掉协议头与多余路径。
+     */
     private String normalizeEndpointHost(String endpoint) {
         if (!StringUtils.hasText(endpoint)) {
             return "";
@@ -291,6 +343,9 @@ public class OssMediaStorage implements MediaStorage {
         return slashIndex >= 0 ? normalized.substring(0, slashIndex) : normalized;
     }
 
+    /**
+     * 按 Bucket 与 Endpoint 生成默认公网访问前缀。
+     */
     private String buildDefaultPublicUrlPrefix(SystemConfig systemConfig) {
         String endpointHost = normalizeEndpointHost(systemConfig.getOssEndpoint());
         String bucketName = systemConfig.getOssBucketName().trim();
@@ -298,6 +353,9 @@ public class OssMediaStorage implements MediaStorage {
         return "https://" + host + "/";
     }
 
+    /**
+     * 从对象键中提取最终文件名。
+     */
     private String extractObjectName(String objectKey) {
         if (!StringUtils.hasText(objectKey)) {
             return "";
@@ -306,15 +364,24 @@ public class OssMediaStorage implements MediaStorage {
         return separatorIndex >= 0 ? objectKey.substring(separatorIndex + 1) : objectKey;
     }
 
+    /**
+     * 根据对象键猜测内容类型，失败时回退到通用二进制流类型。
+     */
     private String resolveContentType(String objectKey) {
         String contentType = URLConnection.guessContentTypeFromName(objectKey);
         return StringUtils.hasText(contentType) ? contentType : "application/octet-stream";
     }
 
+    /**
+     * 将 OSS 返回的 Instant 转换为系统默认时区的 LocalDateTime。
+     */
     private LocalDateTime toLocalDateTime(Instant instant) {
         return instant == null ? null : LocalDateTime.ofInstant(instant, ZoneId.systemDefault());
     }
 
+    /**
+     * 尽量提取可读的 OSS 异常消息，便于返回前端或记录日志。
+     */
     private String resolveOssErrorMessage(Throwable throwable) {
         if (throwable == null) {
             return "未知错误";
@@ -329,11 +396,17 @@ public class OssMediaStorage implements MediaStorage {
         return throwable.getClass().getSimpleName();
     }
 
+    /**
+     * 读取并裁剪环境变量凭证值。
+     */
     private static String readCredential(String key) {
         String value = System.getenv(key);
         return value == null ? null : value.trim();
     }
 
+    /**
+     * 安静关闭 OSS 客户端，避免清理阶段掩盖主异常。
+     */
     private void closeQuietly(OSSClient ossClient) {
         if (ossClient == null) {
             return;
@@ -344,6 +417,16 @@ public class OssMediaStorage implements MediaStorage {
         }
     }
 
+    /**
+     * OSS 已存储对象摘要。
+     *
+     * @param objectKey      OSS 对象键。
+     * @param originalName   从对象键提取的文件名。
+     * @param fileUrl        对外访问地址。
+     * @param contentType    推断出的内容类型。
+     * @param fileSize       文件大小，单位字节。
+     * @param lastModifiedAt 最后修改时间。
+     */
     public record StoredObject(
             String objectKey,
             String originalName,

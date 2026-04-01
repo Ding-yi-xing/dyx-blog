@@ -12,13 +12,23 @@ import java.util.Map;
 
 /**
  * 首页横幅配置工具。
+ * 负责在新版 heroConfig 与旧版固定字段之间做默认值生成与兼容回填。
  */
 public final class HeroConfigUtil {
 
+    /** 默认站点标题。 */
     private static final String DEFAULT_SITE_TITLE = "HELLO THERE!";
+
+    /** 默认首页主标题。 */
     private static final String DEFAULT_HERO_TITLE = "写代码的人，也写点文字。";
+
+    /** 默认首页副标题。 */
     private static final String DEFAULT_HERO_SUBTITLE = "这里有后端开发、安全研究、折腾小工具的记录，也有一些不那么严肃的碎碎念。这个博客更像是一个公开的笔记本，欢迎随便翻翻。";
+
+    /** 默认人物图替代文本。 */
     private static final String DEFAULT_IMAGE_ALT = "avatar";
+
+    /** 默认标签列表。 */
     private static final List<String> DEFAULT_TAGS = List.of("后端 · Java", "安全 / 基础设施", "随笔与长文");
 
     private HeroConfigUtil() {
@@ -62,6 +72,9 @@ public final class HeroConfigUtil {
         }
     }
 
+    /**
+     * 基于资料旧字段构造默认的首页横幅配置 JSON。
+     */
     private static String buildDefaultHeroConfig(Profile profile, ObjectMapper objectMapper) {
         Map<String, Object> config = new LinkedHashMap<>();
         config.put("version", 1);
@@ -81,6 +94,9 @@ public final class HeroConfigUtil {
         }
     }
 
+    /**
+     * 创建文本块配置。
+     */
     private static Map<String, Object> createTextBlock(String id, String type, String column, String text) {
         Map<String, Object> block = new LinkedHashMap<>();
         block.put("id", id);
@@ -90,6 +106,9 @@ public final class HeroConfigUtil {
         return block;
     }
 
+    /**
+     * 创建标签块配置。
+     */
     private static Map<String, Object> createTagsBlock(String id, String column, List<String> items) {
         Map<String, Object> block = new LinkedHashMap<>();
         block.put("id", id);
@@ -99,6 +118,9 @@ public final class HeroConfigUtil {
         return block;
     }
 
+    /**
+     * 创建图片块配置。
+     */
     private static Map<String, Object> createImageBlock(String id, String column, String imageUrl, String alt) {
         Map<String, Object> block = new LinkedHashMap<>();
         block.put("id", id);
@@ -109,6 +131,9 @@ public final class HeroConfigUtil {
         return block;
     }
 
+    /**
+     * 从块配置列表中提取指定类型文本。
+     */
     private static String extractText(List<?> blocks, String type) {
         for (Object item : blocks) {
             if (!(item instanceof Map<?, ?> block)) {
@@ -135,6 +160,9 @@ public final class HeroConfigUtil {
         return null;
     }
 
+    /**
+     * 将任意对象安全转换为去首尾空白后的字符串。
+     */
     private static String toTrimmedString(Object value) {
         if (value == null) {
             return null;
@@ -143,6 +171,9 @@ public final class HeroConfigUtil {
         return text.isEmpty() ? null : text;
     }
 
+    /**
+     * 返回第一个非空白字符串。
+     */
     private static String firstNonBlank(String... values) {
         if (values == null) {
             return null;
@@ -155,6 +186,9 @@ public final class HeroConfigUtil {
         return null;
     }
 
+    /**
+     * 判断字符串是否为空白。
+     */
     private static boolean isBlank(String value) {
         return value == null || value.trim().isEmpty();
     }

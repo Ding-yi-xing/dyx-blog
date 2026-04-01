@@ -55,6 +55,12 @@ import java.util.Map;
 
 /**
  * 后台管理服务实现类。
+ * <p>
+ * 负责汇总后台仪表盘、内容维护、首页配置、系统配置和用户管理等后台能力，
+ * 并在保存流程中统一处理数据清洗、权限校验、缓存淘汰与默认值回填。
+ * </p>
+ *
+ * @author Dyx
  */
 @Service
 @RequiredArgsConstructor
@@ -924,6 +930,17 @@ public class AdminServiceImpl implements AdminService {
         };
     }
 
+    /**
+     * 将系统配置实体转换为后台展示所需的视图对象。
+     * <p>
+     * 转换时会补充 OSS 配置项是否已设置的状态标记，避免前端在不展示密文的情况下误判配置状态。
+     * </p>
+     *
+     * @param systemConfig 系统配置实体。
+     * @return 后台系统配置展示对象。
+     * @throws BusinessException 该函数不会主动抛出业务异常；空对象会回退为默认视图结构。
+     * @author Dyx
+     */
     private AdminSystemConfigVo toAdminSystemConfigVo(SystemConfig systemConfig) {
         AdminSystemConfigVo target = new AdminSystemConfigVo();
         if (systemConfig == null) {
@@ -1020,6 +1037,17 @@ public class AdminServiceImpl implements AdminService {
         return null;
     }
 
+    /**
+     * 校验首页足迹数据是否合法。
+     * <p>
+     * 重点约束城市、区域、访问时间、排序和坐标等关键字段，避免无效足迹进入首页地图展示。
+     * </p>
+     *
+     * @param footprint 待保存的足迹对象。
+     * @return 无返回值。
+     * @throws BusinessException 当足迹对象为空或关键字段缺失、不合法时抛出。
+     * @author Dyx
+     */
     private void validateFootprint(Footprint footprint) {
         if (footprint == null) {
             throw new BusinessException("足迹数据不能为空");
