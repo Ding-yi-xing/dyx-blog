@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import path from 'node:path';
 
@@ -37,38 +37,36 @@ function resolveManualChunk(id: string): string | undefined {
  * Vite 配置文件。
  * 用于配置 Vue 插件、路径别名以及本地开发代理。
  */
-export default defineConfig({
-  plugins: [vue()],
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src')
-    }
-  },
-  build: {
-    rollupOptions: {
-      output: {
-        manualChunks: resolveManualChunk
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, __dirname);
+
+  return {
+    plugins: [vue()],
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, './src')
+      }
+    },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: resolveManualChunk
+        }
+      }
+    },
+    server: {
+      port: 5173,
+      host: '0.0.0.0',
+      proxy: {
+        '/api': {
+          target: env.VITE_API_PROXY_TARGET,
+          changeOrigin: true
+        },
+        '/media': {
+          target: env.VITE_MEDIA_PROXY_TARGET,
+          changeOrigin: true
+        }
       }
     }
-  },
-  server: {
-    port: 5173,
-    host: '0.0.0.0',
-    proxy: {
-      '/api': {
-        // 本地
-        // target: 'http://localhost:8080',
-        // 正式
-        target: 'http://localhost:8050',
-        changeOrigin: true
-      },
-      '/media': {
-        // 正式
-        target: 'http://localhost:8050',
-        // 本地
-        // target: 'http://localhost:8080',
-        changeOrigin: true
-      }
-    }
-  }
+  };
 });
