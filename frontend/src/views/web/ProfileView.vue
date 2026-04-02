@@ -71,55 +71,85 @@
           :key="item.id"
           class="dyx-page-card overflow-hidden rounded-[28px] shadow-dyx-soft transition hover:-translate-y-1"
         >
-          <div v-if="resolveWorkMedia(item).length" class="work-media-shell relative h-48 w-full overflow-hidden bg-black">
-            <el-image
-              v-if="isImageUrl(resolveWorkCover(item))"
-              :src="resolveWorkCover(item)"
-              :preview-src-list="resolveWorkImages(item)"
-              fit="cover"
-              preview-teleported
-              class="block h-48 w-full"
-            />
-            <video
-              v-else-if="isVideoUrl(resolveWorkCover(item))"
-              :src="resolveWorkCover(item)"
-              controls
-              preload="metadata"
-              class="block h-48 w-full bg-black object-cover"
-            ></video>
-            <div v-if="resolveWorkMediaCount(item) > 1" class="work-media-badge">
-              <span class="work-media-badge-dot"></span>
-              <span>{{ resolveWorkMediaCount(item) }} 项素材</span>
-            </div>
-            <div v-if="resolveWorkPreviewStack(item).length > 1" class="work-media-stack" aria-hidden="true">
-              <span
-                v-for="(url, index) in resolveWorkPreviewStack(item)"
-                :key="`${item.id}-${index}-${url}`"
-                class="work-media-stack-item"
-                :style="{
-                  backgroundImage: `url(${url})`,
-                  transform: `translateX(${index * 10}px) rotate(${index === 0 ? '-4deg' : index === 1 ? '0deg' : '4deg'})`,
-                  zIndex: String(resolveWorkPreviewStack(item).length - index)
-                }"
-              ></span>
-            </div>
+          <div v-if="resolveWorkMediaCount(item)" class="relative">
+            <button
+              type="button"
+              class="work-media-shell group relative block h-48 w-full overflow-hidden bg-black text-left"
+              @click="openWorkViewer(item)"
+            >
+              <video
+                v-if="shouldRenderWorkVideoCover(item)"
+                :src="resolveVideoPosterAtSecond(item.videoUrl)"
+                muted
+                playsinline
+                webkit-playsinline="true"
+                x5-playsinline="true"
+                x5-video-player-type="h5"
+                preload="metadata"
+                class="block h-48 w-full object-cover"
+              ></video>
+              <el-image
+                v-else-if="resolveWorkCover(item)"
+                :src="resolveWorkCover(item)"
+                fit="cover"
+                class="block h-48 w-full transition duration-300 group-hover:scale-[1.03]"
+              />
+              <div v-else class="flex h-48 w-full items-center justify-center bg-[rgb(var(--dyx-bg-surface-muted-rgb)/0.18)] text-sm text-white/72">
+                暂无预览素材
+              </div>
+
+              <div class="work-media-overlay">
+                <span>{{ resolveWorkMediaCount(item) > 1 ? `查看全部 ${resolveWorkMediaCount(item)} 项素材` : '查看素材' }}</span>
+              </div>
+
+              <div v-if="resolveWorkHasVideo(item)" class="work-media-play">
+                <span class="work-media-play-icon"></span>
+              </div>
+
+              <div v-if="resolveWorkMediaCount(item) > 1" class="work-media-badge">
+                <span class="work-media-badge-dot"></span>
+                <span>{{ resolveWorkMediaCount(item) }} 项素材</span>
+              </div>
+
+              <div v-if="resolveWorkPreviewStack(item).length" class="work-media-stack" aria-hidden="true">
+                <button
+                  v-for="preview in resolveWorkPreviewStack(item)"
+                  :key="preview.key"
+                  type="button"
+                  class="work-media-stack-item"
+                  :style="{
+                    backgroundImage: `url(${preview.thumb})`,
+                    transform: `translateX(${preview.offset * 12}px) rotate(${preview.offset === 0 ? '-4deg' : preview.offset === 1 ? '0deg' : '4deg'})`,
+                    zIndex: String(6 - preview.offset)
+                  }"
+                  :aria-label="`查看素材 ${preview.offset + 1}`"
+                  @click.stop="openWorkViewer(item, preview.index)"
+                ></button>
+              </div>
+            </button>
           </div>
           <div class="p-6">
             <div class="flex flex-wrap items-center gap-3 text-xs dyx-text-meta">
-              <span class="rounded-full bg-[rgb(var(--dyx-bg-surface-muted-rgb)/0.8)] px-3 py-1.5 dyx-text-main">{{ item.videoUrl ? '视频作品' : '图文作品' }}</span>
-              <span>{{ resolveWorkMedia(item).length }} 项素材</span>
+              <span class="rounded-full bg-[rgb(var(--dyx-bg-surface-muted-rgb)/0.8)] px-3 py-1.5 dyx-text-main">{{ resolveWorkTypeText(item) }}</span>
+              <span>{{ resolveWorkMediaCount(item) }} 项素材</span>
+              <span v-if="item.workLink">含作品链接</span>
             </div>
             <h3 class="mt-4 text-2xl font-semibold dyx-text-main">{{ item.title }}</h3>
             <p class="mt-4 text-sm leading-7 dyx-text-muted">{{ item.summary || '暂无作品说明。' }}</p>
-            <a
-              v-if="item.workLink"
-              :href="item.workLink"
-              target="_blank"
-              rel="noreferrer"
-              class="dyx-ghost-pill mt-5 inline-flex"
-            >
-              查看作品链接
-            </a>
+            <div class="mt-5 flex flex-wrap gap-3">
+              <button type="button" class="dyx-ghost-pill inline-flex" @click="openWorkViewer(item)">
+                查看素材
+              </button>
+              <a
+                v-if="item.workLink"
+                :href="item.workLink"
+                target="_blank"
+                rel="noreferrer"
+                class="dyx-ghost-pill inline-flex"
+              >
+                查看作品链接
+              </a>
+            </div>
           </div>
         </article>
 
@@ -128,6 +158,102 @@
         </article>
       </div>
     </div>
+
+    <el-dialog
+      v-model="workViewerVisible"
+      width="min(1080px, calc(100vw - 24px))"
+      top="108px"
+      append-to-body
+      :modal-class="activeTheme === 'dark' ? 'work-viewer-overlay work-viewer-overlay--dark' : 'work-viewer-overlay work-viewer-overlay--light'"
+      :class="activeTheme === 'dark' ? 'work-viewer-dialog work-viewer-dialog--dark' : 'work-viewer-dialog work-viewer-dialog--light'"
+      destroy-on-close
+    >
+      <template #header>
+        <div class="work-viewer-header" :class="activeTheme === 'dark' ? 'work-viewer-header--dark' : 'work-viewer-header--light'">
+          <div class="work-viewer-header-main">
+            <div>
+              <p class="text-sm uppercase tracking-[0.28em] dyx-text-meta">作品素材</p>
+              <h3 class="mt-2 text-2xl font-semibold dyx-text-main">{{ activeWork?.title || '作品预览' }}</h3>
+              <p class="mt-2 text-sm dyx-text-muted">
+                {{ activeWorkMediaItems.length }} 项素材 · {{ resolveWorkTypeText(activeWork) }}
+              </p>
+            </div>
+            <a
+              v-if="activeWork?.workLink"
+              :href="activeWork.workLink"
+              target="_blank"
+              rel="noreferrer"
+              class="dyx-ghost-pill inline-flex"
+            >
+              打开作品链接
+            </a>
+          </div>
+        </div>
+      </template>
+
+      <div v-if="activeWorkMedia" class="space-y-5">
+        <div class="work-viewer-stage">
+          <el-image
+            v-if="activeWorkMedia.type === 'image'"
+            :src="activeWorkMedia.src"
+            :preview-src-list="activeWorkImageSources"
+            :initial-index="activeWorkImageIndex"
+            fit="contain"
+            preview-teleported
+            class="block h-full w-full"
+          />
+          <video
+            v-else
+            :src="resolveVideoPlaybackSrc(activeWorkMedia.src)"
+            :poster="activeWorkMedia.thumb || undefined"
+            controls
+            playsinline
+            webkit-playsinline="true"
+            x5-playsinline="true"
+            x5-video-player-type="h5"
+            preload="metadata"
+            class="block h-full w-full bg-black object-contain"
+          ></video>
+        </div>
+
+        <div v-if="activeWorkMediaItems.length > 1" class="grid gap-3 sm:grid-cols-4 lg:grid-cols-6">
+          <button
+            v-for="(media, index) in activeWorkMediaItems"
+            :key="media.key"
+            type="button"
+            class="work-viewer-thumb"
+            :class="{ 'work-viewer-thumb-active': index === activeWorkMediaIndex }"
+            @click="activeWorkMediaIndex = index"
+          >
+            <video
+              v-if="media.type === 'video'"
+              :src="resolveVideoPosterAtSecond(media.src)"
+              :poster="media.thumb || undefined"
+              muted
+              playsinline
+              webkit-playsinline="true"
+              x5-playsinline="true"
+              x5-video-player-type="h5"
+              preload="metadata"
+              class="block h-20 w-full rounded-[18px] bg-black object-cover"
+            ></video>
+            <el-image
+              v-else-if="media.thumb"
+              :src="media.thumb"
+              fit="cover"
+              class="block h-20 w-full rounded-[18px]"
+            />
+            <div v-else class="flex h-20 w-full items-center justify-center rounded-[18px] bg-[rgb(var(--dyx-bg-surface-muted-rgb)/0.7)] text-xs dyx-text-meta">
+              无预览
+            </div>
+            <span class="work-viewer-thumb-tag">
+              {{ media.type === 'video' ? '视频' : '图片' }}
+            </span>
+          </button>
+        </div>
+      </div>
+      <p v-else class="text-sm dyx-text-meta">暂无可查看素材。</p>
+    </el-dialog>
 
     <div class="dyx-page-card rounded-[38px] p-8 lg:p-10">
       <div class="flex flex-wrap items-end justify-between gap-4">
@@ -196,7 +322,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, inject, onMounted, ref, type Ref } from 'vue';
 import {
   getHonors,
   getProfile,
@@ -212,11 +338,32 @@ import {
 import { formatDateYmd } from '@/utils/date';
 import { isImageUrl, isVideoUrl, parseImageUrls } from '@/utils/media';
 
+type ThemeMode = 'light' | 'dark';
+
+interface WorkMediaItem {
+  key: string;
+  src: string;
+  thumb: string;
+  type: 'image' | 'video';
+}
+
+interface WorkPreviewItem {
+  key: string;
+  thumb: string;
+  index: number;
+  offset: number;
+}
+
 const profile = ref<ProfileData>({});
 const honors = ref<HonorData[]>([]);
 const works = ref<WorkData[]>([]);
 const honorsScroller = ref<HTMLElement>();
+const workViewerVisible = ref(false);
+const activeWork = ref<WorkData | null>(null);
+const activeWorkMediaIndex = ref(0);
+const currentTheme = inject<Ref<ThemeMode> | undefined>('dyx-theme');
 
+const activeTheme = computed<ThemeMode>(() => currentTheme?.value ?? 'dark');
 const contactMethods = computed(() => resolveProfileContactMethods(profile.value));
 const linkedContactMethods = computed(() =>
   contactMethods.value.map((item) => {
@@ -228,6 +375,16 @@ const linkedContactMethods = computed(() =>
     };
   })
 );
+const activeWorkMediaItems = computed(() => (activeWork.value ? resolveWorkMediaItems(activeWork.value) : []));
+const activeWorkMedia = computed(() => activeWorkMediaItems.value[activeWorkMediaIndex.value] ?? null);
+const activeWorkImageSources = computed(() => activeWorkMediaItems.value.filter((item) => item.type === 'image').map((item) => item.src));
+const activeWorkImageIndex = computed(() => {
+  if (!activeWorkMedia.value || activeWorkMedia.value.type !== 'image') {
+    return 0;
+  }
+  const index = activeWorkImageSources.value.indexOf(activeWorkMedia.value.src);
+  return index >= 0 ? index : 0;
+});
 
 async function loadAboutData(): Promise<void> {
   const [profileResponse, honorResponse, workResponse] = await Promise.allSettled([getProfile(), getHonors(), getWorks()]);
@@ -236,26 +393,117 @@ async function loadAboutData(): Promise<void> {
   works.value = workResponse.status === 'fulfilled' ? (workResponse.value.data ?? []) : [];
 }
 
-function resolveWorkMedia(item: WorkData): string[] {
-  const mediaUrls = parseImageUrls(item.imageUrls);
-  const coverItems = [item.coverImage, item.videoPoster, item.videoUrl].filter((url): url is string => !!url);
-  return [...coverItems, ...mediaUrls].filter((url, index, list) => !!url && list.indexOf(url) === index);
+function resolveWorkMediaItems(item: WorkData): WorkMediaItem[] {
+  const items: WorkMediaItem[] = [];
+  const imageUrls = parseImageUrls(item.imageUrls).filter((url) => isImageUrl(url));
+  const imageSet = new Set(imageUrls);
+  if (item.videoUrl && isVideoUrl(item.videoUrl)) {
+    items.push({
+      key: `${item.id}-video`,
+      src: item.videoUrl,
+      thumb: item.videoPoster && isImageUrl(item.videoPoster) ? resolveVideoPosterAtSecond(item.videoPoster) : '',
+      type: 'video'
+    });
+  }
+  if (item.coverImage && isImageUrl(item.coverImage)) {
+    imageSet.delete(item.coverImage);
+    items.push({
+      key: `${item.id}-cover-image`,
+      src: item.coverImage,
+      thumb: item.coverImage,
+      type: 'image'
+    });
+  }
+  Array.from(imageSet).forEach((url, index) => {
+    items.push({
+      key: `${item.id}-image-${index}`,
+      src: url,
+      thumb: url,
+      type: 'image'
+    });
+  });
+  return items.filter((media, index, list) => !!media.src && list.findIndex((entry) => entry.src === media.src && entry.type === media.type) === index);
 }
 
 function resolveWorkImages(item: WorkData): string[] {
-  return resolveWorkMedia(item).filter((url) => isImageUrl(url));
+  return resolveWorkMediaItems(item)
+    .filter((media) => media.type === 'image')
+    .map((media) => media.src);
 }
 
 function resolveWorkCover(item: WorkData): string {
-  return resolveWorkMedia(item)[0] ?? '';
+  if (resolveWorkHasVideo(item)) {
+    return item.videoPoster && isImageUrl(item.videoPoster) ? resolveVideoPosterAtSecond(item.videoPoster) : '';
+  }
+  if (item.coverImage && isImageUrl(item.coverImage)) {
+    return item.coverImage;
+  }
+  return resolveWorkImages(item)[0] ?? '';
 }
 
 function resolveWorkMediaCount(item: WorkData): number {
-  return resolveWorkMedia(item).length;
+  return resolveWorkMediaItems(item).length;
 }
 
-function resolveWorkPreviewStack(item: WorkData): string[] {
-  return resolveWorkImages(item).slice(0, 3);
+function resolveWorkHasVideo(item?: WorkData | null): boolean {
+  return !!item?.videoUrl && isVideoUrl(item.videoUrl);
+}
+
+function shouldRenderWorkVideoCover(item?: WorkData | null): boolean {
+  return !!item && resolveWorkHasVideo(item) && !(item.videoPoster && isImageUrl(item.videoPoster));
+}
+
+function resolveWorkPreviewStack(item: WorkData): WorkPreviewItem[] {
+  const mediaItems = resolveWorkMediaItems(item);
+  return mediaItems
+    .filter((media) => media.type === 'image' && !!media.thumb)
+    .slice(0, 3)
+    .map((media, index) => ({
+      key: media.key,
+      thumb: media.thumb,
+      index: mediaItems.findIndex((entry) => entry.key === media.key),
+      offset: index
+    }));
+}
+
+function resolveVideoPosterAtSecond(url?: string | null): string {
+  if (!url) {
+    return '';
+  }
+  if (url.includes('#t=')) {
+    return url;
+  }
+  return `${url}#t=1`;
+}
+
+function resolveVideoPlaybackSrc(url?: string | null): string {
+  if (!url) {
+    return '';
+  }
+  return url.includes('#t=') ? url : `${url}#t=1`;
+}
+
+
+function resolveWorkTypeText(item?: WorkData | null): string {
+  if (!item) {
+    return '图文作品';
+  }
+  const hasVideo = resolveWorkHasVideo(item);
+  const hasImages = resolveWorkImages(item).length > 0;
+  if (hasVideo && hasImages) {
+    return '图文 + 视频';
+  }
+  if (hasVideo) {
+    return '视频作品';
+  }
+  return '图文作品';
+}
+
+function openWorkViewer(item: WorkData, index = 0): void {
+  activeWork.value = item;
+  const mediaItems = resolveWorkMediaItems(item);
+  activeWorkMediaIndex.value = Math.min(Math.max(index, 0), Math.max(mediaItems.length - 1, 0));
+  workViewerVisible.value = true;
 }
 
 function resolveHonorMedia(item: HonorData): string[] {
@@ -304,6 +552,52 @@ onMounted(() => {
     #000;
 }
 
+.work-media-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.08), rgba(15, 23, 42, 0.56));
+  color: rgba(255, 255, 255, 0.96);
+  font-size: 0.82rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.work-media-shell:hover .work-media-overlay,
+.work-media-shell:focus-visible .work-media-overlay {
+  opacity: 1;
+}
+
+.work-media-play {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: flex;
+  height: 3.4rem;
+  width: 3.4rem;
+  transform: translate(-50%, -50%);
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: rgba(15, 23, 42, 0.72);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.32);
+  backdrop-filter: blur(8px);
+}
+
+.work-media-play-icon {
+  margin-left: 0.16rem;
+  display: block;
+  height: 0;
+  width: 0;
+  border-bottom: 0.56rem solid transparent;
+  border-left: 0.92rem solid rgba(255, 255, 255, 0.96);
+  border-top: 0.56rem solid transparent;
+}
+
 .work-media-badge {
   position: absolute;
   right: 0.75rem;
@@ -336,8 +630,7 @@ onMounted(() => {
   left: 0.85rem;
   bottom: 0.85rem;
   height: 2.25rem;
-  width: 5.2rem;
-  pointer-events: none;
+  width: 6.5rem;
 }
 
 .work-media-stack-item {
@@ -356,6 +649,159 @@ onMounted(() => {
   box-shadow: 0 14px 30px rgba(15, 23, 42, 0.34);
 }
 
+.work-viewer-header {
+  border-radius: 1.5rem;
+  padding: 0;
+}
+
+.work-viewer-header-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-right: 3rem;
+}
+
+.work-viewer-stage {
+  display: flex;
+  min-height: min(68vh, 560px);
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 1.75rem;
+  background:
+    radial-gradient(circle at center, rgba(255, 255, 255, 0.08), transparent 55%),
+    #000;
+}
+
+.work-viewer-thumb {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1.1rem;
+  border: 1px solid rgba(var(--dyx-border-subtle-rgb), 0.72);
+  background: rgba(var(--dyx-bg-surface-muted-rgb), 0.52);
+  padding: 0.3rem;
+  text-align: left;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.work-viewer-thumb:hover {
+  transform: translateY(-1px);
+}
+
+.work-viewer-thumb-active {
+  border-color: rgba(var(--dyx-text-main-rgb), 0.7);
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12);
+}
+
+.work-viewer-thumb-tag {
+  position: absolute;
+  left: 0.7rem;
+  top: 0.7rem;
+  border-radius: 9999px;
+  background: rgba(15, 23, 42, 0.72);
+  padding: 0.18rem 0.52rem;
+  font-size: 0.7rem;
+  line-height: 1rem;
+  color: rgba(255, 255, 255, 0.96);
+}
+
+:global(.work-viewer-overlay) {
+  backdrop-filter: blur(14px);
+}
+
+:global(.work-viewer-overlay--dark) {
+  background: rgba(2, 6, 23, 0.78);
+}
+
+:global(.work-viewer-overlay--light) {
+  background: rgba(148, 163, 184, 0.24);
+}
+
+:global(.work-viewer-dialog) {
+  margin-top: 0 !important;
+}
+
+:global(.work-viewer-dialog .el-dialog) {
+  overflow: hidden;
+  border-radius: 30px;
+  border: 1px solid rgb(var(--dyx-border-subtle-rgb) / 0.72);
+  box-shadow: var(--dyx-shadow-window);
+}
+
+:global(.work-viewer-dialog .el-dialog__header) {
+  margin-right: 0;
+  padding: 24px 28px 8px;
+}
+
+:global(.work-viewer-dialog .el-dialog__body) {
+  padding: 12px 28px 28px;
+}
+
+:global(.work-viewer-dialog .el-dialog__headerbtn) {
+  top: 18px;
+  right: 18px;
+  z-index: 4;
+  display: inline-flex;
+  height: 36px;
+  width: 36px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+:global(.work-viewer-dialog .el-dialog__headerbtn:hover) {
+  transform: scale(1.04);
+}
+
+:global(.work-viewer-dialog .el-dialog__close) {
+  color: inherit;
+}
+
+:global(.work-viewer-dialog--dark.el-dialog),
+:global(.work-viewer-dialog--dark .el-dialog) {
+  background: linear-gradient(180deg, rgb(var(--dyx-bg-surface-rgb) / 0.98), rgb(var(--dyx-bg-surface-muted-rgb) / 0.94));
+  color: rgb(var(--dyx-text-main-rgb));
+}
+
+:global(.work-viewer-dialog--dark.el-dialog .el-dialog__header),
+:global(.work-viewer-dialog--dark .el-dialog__header),
+:global(.work-viewer-dialog--dark.el-dialog .el-dialog__body),
+:global(.work-viewer-dialog--dark .el-dialog__body) {
+  background: transparent;
+  color: rgb(var(--dyx-text-main-rgb));
+}
+
+:global(.work-viewer-dialog--dark.el-dialog .el-dialog__headerbtn),
+:global(.work-viewer-dialog--dark .el-dialog__headerbtn) {
+  background: rgb(var(--dyx-bg-surface-muted-rgb) / 0.88);
+  color: rgb(var(--dyx-text-main-rgb));
+}
+
+:global(.work-viewer-dialog--dark.el-dialog .el-dialog__headerbtn:hover),
+:global(.work-viewer-dialog--dark .el-dialog__headerbtn:hover) {
+  background: rgb(var(--dyx-bg-surface-rgb) / 1);
+}
+
+:global(.work-viewer-dialog--light.el-dialog),
+:global(.work-viewer-dialog--light .el-dialog) {
+  background: linear-gradient(180deg, rgb(var(--dyx-bg-surface-elevated-rgb) / 0.98), rgb(var(--dyx-bg-surface-rgb) / 0.94));
+  color: rgb(var(--dyx-text-main-rgb));
+}
+
+:global(.work-viewer-dialog--light.el-dialog .el-dialog__headerbtn),
+:global(.work-viewer-dialog--light .el-dialog__headerbtn) {
+  background: rgb(var(--dyx-bg-surface-muted-rgb) / 0.72);
+  color: rgb(var(--dyx-text-main-rgb));
+}
+
+:global(.work-viewer-dialog--light.el-dialog .el-dialog__headerbtn:hover),
+:global(.work-viewer-dialog--light .el-dialog__headerbtn:hover) {
+  background: rgb(var(--dyx-bg-surface-rgb) / 0.88);
+}
+
 .honor-media-shell {
   background:
     radial-gradient(circle at center, rgba(255, 255, 255, 0.08), transparent 55%),
@@ -369,5 +815,33 @@ onMounted(() => {
 
 .honors-scroll::-webkit-scrollbar {
   display: none;
+}
+
+@media (max-width: 767px) {
+  .work-viewer-header-main {
+    padding-right: 2.5rem;
+  }
+
+  .work-viewer-stage {
+    min-height: min(52vh, 420px);
+    border-radius: 1.25rem;
+  }
+
+  :global(.work-viewer-dialog .el-dialog) {
+    border-radius: 24px;
+  }
+
+  :global(.work-viewer-dialog .el-dialog__header) {
+    padding: 18px 18px 6px;
+  }
+
+  :global(.work-viewer-dialog .el-dialog__body) {
+    padding: 10px 18px 18px;
+  }
+
+  :global(.work-viewer-dialog .el-dialog__headerbtn) {
+    top: 12px;
+    right: 12px;
+  }
 }
 </style>

@@ -10,7 +10,7 @@
           </p>
         </div>
 
-        <div class="dyx-page-card rounded-[30px] p-6 shadow-dyx-soft">
+        <div class="dyx-page-card rounded-[30px] p-6 shadow-dyx-soft dyx-guestbook-form-card">
           <p class="text-sm uppercase tracking-[0.28em] dyx-text-meta">写点什么</p>
           <el-form label-position="top" class="mt-5">
             <el-form-item label="正文">
@@ -157,3 +157,50 @@ onMounted(() => {
   void loadGuestbookData();
 });
 </script>
+
+<style scoped>
+.dyx-guestbook-form-card :deep(.el-form-item__label),
+.dyx-guestbook-form-card :deep(.el-checkbox__label) {
+  color: rgb(var(--dyx-text-muted-rgb));
+}
+
+.dyx-guestbook-form-card :deep(.el-input__wrapper),
+.dyx-guestbook-form-card :deep(.el-textarea__inner) {
+  background: rgb(var(--dyx-bg-surface-muted-rgb) / 0.72);
+  border: 1px solid rgb(var(--dyx-border-subtle-rgb) / 0.72);
+  box-shadow: none;
+  color: rgb(var(--dyx-text-main-rgb));
+}
+
+.dyx-guestbook-form-card :deep(.el-textarea__inner) {
+  min-height: 168px;
+}
+
+.dyx-guestbook-form-card :deep(.el-input__wrapper.is-focus),
+.dyx-guestbook-form-card :deep(.el-textarea__inner:focus) {
+  border-color: rgb(var(--dyx-accent-rgb) / 0.72);
+  box-shadow: 0 0 0 1px rgb(var(--dyx-accent-rgb) / 0.22);
+}
+
+.dyx-guestbook-form-card :deep(.el-textarea__inner::placeholder) {
+  color: rgb(var(--dyx-text-meta-rgb));
+}
+
+.dark .dyx-guestbook-form-card :deep(.el-input__wrapper),
+.dark .dyx-guestbook-form-card :deep(.el-textarea__inner) {
+  background: rgb(18 24 36 / 0.92);
+  border-color: rgb(var(--dyx-border-subtle-rgb) / 0.82);
+  color: rgb(var(--dyx-text-main-rgb));
+}
+
+.dark .dyx-guestbook-form-card :deep(.el-checkbox__inner) {
+  background: rgb(18 24 36 / 0.92);
+  border-color: rgb(var(--dyx-border-strong-rgb) / 0.9);
+}
+
+.dark .dyx-guestbook-form-card :deep(.el-input__count),
+.dark .dyx-guestbook-form-card :deep(.el-input__count-inner) {
+  background: transparent;
+  color: rgb(var(--dyx-text-meta-rgb));
+}
+</style>
