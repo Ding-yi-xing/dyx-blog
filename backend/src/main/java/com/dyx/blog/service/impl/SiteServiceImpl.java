@@ -248,6 +248,7 @@ public class SiteServiceImpl implements SiteService {
     public List<Work> listWorks() {
         List<Work> works = dyxWorkMapper.selectList(new LambdaQueryWrapper<Work>()
                 .eq(Work::getPublished, 1)
+                .orderByDesc(Work::getAwardAt)
                 .orderByAsc(Work::getSortOrder)
                 .orderByDesc(Work::getUpdatedAt));
         works.forEach(work -> {
@@ -267,9 +268,7 @@ public class SiteServiceImpl implements SiteService {
     public List<Honor> listHonors() {
         return dyxHonorMapper.selectList(new LambdaQueryWrapper<Honor>()
                 .eq(Honor::getPublished, 1)
-                .orderByDesc(Honor::getAwardAt)
-                .orderByAsc(Honor::getSortOrder)
-                .orderByDesc(Honor::getUpdatedAt));
+                .orderByDesc(Honor::getAwardAt));
     }
 
     /**

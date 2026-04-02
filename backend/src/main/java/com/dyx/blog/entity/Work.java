@@ -2,6 +2,9 @@ package com.dyx.blog.entity;
 
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -14,8 +17,9 @@ import java.time.LocalDateTime;
 @TableName("dyx_work")
 public class Work {
 
-    /** 作品主键。 */
+    /** 作品主键，序列化为字符串以避免前端精度丢失。 */
     @TableId
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long id;
 
     /** 作品标题。 */
@@ -38,6 +42,10 @@ public class Work {
 
     /** 作品外链地址。 */
     private String workLink;
+
+    /** 获得时间。 */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime awardAt;
 
     /** 排序值，值越小越靠前。 */
     private Integer sortOrder;

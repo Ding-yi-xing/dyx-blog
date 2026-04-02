@@ -112,7 +112,7 @@ export interface ProjectData {
  * 个人作品数据结构。
  */
 export interface WorkData {
-  id: number;
+  id: string | number;
   title: string;
   summary?: string;
   coverImage?: string;
@@ -120,6 +120,7 @@ export interface WorkData {
   videoUrl?: string;
   videoPoster?: string;
   workLink?: string;
+  awardAt?: string;
   sortOrder?: number;
   published?: number;
   updatedAt?: string;
@@ -129,7 +130,7 @@ export interface WorkData {
  * 荣誉数据结构。
  */
 export interface HonorData {
-  id: number;
+  id: string | number;
   title: string;
   issuer?: string;
   description?: string;

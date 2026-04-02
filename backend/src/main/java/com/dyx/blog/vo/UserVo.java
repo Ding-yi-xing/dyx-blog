@@ -1,5 +1,7 @@
 package com.dyx.blog.vo;
 
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import lombok.Data;
 
 /**
@@ -9,7 +11,8 @@ import lombok.Data;
 @Data
 public class UserVo {
 
-    /** 用户主键。 */
+    /** 用户主键，序列化为字符串以避免前端精度丢失。 */
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long id;
 
     /** 用户名。 */

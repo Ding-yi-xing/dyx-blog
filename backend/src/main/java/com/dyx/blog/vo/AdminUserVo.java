@@ -1,5 +1,7 @@
 package com.dyx.blog.vo;
 
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -11,7 +13,8 @@ import java.time.LocalDateTime;
 @Data
 public class AdminUserVo {
 
-    /** 用户主键。 */
+    /** 用户主键，序列化为字符串以避免前端精度丢失。 */
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long id;
 
     /** 登录用户名。 */

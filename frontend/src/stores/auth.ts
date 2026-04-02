@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 
 interface AdminUser {
-  id: number;
+  id: string | number;
   username: string;
   displayName: string;
   role: string;

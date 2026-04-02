@@ -117,8 +117,9 @@ function resetForm(): void {
  * @author Dyx
  */
 async function loadUsers(): Promise<void> {
-  const response = await getAdminUsers();
-  rawList.value = response.data ?? [];
+  const result = await getAdminUsers();
+  const usersData = (result as { data?: AdminListUserData[] })?.data;
+  rawList.value = Array.isArray(usersData) ? usersData : [];
 }
 
 /**
@@ -185,9 +186,13 @@ async function handleDelete(item: AdminListUserData): Promise<void> {
     await ElMessageBox.confirm(`确认删除用户“${item.displayName || item.username}”吗？`, '删除确认', {
       type: 'warning'
     });
-    await deleteAdminUser(Number(item.id));
-    ElMessage.success('用户删除成功');
+    if (item.id === undefined || item.id === null) {
+      ElMessage.error('用户缺少有效 ID，无法删除');
+      return;
+    }
+    await deleteAdminUser(item.id);
     await loadUsers();
+    ElMessage.success('用户删除成功');
   } catch (error) {
     if (error === 'cancel' || error === 'close') {
       return;

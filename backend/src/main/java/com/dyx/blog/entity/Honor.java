@@ -3,6 +3,8 @@ package com.dyx.blog.entity;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -15,8 +17,9 @@ import java.time.LocalDateTime;
 @TableName("dyx_honor")
 public class Honor {
 
-    /** 荣誉主键。 */
+    /** 荣誉主键，序列化为字符串以避免前端精度丢失。 */
     @TableId
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long id;
 
     /** 荣誉标题。 */

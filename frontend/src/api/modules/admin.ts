@@ -15,7 +15,7 @@ import type {
  * 后台登录用户信息。
  */
 export interface AdminUserData {
-  id: number;
+  id: string | number;
   username: string;
   displayName: string;
   role: string;
@@ -192,6 +192,10 @@ export function deleteAdminGuestbookMessage(id: number) {
   return adminHttp.delete(`/dyx-manager/guestbook/messages/${id}`);
 }
 
+export function deleteAdminGuestbookMessages(ids: number[]) {
+  return adminHttp.post('/dyx-manager/guestbook/messages/batch-delete', ids);
+}
+
 /**
  * 媒体资源数据。
  */
@@ -213,7 +217,7 @@ export function getAdminMediaContentUrl(fileUrl: string) {
  * 后台用户数据。
  */
 export interface AdminListUserData {
-  id?: number;
+  id?: string | number;
   username: string;
   displayName?: string;
   password?: string;
@@ -272,6 +276,10 @@ export function deleteAdminPost(id: number) {
   return adminHttp.delete(`/dyx-manager/posts/${id}`);
 }
 
+export function deleteAdminPosts(ids: number[]) {
+  return adminHttp.post('/dyx-manager/posts/batch-delete', ids);
+}
+
 /**
  * 获取后台动态列表。
  *
@@ -308,6 +316,10 @@ export function saveAdminMoment(payload: Partial<MomentData>) {
  */
 export function deleteAdminMoment(id: number) {
   return adminHttp.delete(`/dyx-manager/moments/${id}`);
+}
+
+export function deleteAdminMoments(ids: number[]) {
+  return adminHttp.post('/dyx-manager/moments/batch-delete', ids);
 }
 
 /**
@@ -348,6 +360,10 @@ export function deleteAdminProject(id: number) {
   return adminHttp.delete(`/dyx-manager/projects/${id}`);
 }
 
+export function deleteAdminProjects(ids: number[]) {
+  return adminHttp.post('/dyx-manager/projects/batch-delete', ids);
+}
+
 /**
  * 获取后台作品列表。
  *
@@ -368,7 +384,7 @@ export function getAdminWorks() {
  * @author Dyx
  */
 export function saveAdminWork(payload: Partial<WorkData>) {
-  if (payload.id) {
+  if (payload.id !== undefined && payload.id !== null) {
     return adminHttp.put(`/dyx-manager/works/${payload.id}`, payload);
   }
   return adminHttp.post('/dyx-manager/works', payload);
@@ -382,8 +398,12 @@ export function saveAdminWork(payload: Partial<WorkData>) {
  * @throws 该函数不会主动抛出同步异常；删除失败或权限不足时会以 Promise reject 形式返回。
  * @author Dyx
  */
-export function deleteAdminWork(id: number) {
+export function deleteAdminWork(id: string | number) {
   return adminHttp.delete(`/dyx-manager/works/${id}`);
+}
+
+export function deleteAdminWorks(ids: number[]) {
+  return adminHttp.post('/dyx-manager/works/batch-delete', ids);
 }
 
 /**
@@ -406,7 +426,7 @@ export function getAdminHonors() {
  * @author Dyx
  */
 export function saveAdminHonor(payload: Partial<HonorData>) {
-  if (payload.id) {
+  if (payload.id !== undefined && payload.id !== null) {
     return adminHttp.put(`/dyx-manager/honors/${payload.id}`, payload);
   }
   return adminHttp.post('/dyx-manager/honors', payload);
@@ -420,8 +440,12 @@ export function saveAdminHonor(payload: Partial<HonorData>) {
  * @throws 该函数不会主动抛出同步异常；删除失败或权限不足时会以 Promise reject 形式返回。
  * @author Dyx
  */
-export function deleteAdminHonor(id: number) {
+export function deleteAdminHonor(id: string | number) {
   return adminHttp.delete(`/dyx-manager/honors/${id}`);
+}
+
+export function deleteAdminHonors(ids: number[]) {
+  return adminHttp.post('/dyx-manager/honors/batch-delete', ids);
 }
 
 /**
@@ -460,6 +484,10 @@ export function saveAdminFootprint(payload: Partial<FootprintData>) {
  */
 export function deleteAdminFootprint(id: number) {
   return adminHttp.delete(`/dyx-manager/footprints/${id}`);
+}
+
+export function deleteAdminFootprints(ids: number[]) {
+  return adminHttp.post('/dyx-manager/footprints/batch-delete', ids);
 }
 
 /**
@@ -554,6 +582,10 @@ export function deleteAdminMedia(id: string | number) {
   return adminHttp.delete(`/dyx-manager/media/${id}`);
 }
 
+export function deleteAdminMediaBatch(ids: number[]) {
+  return adminHttp.post('/dyx-manager/media/batch-delete', ids);
+}
+
 /**
  * 导入 uploads 目录下已存在的媒体文件。
  *
@@ -586,7 +618,7 @@ export function getAdminUsers() {
  * @author Dyx
  */
 export function saveAdminUser(payload: Partial<AdminListUserData>) {
-  if (payload.id) {
+  if (payload.id !== undefined && payload.id !== null) {
     return adminHttp.put(`/dyx-manager/users/${payload.id}`, payload);
   }
   return adminHttp.post('/dyx-manager/users', payload);
@@ -600,7 +632,7 @@ export function saveAdminUser(payload: Partial<AdminListUserData>) {
  * @throws 该函数不会主动抛出同步异常；删除失败或权限不足时会以 Promise reject 形式返回。
  * @author Dyx
  */
-export function deleteAdminUser(id: number) {
+export function deleteAdminUser(id: string | number) {
   return adminHttp.delete(`/dyx-manager/users/${id}`);
 }
 
