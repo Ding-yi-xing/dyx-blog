@@ -200,6 +200,7 @@
 - 应用启动时会自动确保 `dyx_work`、`dyx_site_visit_stat`、`dyx_site_visit_log`、`dyx_guestbook_message`、`dyx_footprint` 与 `dyx_system_config` 表存在
 - 若旧库中的 `dyx_site_visit_log` 尚未包含 `device_name` 字段，启动时会自动补齐
 - 访问日志写入时会优先从 `X-Forwarded-For`、`X-Real-IP` 解析客户端 IP，并将 `::1`、`0:0:0:0:0:0:0:1`、`::ffff:127.0.0.1` 归一化为 `127.0.0.1`
+- 后端应用默认时区统一为 `Asia/Shanghai`，访问日志 `created_at` 与接口返回时间均按北京时间处理，避免服务器默认时区差异导致时间偏移
 - 初始化 SQL 会补入站点访问统计初始记录、访问日志示例记录、留言示例、足迹示例与系统配置默认记录，便于后台模块直接展示数据
 
 ## 17. 当前接口与前端交互约定

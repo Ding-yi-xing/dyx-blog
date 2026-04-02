@@ -3,6 +3,8 @@ server:
   port: 8050
 
 spring:
+  jackson:
+    time-zone: Asia/Shanghai
   application:
     name: dyx-blog
   datasource:

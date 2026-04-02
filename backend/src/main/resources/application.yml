@@ -2,6 +2,8 @@ server:
   port: 8080
 
 spring:
+  jackson:
+    time-zone: Asia/Shanghai
   profiles:
     active: prod# 默认激活开发环境配置
   application:
