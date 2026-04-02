@@ -56,11 +56,17 @@ export default defineConfig({
     host: '0.0.0.0',
     proxy: {
       '/api': {
-        target: 'http://localhost:8080',
+        // 本地
+        // target: 'http://localhost:8080',
+        // 正式
+        target: 'http://localhost:8050',
         changeOrigin: true
       },
       '/media': {
-        target: 'http://localhost:8080',
+        // 正式
+        target: 'http://localhost:8050',
+        // 本地
+        // target: 'http://localhost:8080',
         changeOrigin: true
       }
     }

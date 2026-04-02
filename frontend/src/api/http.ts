@@ -12,7 +12,7 @@ import { useAuthStore } from '@/stores/auth';
 function createBaseClient(): AxiosInstance {
   return axios.create({
     baseURL: '/api',
-    timeout: 10000
+    timeout: 600000
   });
 }
 
