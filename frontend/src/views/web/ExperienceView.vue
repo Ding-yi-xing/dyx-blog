@@ -33,8 +33,8 @@
             >
               下载 PDF 简历
             </a>
-            <button type="button" class="dyx-ghost-pill inline-flex" @click="handlePrint">
-              打印当前页
+            <button type="button" class="dyx-ghost-pill inline-flex" @click="handleResumePrint">
+              打印简历
             </button>
           </div>
         </div>
@@ -114,6 +114,7 @@
 </template>
 
 <script setup lang="ts">
+import { ElMessage } from 'element-plus';
 import { computed, onMounted, ref } from 'vue';
 import {
   getHonors,
@@ -161,8 +162,16 @@ async function loadResumeData(): Promise<void> {
   honors.value = honorResponse.status === 'fulfilled' ? (honorResponse.value.data ?? []) : [];
 }
 
-function handlePrint(): void {
-  window.print();
+function handleResumePrint(): void {
+  if (!profile.value.resumePdfUrl) {
+    ElMessage.info('还在操刀简历，稍等');
+    return;
+  }
+
+  const printWindow = window.open(profile.value.resumePdfUrl, '_blank', 'noopener,noreferrer');
+  printWindow?.addEventListener('load', () => {
+    printWindow.print();
+  });
 }
 
 onMounted(() => {

@@ -3,7 +3,7 @@
     <div class="mb-6 flex items-center justify-between gap-4">
       <div>
         <h2 class="text-xl font-semibold text-slate-900">博客管理</h2>
-        <p class="mt-2 text-sm text-slate-500">集中维护文章标题、摘要、分类与发布状态。</p>
+        <p class="mt-2 text-sm text-slate-500">集中维护文章标题、摘要、分类、发布时间与发布状态。</p>
       </div>
       <div class="flex items-center gap-3">
         <el-button type="danger" plain :disabled="!selectedIds.length" @click="handleBatchDelete">批量删除</el-button>
@@ -17,6 +17,7 @@
       <el-table-column prop="category" label="分类" width="140" />
       <el-table-column prop="tags" label="标签" min-width="180" show-overflow-tooltip />
       <el-table-column prop="statusText" label="状态" width="120" />
+      <el-table-column prop="publishedAt" label="发布时间" width="180" />
       <el-table-column prop="updatedAt" label="更新时间" width="180" />
       <el-table-column label="操作" width="180" fixed="right">
         <template #default="scope">
@@ -26,7 +27,7 @@
       </el-table-column>
     </el-table>
 
-    <el-dialog v-model="dialogVisible" :title="form.id ? '编辑文章' : '新建文章'" width="760px">
+    <el-dialog v-model="dialogVisible" :title="form.id ? '编辑文章' : '新建文章'" width="960px" destroy-on-close>
       <el-form label-position="top">
         <el-form-item label="文章标题">
           <el-input v-model="form.title" maxlength="120" show-word-limit placeholder="请输入文章标题" />
@@ -46,14 +47,32 @@
           <AdminMediaPicker v-model="form.coverImage" button-text="选择文章封面" empty-text="暂未选择文章封面" />
         </el-form-item>
         <el-form-item label="正文内容">
-          <el-input v-model="form.content" type="textarea" :rows="8" maxlength="20000" show-word-limit placeholder="请输入文章正文" />
+          <AdminRichTextEditor
+            v-if="dialogVisible"
+            v-model="form.content"
+            placeholder="请输入文章正文，支持标题、列表、引用、链接和图片 URL。"
+          />
+          <p class="mt-2 text-xs leading-6 text-slate-400">
+            正文将以富文本 HTML 保存；后端会在入库前自动进行 XSS 白名单清洗。
+          </p>
         </el-form-item>
-        <el-form-item label="发布状态">
-          <el-select v-model="form.published" class="!w-full">
-            <el-option label="草稿" :value="0" />
-            <el-option label="已发布" :value="1" />
-          </el-select>
-        </el-form-item>
+        <div class="grid gap-4 sm:grid-cols-2">
+          <el-form-item label="发布状态">
+            <el-select v-model="form.published" class="!w-full">
+              <el-option label="草稿" :value="0" />
+              <el-option label="已发布" :value="1" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="发布时间">
+            <el-date-picker
+              v-model="form.publishedAt"
+              type="datetime"
+              value-format="YYYY-MM-DD HH:mm:ss"
+              placeholder="选择发布时间"
+              class="!w-full"
+            />
+          </el-form-item>
+        </div>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -67,7 +86,8 @@
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { computed, onMounted, reactive, ref } from 'vue';
 import AdminMediaPicker from '@/views/admin/AdminMediaPicker.vue';
-import { deleteAdminPost, deleteAdminPosts, getAdminPosts, saveAdminPost } from '@/api/modules/admin';
+import AdminRichTextEditor from '@/components/admin/AdminRichTextEditor.vue';
+import { deleteAdminPost, deleteAdminPosts, getAdminPostDetail, getAdminPosts, saveAdminPost } from '@/api/modules/admin';
 import type { PostData } from '@/api/modules/site';
 import { resolveErrorMessage } from '@/utils/error';
 
@@ -89,7 +109,8 @@ const form = reactive<Partial<PostData>>({
   coverImage: '',
   category: '',
   tags: '',
-  published: 1
+  published: 1,
+  publishedAt: ''
 });
 
 /**
@@ -103,13 +124,6 @@ const posts = computed(() =>
   }))
 );
 
-/**
- * 重置文章表单，供新建与编辑前复用。
- *
- * @returns 无返回值。
- * @throws 该函数不会主动抛出异常；仅重置本地表单状态。
- * @author Dyx
- */
 function resetForm(): void {
   Object.assign(form, {
     id: undefined,
@@ -119,17 +133,11 @@ function resetForm(): void {
     coverImage: '',
     category: '',
     tags: '',
-    published: 1
+    published: 1,
+    publishedAt: ''
   });
 }
 
-/**
- * 获取后台文章列表并刷新表格数据源。
- *
- * @returns 返回异步加载结果；成功后会更新页面表格数据。
- * @throws 该函数不会主动抛出同步异常；接口失败时会以 Promise reject 形式返回。
- * @author Dyx
- */
 async function loadAdminPosts(): Promise<void> {
   const result = await getAdminPosts();
   const postsData = (result as { data?: PostData[] })?.data;
@@ -145,47 +153,36 @@ function handleSelectionChange(selection: Array<PostData & { raw?: PostData }>):
   selectedIds.value = selection.map((item) => Number(item.id)).filter((id) => !Number.isNaN(id));
 }
 
-/**
- * 打开新建文章弹窗，并初始化为空表单。
- *
- * @returns 无返回值。
- * @throws 该函数不会主动抛出异常；仅重置表单并展示弹窗。
- * @author Dyx
- */
 function openCreateDialog(): void {
   resetForm();
   dialogVisible.value = true;
 }
 
-/**
- * 打开编辑文章弹窗，并将当前文章数据回填到表单中。
- *
- * @param item 待编辑的文章数据。
- * @returns 无返回值。
- * @throws 该函数不会主动抛出异常；仅执行表单回填。
- * @author Dyx
- */
-function openEditDialog(item: PostData): void {
+async function openEditDialog(item: PostData): Promise<void> {
   resetForm();
-  Object.assign(form, item);
   dialogVisible.value = true;
+  try {
+    const result = await getAdminPostDetail(item.id);
+    const detail = (result as { data?: PostData })?.data;
+    Object.assign(form, detail || item, {
+      publishedAt: (detail?.publishedAt || item.publishedAt) || ''
+    });
+  } catch (error) {
+    dialogVisible.value = false;
+    ElMessage.error(resolveErrorMessage(error, '文章详情加载失败'));
+  }
 }
 
-/**
- * 保存当前文章表单。
- * 新建与编辑共用同一套提交逻辑，成功后会刷新列表并关闭弹窗。
- *
- * @returns 返回异步保存结果。
- * @throws 该函数不会主动向外抛出异常；保存失败时会通过页面提示反馈。
- * @author Dyx
- */
 async function handleSave(): Promise<void> {
   if (saving.value) {
     return;
   }
   saving.value = true;
   try {
-    await saveAdminPost({ ...form });
+    await saveAdminPost({
+      ...form,
+      publishedAt: form.publishedAt || undefined
+    });
     ElMessage.success(form.id ? '文章更新成功' : '文章创建成功');
     dialogVisible.value = false;
     await loadAdminPosts();
@@ -196,14 +193,6 @@ async function handleSave(): Promise<void> {
   }
 }
 
-/**
- * 删除指定文章，并在用户确认后刷新当前列表。
- *
- * @param item 待删除的文章数据。
- * @returns 返回异步删除结果。
- * @throws 该函数不会主动向外抛出异常；取消删除时会静默结束，失败时通过页面提示反馈。
- * @author Dyx
- */
 async function handleDelete(item: PostData): Promise<void> {
   try {
     await ElMessageBox.confirm(`确认删除文章“${item.title}”吗？`, '删除确认', {

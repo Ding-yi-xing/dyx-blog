@@ -9,11 +9,14 @@
         :key="`${url}-${index}`"
         class="group relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-50"
       >
-        <img
+        <el-image
           v-if="isImageUrl(url)"
           :src="url"
-          alt="selected media"
-          class="h-32 w-full object-cover"
+          :preview-src-list="selectedImagePreviewUrls"
+          :initial-index="resolveSelectedImagePreviewIndex(url)"
+          fit="cover"
+          preview-teleported
+          class="h-32 w-full cursor-zoom-in"
         />
         <video
           v-else-if="isVideoUrl(url)"
@@ -105,11 +108,14 @@
             class="relative h-40 overflow-hidden bg-slate-100 cursor-pointer"
             @click="toggleMedia(item.fileUrl)"
           >
-            <img
+            <el-image
               v-if="isImageUrl(item.fileUrl)"
               :src="item.fileUrl"
-              :alt="item.originalName || item.fileName || 'media'"
-              class="h-full w-full object-cover"
+              :preview-src-list="[item.fileUrl]"
+              fit="cover"
+              preview-teleported
+              class="h-full w-full cursor-zoom-in"
+              @click.stop
             />
             <video
               v-else-if="isVideoUrl(item.fileUrl)"
@@ -298,6 +304,10 @@ function applyMedia(url?: string): void {
     : [url];
 }
 
+function resolveSelectedImagePreviewIndex(url: string): number {
+  return Math.max(0, selectedImagePreviewUrls.value.indexOf(url));
+}
+
 /**
  * 处理图片裁剪确认结果，并在需要时上传新图片后回填当前选择。
  *
@@ -342,6 +352,8 @@ const selectedUrls = computed(() => {
   }
   return props.modelValue ? [props.modelValue] : [];
 });
+
+const selectedImagePreviewUrls = computed(() => selectedUrls.value.filter((url) => isImageUrl(url)));
 
 /**
  * 在外部选中值发生变化时，同步刷新弹窗内部草稿选择。

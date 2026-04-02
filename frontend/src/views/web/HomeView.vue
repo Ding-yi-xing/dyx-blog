@@ -18,11 +18,11 @@
         ></div>
 
         <div
-          class="relative z-10 grid h-full w-full min-w-0 px-3 sm:px-4 lg:px-5"
+          class="relative z-10 grid h-full w-full min-w-0 px-4 sm:px-5 lg:px-8 xl:px-10"
           :class="heroViewportClass"
         >
           <div
-            class="grid h-full w-full min-w-0 overflow-hidden px-4 sm:px-6 lg:gap-8 lg:px-8 xl:px-10"
+            class="grid h-full w-full min-w-0 overflow-hidden px-5 sm:px-7 lg:gap-12 lg:px-10 xl:gap-16 xl:px-14"
             :class="heroInnerClass"
           >
             <div
@@ -36,19 +36,19 @@
                 <template v-for="block in heroContentBlocks" :key="block.id">
                   <p
                     v-if="block.type === 'eyebrow'"
-                    class="home-meta text-xs font-semibold uppercase tracking-[0.42em] lg:text-sm mb-3"
+                    class="home-meta mb-4 text-[11px] font-semibold uppercase tracking-[0.42em] sm:text-xs lg:mb-5 lg:text-sm"
                   >
                     {{ block.text || "HELLO THERE!" }}
                   </p>
                   <h1
                     v-else-if="block.type === 'title'"
-                    class="home-section-title max-w-4xl text-3xl font-semibold leading-[1.1] tracking-[-0.04em] sm:text-4xl lg:text-[3.2rem] xl:text-[3.8rem] mb-4"
+                    class="home-section-title mb-5 max-w-4xl whitespace-nowrap text-[2.05rem] font-semibold leading-[1.04] tracking-[-0.05em] sm:text-[2.65rem] lg:mb-6 lg:text-[3.55rem] xl:text-[4.1rem]"
                   >
                     {{ block.text || "写代码的人，也写点文字。" }}
                   </h1>
                   <p
                     v-else-if="block.type === 'subtitle'"
-                    class="home-section-text max-w-2xl text-[15px] leading-8 sm:text-lg lg:text-[1.15rem] lg:leading-9 mb-4"
+                    class="home-section-text mb-5 max-w-[34rem] text-[15px] leading-8 sm:text-[1.02rem] sm:leading-8 lg:mb-6 lg:text-[1.2rem] lg:leading-9"
                   >
                     {{
                       block.text ||
@@ -57,26 +57,26 @@
                   </p>
                   <template v-else-if="isTagsBlock(block)">
                     <div
-                      class="flex flex-wrap gap-2 text-xs font-medium sm:text-sm mb-4"
+                      class="mb-5 flex flex-wrap gap-2.5 text-xs font-medium sm:text-sm lg:mb-7"
                     >
                       <span
                         v-for="item in block.items"
                         :key="item"
-                        class="inline-flex items-center rounded-full bg-[rgb(var(--dyx-accent-soft-rgb)/0.92)] px-4 py-2 text-[rgb(var(--dyx-accent-strong-rgb))]"
+                        class="inline-flex items-center rounded-full bg-[rgb(var(--dyx-accent-soft-rgb)/0.92)] px-4 py-2 text-[rgb(var(--dyx-accent-strong-rgb))] lg:px-5 lg:py-2.5"
                       >
                         {{ item }}
                       </span>
                     </div>
-                    <div class="flex flex-wrap items-center gap-3.5">
+                    <div class="flex flex-wrap items-center gap-4">
                       <RouterLink
                         to="/blog"
-                        class="inline-flex items-center rounded-full bg-[rgb(var(--dyx-text-main-rgb))] px-5 py-3 text-sm font-medium text-[rgb(var(--dyx-text-inverse-rgb))] transition hover:opacity-90"
+                        class="inline-flex items-center rounded-full bg-[rgb(var(--dyx-text-main-rgb))] px-6 py-3.5 text-sm font-medium text-[rgb(var(--dyx-text-inverse-rgb))] transition hover:opacity-90 lg:px-7 lg:py-4 lg:text-[15px]"
                       >
                         阅读博客
                       </RouterLink>
                       <RouterLink
                         to="/about"
-                        class="dyx-ghost-pill inline-flex items-center"
+                        class="dyx-ghost-pill inline-flex items-center px-6 py-3.5 lg:px-7 lg:py-4 lg:text-[15px]"
                       >
                         查看关于我
                       </RouterLink>
@@ -88,7 +88,7 @@
 
             <div
               v-if="hasHeroImage"
-              class="home-hero-photo-stage relative flex min-h-0 w-full items-center justify-center overflow-hidden px-0 py-0 sm:px-0 lg:min-h-[70vh] lg:justify-end lg:py-0"
+              class="home-hero-photo-stage relative flex min-h-0 w-full items-center justify-center overflow-hidden px-0 py-0 sm:px-0 lg:min-h-[74vh] lg:justify-end lg:pl-6 lg:py-0 xl:pl-10"
             >
               <div
                 class="relative flex h-full w-full items-center justify-center overflow-hidden lg:justify-end"
@@ -96,7 +96,7 @@
                 <img
                   :src="heroImageBlock?.imageUrl"
                   :alt="heroImageBlock?.alt || 'avatar'"
-                  class="home-hero-photo h-full max-h-[72vh] w-full object-contain object-center lg:max-h-[78vh] lg:object-right"
+                  class="home-hero-photo h-full max-h-[74vh] w-full object-contain object-center lg:max-h-[86vh] lg:object-right"
                 />
               </div>
             </div>
@@ -443,7 +443,7 @@ const heroImageBlock = computed(() =>
 const hasHeroImage = computed(() => !!heroImageBlock.value?.imageUrl);
 const heroGridClass = computed(() =>
   hasHeroImage.value
-    ? "lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]"
+    ? "lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]"
     : "lg:grid-cols-1"
 );
 const heroInnerClass = computed(() =>
@@ -459,13 +459,13 @@ const heroViewportClass = computed(() => {
 });
 const heroCopyClass = computed(() =>
   hasHeroBackground.value
-    ? "justify-start gap-3 pt-4 sm:justify-center sm:gap-4 sm:pt-0 lg:justify-start lg:gap-5 lg:pt-0 xl:pt-0"
-    : "justify-start gap-4 pt-4 sm:justify-center sm:pt-0 lg:justify-start lg:pt-0 xl:pt-0"
+    ? "justify-start gap-4 pt-6 sm:justify-center sm:gap-5 sm:pt-0 lg:justify-start lg:gap-6 lg:pt-0 xl:pt-0"
+    : "justify-start gap-5 pt-6 sm:justify-center sm:pt-0 lg:justify-start lg:gap-6 lg:pt-0 xl:pt-0"
 );
 const heroContentClass = computed(() =>
   hasHeroBackground.value
-    ? "justify-start gap-3 sm:justify-center sm:gap-4 lg:justify-start lg:gap-5 lg:pr-8 xl:pr-12"
-    : "justify-start gap-4 sm:justify-center lg:justify-start lg:gap-5 lg:pr-8 xl:pr-12"
+    ? "justify-start gap-4 sm:justify-center sm:gap-5 lg:justify-start lg:gap-6 lg:pr-12 xl:pr-16"
+    : "justify-start gap-5 sm:justify-center lg:justify-start lg:gap-6 lg:pr-12 xl:pr-16"
 );
 const heroBackgroundStyle = computed(() => {
   const backgroundImageUrl = heroImageBlock.value?.backgroundImageUrl?.trim();

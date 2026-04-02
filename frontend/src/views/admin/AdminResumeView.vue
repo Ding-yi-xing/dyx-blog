@@ -129,7 +129,7 @@ const savingProfile = ref(false);
 const savingProject = ref(false);
 const dialogVisible = ref(false);
 const rawList = ref<ProjectData[]>([]);
-const selectedIds = ref<number[]>([]);
+const selectedIds = ref<Array<string | number>>([]);
 const tableRef = ref<{ clearSelection: () => void } | null>(null);
 
 const form = reactive<ProfileData>({
@@ -177,7 +177,7 @@ function resetSelection(): void {
 }
 
 function handleSelectionChange(selection: Array<ProjectData & { raw?: ProjectData }>): void {
-  selectedIds.value = selection.map((item) => Number(item.id)).filter((id) => !Number.isNaN(id));
+  selectedIds.value = selection.map((item) => item.id).filter((id) => id !== undefined && id !== null);
 }
 
 /**

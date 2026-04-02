@@ -9,8 +9,8 @@
       <h1 class="mt-3 text-3xl font-semibold tracking-tight dyx-text-main md:text-4xl">
         {{ post.title || `文章 ${route.params.id}` }}
       </h1>
-      <div v-if="post.updatedAt && !errorMessage" class="mt-4 flex flex-wrap items-center gap-3 text-[12px] dyx-text-meta">
-        <span>{{ formatDateYmd(post.updatedAt) }}</span>
+      <div v-if="resolvePostDate(post) && !errorMessage" class="mt-4 flex flex-wrap items-center gap-3 text-[12px] dyx-text-meta">
+        <span>{{ formatDateYmd(resolvePostDate(post) as string) }}</span>
       </div>
     </article>
 
@@ -29,11 +29,10 @@
             class="block max-h-[520px] w-auto max-w-full rounded-[30px] object-contain"
           />
         </div>
-        <div class="max-w-none">
-          <p class="whitespace-pre-line text-[15px] leading-8 dyx-text-muted">
-            {{ post.content || post.summary || '暂无正文内容。' }}
-          </p>
-        </div>
+        <div v-if="renderedContent" class="blog-content max-w-none text-[15px] leading-8 dyx-text-muted" v-html="renderedContent"></div>
+        <p v-else class="whitespace-pre-line text-[15px] leading-8 dyx-text-muted">
+          {{ post.summary || '暂无正文内容。' }}
+        </p>
       </template>
     </article>
 
@@ -48,7 +47,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { getPostDetail, recordSiteVisit, type PostData } from '@/api/modules/site';
 import { formatDateYmd } from '@/utils/date';
@@ -58,6 +57,24 @@ const route = useRoute();
 const post = ref<Partial<PostData>>({});
 const loading = ref(false);
 const errorMessage = ref('');
+const htmlEntityDecoder = typeof document === 'undefined' ? null : document.createElement('textarea');
+
+const renderedContent = computed(() => decodeHtmlEntities(post.value.content));
+
+function resolvePostDate(currentPost: Partial<PostData>): string | undefined {
+  return currentPost.publishedAt || currentPost.updatedAt;
+}
+
+function decodeHtmlEntities(content?: string): string {
+  if (!content) {
+    return '';
+  }
+  if (!htmlEntityDecoder || !content.includes('&lt;')) {
+    return content;
+  }
+  htmlEntityDecoder.innerHTML = content;
+  return htmlEntityDecoder.value;
+}
 
 async function loadPostDetail(): Promise<void> {
   loading.value = true;
@@ -84,3 +101,85 @@ onMounted(() => {
   void loadPostDetail();
 });
 </script>
+
+<style scoped>
+.blog-content :deep(h1),
+.blog-content :deep(h2),
+.blog-content :deep(h3) {
+  margin: 1.5em 0 0.7em;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--dyx-text-main);
+}
+
+.blog-content :deep(h1) {
+  font-size: 1.875rem;
+}
+
+.blog-content :deep(h2) {
+  font-size: 1.5rem;
+}
+
+.blog-content :deep(h3) {
+  font-size: 1.25rem;
+}
+
+.blog-content :deep(p),
+.blog-content :deep(ul),
+.blog-content :deep(ol),
+.blog-content :deep(blockquote),
+.blog-content :deep(pre) {
+  margin: 1em 0;
+}
+
+.blog-content :deep(ul),
+.blog-content :deep(ol) {
+  padding-left: 1.4em;
+}
+
+.blog-content :deep(li + li) {
+  margin-top: 0.35em;
+}
+
+.blog-content :deep(a) {
+  color: rgb(59 130 246);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.blog-content :deep(img) {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 1.5em auto;
+  border-radius: 24px;
+}
+
+.blog-content :deep(blockquote) {
+  border-left: 4px solid rgb(148 163 184);
+  padding-left: 1em;
+  color: rgb(100 116 139);
+}
+
+.blog-content :deep(pre) {
+  overflow-x: auto;
+  border-radius: 20px;
+  padding: 1rem 1.25rem;
+  background: rgb(15 23 42);
+  color: rgb(226 232 240);
+}
+
+.blog-content :deep(code) {
+  border-radius: 6px;
+  background: rgb(241 245 249);
+  padding: 0.15em 0.4em;
+  font-size: 0.9em;
+  color: rgb(15 23 42);
+}
+
+.blog-content :deep(pre code) {
+  background: transparent;
+  padding: 0;
+  color: inherit;
+}
+</style>

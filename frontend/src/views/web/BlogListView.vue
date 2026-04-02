@@ -6,7 +6,7 @@
           <p class="text-[11px] font-medium uppercase tracking-[0.32em] dyx-text-meta">Blog</p>
           <h1 class="mt-2 text-2xl font-semibold tracking-tight dyx-text-main md:text-3xl">所有文章</h1>
           <p class="mt-2 max-w-2xl text-sm leading-7 dyx-text-muted">
-            参考 SpaceX 那种克制的大留白布局，把内容退回到文章本身。这里按更新时间从近到远展开。
+            参考 SpaceX 那种克制的大留白布局，把内容退回到文章本身。这里按发布日期从近到远展开。
           </p>
         </div>
       </div>
@@ -28,7 +28,7 @@
               {{ item.summary || '暂无摘要' }}
             </p>
             <div class="mt-4 flex flex-wrap items-center gap-2 text-[12px] dyx-text-meta">
-              <span v-if="item.updatedAt">{{ formatDateYmd(item.updatedAt) }}</span>
+              <span v-if="resolvePostDate(item)">{{ formatDateYmd(resolvePostDate(item) as string) }}</span>
             </div>
           </div>
 
@@ -64,6 +64,10 @@ import { formatDateYmd } from '@/utils/date';
  * 负责加载全部已发布文章，并在页面进入时记录站点访问日志。
  */
 const posts = ref<PostData[]>([]);
+
+function resolvePostDate(post: PostData): string | undefined {
+  return post.publishedAt || post.updatedAt;
+}
 
 /**
  * 获取文章列表并刷新页面数据源。

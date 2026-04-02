@@ -65,97 +65,109 @@
         <p class="text-sm uppercase tracking-[0.35em] dyx-text-meta">个人作品</p>
       </div>
 
-      <div class="mt-8 grid gap-5 xl:grid-cols-3">
-        <article
-          v-for="item in works"
-          :key="item.id"
-          class="dyx-page-card overflow-hidden rounded-[28px] shadow-dyx-soft transition hover:-translate-y-1"
-        >
-          <div v-if="resolveWorkMediaCount(item)" class="relative">
-            <button
-              type="button"
-              class="work-media-shell group relative block h-48 w-full overflow-hidden bg-black text-left"
-              @click="openWorkViewer(item)"
-            >
-              <video
-                v-if="shouldRenderWorkVideoCover(item)"
-                :src="resolveVideoPosterAtSecond(item.videoUrl)"
-                muted
-                playsinline
-                webkit-playsinline="true"
-                x5-playsinline="true"
-                x5-video-player-type="h5"
-                preload="metadata"
-                class="block h-48 w-full object-cover"
-              ></video>
-              <el-image
-                v-else-if="resolveWorkCover(item)"
-                :src="resolveWorkCover(item)"
-                fit="cover"
-                class="block h-48 w-full transition duration-300 group-hover:scale-[1.03]"
-              />
-              <div v-else class="flex h-48 w-full items-center justify-center bg-[rgb(var(--dyx-bg-surface-muted-rgb)/0.18)] text-sm text-white/72">
-                暂无预览素材
-              </div>
-
-              <div class="work-media-overlay">
-                <span>{{ resolveWorkMediaCount(item) > 1 ? `查看全部 ${resolveWorkMediaCount(item)} 项素材` : '查看素材' }}</span>
-              </div>
-
-              <div v-if="resolveWorkHasVideo(item)" class="work-media-play">
-                <span class="work-media-play-icon"></span>
-              </div>
-
-              <div v-if="resolveWorkMediaCount(item) > 1" class="work-media-badge">
-                <span class="work-media-badge-dot"></span>
-                <span>{{ resolveWorkMediaCount(item) }} 项素材</span>
-              </div>
-
-              <div v-if="resolveWorkPreviewStack(item).length" class="work-media-stack" aria-hidden="true">
-                <button
-                  v-for="preview in resolveWorkPreviewStack(item)"
-                  :key="preview.key"
-                  type="button"
-                  class="work-media-stack-item"
-                  :style="{
-                    backgroundImage: `url(${preview.thumb})`,
-                    transform: `translateX(${preview.offset * 12}px) rotate(${preview.offset === 0 ? '-4deg' : preview.offset === 1 ? '0deg' : '4deg'})`,
-                    zIndex: String(6 - preview.offset)
-                  }"
-                  :aria-label="`查看素材 ${preview.offset + 1}`"
-                  @click.stop="openWorkViewer(item, preview.index)"
-                ></button>
-              </div>
-            </button>
-          </div>
-          <div class="p-6">
-            <div class="flex flex-wrap items-center gap-3 text-xs dyx-text-meta">
-              <span class="rounded-full bg-[rgb(var(--dyx-bg-surface-muted-rgb)/0.8)] px-3 py-1.5 dyx-text-main">{{ resolveWorkTypeText(item) }}</span>
-              <span>{{ resolveWorkMediaCount(item) }} 项素材</span>
-              <span v-if="item.workLink">含作品链接</span>
-            </div>
-            <h3 class="mt-4 text-2xl font-semibold dyx-text-main">{{ item.title }}</h3>
-            <p class="mt-4 text-sm leading-7 dyx-text-muted">{{ item.summary || '暂无作品说明。' }}</p>
-            <div class="mt-5 flex flex-wrap gap-3">
-              <button type="button" class="dyx-ghost-pill inline-flex" @click="openWorkViewer(item)">
-                查看素材
-              </button>
-              <a
-                v-if="item.workLink"
-                :href="item.workLink"
-                target="_blank"
-                rel="noreferrer"
-                class="dyx-ghost-pill inline-flex"
+      <div
+        ref="worksScroller"
+        class="works-scroll mt-8 overflow-x-auto pb-4 md:overflow-visible md:pb-0"
+        @wheel="handleWorksWheel"
+        @pointerdown="handleHorizontalPointerDown('works', $event)"
+        @pointermove="handleHorizontalPointerMove('works', $event)"
+        @pointerup="handleHorizontalPointerUp('works')"
+        @pointercancel="handleHorizontalPointerUp('works')"
+        @pointerleave="handleHorizontalPointerUp('works')"
+        @click.capture="suppressHorizontalDragClick"
+      >
+        <div class="flex min-w-max gap-5 md:min-w-0 md:grid md:grid-cols-2 xl:grid-cols-3">
+          <article
+            v-for="item in works"
+            :key="item.id"
+            class="dyx-page-card w-[min(84vw,320px)] flex-none overflow-hidden rounded-[28px] shadow-dyx-soft transition hover:-translate-y-1 md:w-auto"
+          >
+            <div v-if="resolveWorkMediaCount(item)" class="relative">
+              <button
+                type="button"
+                class="work-media-shell group relative block h-48 w-full overflow-hidden bg-black text-left"
+                @click="openWorkViewer(item)"
               >
-                查看作品链接
-              </a>
-            </div>
-          </div>
-        </article>
+                <video
+                  v-if="shouldRenderWorkVideoCover(item)"
+                  :src="resolveVideoPosterAtSecond(item.videoUrl)"
+                  muted
+                  playsinline
+                  webkit-playsinline="true"
+                  x5-playsinline="true"
+                  x5-video-player-type="h5"
+                  preload="metadata"
+                  class="block h-48 w-full object-cover"
+                ></video>
+                <el-image
+                  v-else-if="resolveWorkCover(item)"
+                  :src="resolveWorkCover(item)"
+                  fit="cover"
+                  class="block h-48 w-full transition duration-300 group-hover:scale-[1.03]"
+                />
+                <div v-else class="flex h-48 w-full items-center justify-center bg-[rgb(var(--dyx-bg-surface-muted-rgb)/0.18)] text-sm text-white/72">
+                  暂无预览素材
+                </div>
 
-        <article v-if="!works.length" class="xl:col-span-3 rounded-[28px] border border-dashed border-[rgb(var(--dyx-border-subtle-rgb)/0.72)] bg-[rgb(var(--dyx-bg-surface-rgb)/0.36)] p-8 text-sm dyx-text-meta">
-          暂无已发布作品内容。
-        </article>
+                <div class="work-media-overlay">
+                  <span>{{ resolveWorkMediaCount(item) > 1 ? `查看全部 ${resolveWorkMediaCount(item)} 项素材` : '查看素材' }}</span>
+                </div>
+
+                <div v-if="resolveWorkHasVideo(item)" class="work-media-play">
+                  <span class="work-media-play-icon"></span>
+                </div>
+
+                <div v-if="resolveWorkMediaCount(item) > 1" class="work-media-badge">
+                  <span class="work-media-badge-dot"></span>
+                  <span>{{ resolveWorkMediaCount(item) }} 项素材</span>
+                </div>
+
+                <div v-if="resolveWorkPreviewStack(item).length" class="work-media-stack" aria-hidden="true">
+                  <button
+                    v-for="preview in resolveWorkPreviewStack(item)"
+                    :key="preview.key"
+                    type="button"
+                    class="work-media-stack-item"
+                    :style="{
+                      backgroundImage: `url(${preview.thumb})`,
+                      transform: `translateX(${preview.offset * 12}px) rotate(${preview.offset === 0 ? '-4deg' : preview.offset === 1 ? '0deg' : '4deg'})`,
+                      zIndex: String(6 - preview.offset)
+                    }"
+                    :aria-label="`查看素材 ${preview.offset + 1}`"
+                    @click.stop="openWorkViewer(item, preview.index)"
+                  ></button>
+                </div>
+              </button>
+            </div>
+            <div class="p-6">
+              <div class="flex flex-wrap items-center gap-3 text-xs dyx-text-meta">
+                <span class="rounded-full bg-[rgb(var(--dyx-bg-surface-muted-rgb)/0.8)] px-3 py-1.5 dyx-text-main">{{ resolveWorkTypeText(item) }}</span>
+                <span>{{ resolveWorkMediaCount(item) }} 项素材</span>
+                <span v-if="item.workLink">含作品链接</span>
+              </div>
+              <h3 class="mt-4 text-2xl font-semibold dyx-text-main">{{ item.title }}</h3>
+              <p class="mt-4 text-sm leading-7 dyx-text-muted">{{ item.summary || '暂无作品说明。' }}</p>
+              <div class="mt-5 flex flex-wrap gap-3">
+                <button type="button" class="dyx-ghost-pill inline-flex" @click="openWorkViewer(item)">
+                  查看素材
+                </button>
+                <a
+                  v-if="item.workLink"
+                  :href="item.workLink"
+                  target="_blank"
+                  rel="noreferrer"
+                  class="dyx-ghost-pill inline-flex"
+                >
+                  查看作品链接
+                </a>
+              </div>
+            </div>
+          </article>
+
+          <article v-if="!works.length" class="rounded-[28px] border border-dashed border-[rgb(var(--dyx-border-subtle-rgb)/0.72)] bg-[rgb(var(--dyx-bg-surface-rgb)/0.36)] p-8 text-sm dyx-text-meta md:col-span-2 xl:col-span-3">
+            暂无已发布作品内容。
+          </article>
+        </div>
       </div>
     </div>
 
@@ -260,7 +272,17 @@
         <p class="text-sm uppercase tracking-[0.35em] dyx-text-meta">荣誉时间线</p>
       </div>
 
-      <div ref="honorsScroller" class="honors-scroll mt-10 overflow-x-auto pb-4" @wheel="handleHonorsWheel">
+      <div
+        ref="honorsScroller"
+        class="honors-scroll mt-10 overflow-x-auto pb-4"
+        @wheel="handleHonorsWheel"
+        @pointerdown="handleHorizontalPointerDown('honors', $event)"
+        @pointermove="handleHorizontalPointerMove('honors', $event)"
+        @pointerup="handleHorizontalPointerUp('honors')"
+        @pointercancel="handleHorizontalPointerUp('honors')"
+        @pointerleave="handleHorizontalPointerUp('honors')"
+        @click.capture="suppressHorizontalDragClick"
+      >
         <div v-if="honors.length" class="relative flex min-w-max items-start gap-6 px-1 py-4">
           <div class="absolute left-0 right-0 top-[74px] h-px bg-[rgb(var(--dyx-border-subtle-rgb)/0.8)]"></div>
 
@@ -280,17 +302,17 @@
               <p class="mt-4 text-sm leading-7 dyx-text-muted">{{ item.description || '暂无荣誉说明。' }}</p>
               <div v-if="resolveHonorMedia(item).length" class="mt-6 grid gap-3 sm:grid-cols-2">
                 <template v-for="(url, index) in resolveHonorMedia(item)" :key="`${item.id}-${index}`">
-                  <div v-if="isImageUrl(url)" class="honor-media-shell flex h-40 w-full items-center justify-center overflow-hidden rounded-2xl bg-black">
+                  <div v-if="isImageUrl(url)" class="honor-media-shell flex h-40 w-full items-center justify-center overflow-hidden rounded-2xl bg-black" @pointerdown.stop>
                     <el-image
                       :src="url"
                       :preview-src-list="resolveHonorImages(item)"
                       :initial-index="resolveHonorImages(item).indexOf(url)"
                       fit="cover"
                       preview-teleported
-                      class="block h-40 w-full"
+                      class="block h-40 w-full cursor-zoom-in"
                     />
                   </div>
-                  <div v-else-if="isVideoUrl(url)" class="honor-media-shell flex h-40 w-full items-center justify-center overflow-hidden rounded-2xl bg-black">
+                  <div v-else-if="isVideoUrl(url)" class="honor-media-shell flex h-40 w-full items-center justify-center overflow-hidden rounded-2xl bg-black" @pointerdown.stop>
                     <video
                       :src="url"
                       controls
@@ -354,10 +376,35 @@ interface WorkPreviewItem {
   offset: number;
 }
 
+type HorizontalScrollerKey = 'works' | 'honors';
+
+interface HorizontalDragState {
+  pointerId: number | null;
+  startX: number;
+  startScrollLeft: number;
+  dragging: boolean;
+}
+
 const profile = ref<ProfileData>({});
 const honors = ref<HonorData[]>([]);
 const works = ref<WorkData[]>([]);
 const honorsScroller = ref<HTMLElement>();
+const worksScroller = ref<HTMLElement>();
+const horizontalDragState = ref<Record<HorizontalScrollerKey, HorizontalDragState>>({
+  works: {
+    pointerId: null,
+    startX: 0,
+    startScrollLeft: 0,
+    dragging: false
+  },
+  honors: {
+    pointerId: null,
+    startX: 0,
+    startScrollLeft: 0,
+    dragging: false
+  }
+});
+const shouldSuppressDragClick = ref(false);
 const workViewerVisible = ref(false);
 const activeWork = ref<WorkData | null>(null);
 const activeWorkMediaIndex = ref(0);
@@ -518,25 +565,92 @@ function resolveHonorImages(item: HonorData): string[] {
   return resolveHonorMedia(item).filter((url) => isImageUrl(url));
 }
 
+function getHorizontalScroller(key: HorizontalScrollerKey): HTMLElement | undefined {
+  return key === 'works' ? worksScroller.value : honorsScroller.value;
+}
+
+function handleHorizontalPointerDown(key: HorizontalScrollerKey, event: PointerEvent): void {
+  const container = getHorizontalScroller(key);
+  if (!container || event.pointerType === 'touch') {
+    return;
+  }
+  const state = horizontalDragState.value[key];
+  state.pointerId = event.pointerId;
+  state.startX = event.clientX;
+  state.startScrollLeft = container.scrollLeft;
+  state.dragging = false;
+  container.setPointerCapture?.(event.pointerId);
+}
+
+function handleHorizontalPointerMove(key: HorizontalScrollerKey, event: PointerEvent): void {
+  const container = getHorizontalScroller(key);
+  if (!container) {
+    return;
+  }
+  const state = horizontalDragState.value[key];
+  if (state.pointerId !== event.pointerId) {
+    return;
+  }
+  const deltaX = event.clientX - state.startX;
+  if (!state.dragging && Math.abs(deltaX) < 6) {
+    return;
+  }
+  state.dragging = true;
+  shouldSuppressDragClick.value = true;
+  event.preventDefault();
+  container.scrollLeft = state.startScrollLeft - deltaX;
+}
+
+function handleHorizontalPointerUp(key: HorizontalScrollerKey): void {
+  const state = horizontalDragState.value[key];
+  state.pointerId = null;
+  state.startX = 0;
+  state.startScrollLeft = 0;
+  window.setTimeout(() => {
+    state.dragging = false;
+    shouldSuppressDragClick.value = false;
+  }, 0);
+}
+
+function suppressHorizontalDragClick(event: MouseEvent): void {
+  if (!shouldSuppressDragClick.value) {
+    return;
+  }
+  event.preventDefault();
+  event.stopPropagation();
+}
+
+function handleHorizontalWheel(container: HTMLElement | undefined, event: WheelEvent, deltaScale = 1): void {
+  if (!container) {
+    return;
+  }
+  const maxScrollLeft = container.scrollWidth - container.clientWidth;
+  if (maxScrollLeft <= 0) {
+    event.preventDefault();
+    return;
+  }
+
+  const delta = (Math.abs(event.deltaY) > Math.abs(event.deltaX) ? event.deltaY : event.deltaX) * deltaScale;
+  if (delta === 0) {
+    event.preventDefault();
+    return;
+  }
+
+  event.preventDefault();
+  const nextScrollLeft = container.scrollLeft + delta;
+  container.scrollLeft = Math.min(maxScrollLeft, Math.max(0, nextScrollLeft));
+}
+
+function handleWorksWheel(event: WheelEvent): void {
+  handleHorizontalWheel(worksScroller.value, event);
+}
+
 function handleHonorsWheel(event: WheelEvent): void {
   const container = honorsScroller.value;
   if (!container) {
     return;
   }
-  if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) {
-    return;
-  }
-  const maxScrollLeft = container.scrollWidth - container.clientWidth;
-  if (maxScrollLeft <= 0) {
-    return;
-  }
-  const nextScrollLeft = container.scrollLeft + event.deltaY;
-  const clampedScrollLeft = Math.min(maxScrollLeft, Math.max(0, nextScrollLeft));
-  if (clampedScrollLeft === container.scrollLeft) {
-    return;
-  }
-  event.preventDefault();
-  container.scrollLeft = clampedScrollLeft;
+  handleHorizontalWheel(container, event, window.innerWidth < 768 ? 1 : 0.82);
 }
 
 onMounted(() => {
@@ -808,11 +922,22 @@ onMounted(() => {
     #000;
 }
 
+.works-scroll,
 .honors-scroll {
   -ms-overflow-style: none;
   scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  cursor: grab;
+  user-select: none;
 }
 
+.works-scroll:active,
+.honors-scroll:active {
+  cursor: grabbing;
+}
+
+.works-scroll::-webkit-scrollbar,
 .honors-scroll::-webkit-scrollbar {
   display: none;
 }
