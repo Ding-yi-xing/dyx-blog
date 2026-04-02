@@ -3,6 +3,7 @@
     <div class="flex flex-wrap items-start justify-between gap-4">
       <h2 class="text-xl font-semibold text-slate-900">媒体资源管理</h2>
       <div class="flex flex-wrap gap-3">
+        <el-button type="danger" plain :disabled="!selectedIds.length" @click="handleBatchDelete">批量删除</el-button>
         <el-button :loading="importing" plain @click="handleImportExisting">导入 uploads 文件</el-button>
         <el-upload :show-file-list="false" :http-request="handleUpload">
           <el-button type="primary" :loading="uploading">选择文件</el-button>
@@ -12,7 +13,8 @@
 
     <div class="mt-6 text-sm text-slate-500">已收录 {{ mediaList.length }} 个媒体文件。</div>
 
-    <el-table class="mt-6" :data="mediaList" border>
+    <el-table ref="tableRef" class="mt-6" :data="mediaList" border @selection-change="handleSelectionChange">
+      <el-table-column type="selection" width="52" align="center" />
       <el-table-column label="预览" width="140">
         <template #default="scope">
           <div v-if="scope.row.fileUrl" class="flex items-center justify-center">
@@ -24,18 +26,17 @@
               preview-teleported
               class="h-16 w-24 overflow-hidden rounded-2xl"
             />
-            <a
+            <button
               v-else
-              :href="scope.row.fileUrl"
-              target="_blank"
-              rel="noreferrer"
-              class="flex h-16 w-24 flex-col justify-between rounded-2xl bg-slate-950 px-3 py-3 text-white"
+              type="button"
+              class="flex h-16 w-24 flex-col justify-between rounded-2xl bg-slate-950 px-3 py-3 text-left text-white"
+              @click="openPreview(scope.row.fileUrl)"
             >
               <span class="w-fit rounded-full bg-white/15 px-2 py-0.5 text-[10px] uppercase tracking-[0.2em]">
-                {{ isPdfUrl(scope.row.fileUrl) ? 'PDF' : 'FILE' }}
+                {{ isVideoUrl(scope.row.fileUrl) ? 'VIDEO' : isPdfUrl(scope.row.fileUrl) ? 'PDF' : 'FILE' }}
               </span>
               <span class="line-clamp-2 text-[11px] leading-4">{{ extractFileName(scope.row.fileUrl) || '打开文件' }}</span>
-            </a>
+            </button>
           </div>
           <span v-else class="text-sm text-slate-400">暂无预览</span>
         </template>
@@ -47,7 +48,7 @@
         <template #default="scope">
           <a
             v-if="scope.row.fileUrl"
-            :href="scope.row.fileUrl"
+            :href="getPreviewUrl(scope.row.fileUrl)"
             target="_blank"
             rel="noreferrer"
             class="text-sm text-slate-700 transition hover:text-slate-950"
@@ -72,15 +73,41 @@
         </template>
       </el-table-column>
     </el-table>
+
+    <el-dialog
+      v-model="previewVisible"
+      :title="previewType === 'video' ? '视频预览' : '图片预览'"
+      width="90vw"
+      top="5vh"
+      destroy-on-close
+      append-to-body
+    >
+      <div class="flex min-h-[60vh] items-center justify-center rounded-2xl bg-slate-950/95 p-4">
+        <img
+          v-if="previewType === 'image' && previewUrl"
+          :src="previewUrl"
+          alt="preview"
+          class="max-h-[80vh] max-w-full rounded-2xl object-contain"
+        />
+        <video
+          v-else-if="previewType === 'video' && previewUrl"
+          :src="previewUrl"
+          controls
+          preload="metadata"
+          playsinline
+          class="max-h-[80vh] w-full rounded-2xl bg-black"
+        ></video>
+      </div>
+    </el-dialog>
   </section>
 </template>
 
 <script setup lang="ts">
 import { ElMessage, ElMessageBox, type UploadRequestOptions } from 'element-plus';
 import { computed, h, onMounted, ref } from 'vue';
-import { deleteAdminMedia, getAdminMedia, importExistingAdminMedia, uploadAdminMedia } from '@/api/modules/admin';
+import { deleteAdminMedia, deleteAdminMediaBatch, getAdminMedia, getAdminMediaContentUrl, importExistingAdminMedia, uploadAdminMedia } from '@/api/modules/admin';
 import type { MediaData } from '@/api/modules/admin';
-import { extractFileName, isImageUrl, isPdfUrl } from '@/utils/media';
+import { extractFileName, isImageUrl, isPdfUrl, isVideoUrl } from '@/utils/media';
 import { resolveErrorMessage } from '@/utils/error';
 
 /**
@@ -90,6 +117,11 @@ import { resolveErrorMessage } from '@/utils/error';
 const importing = ref(false);
 const uploading = ref(false);
 const mediaRawList = ref<MediaData[]>([]);
+const selectedIds = ref<number[]>([]);
+const tableRef = ref<{ clearSelection: () => void } | null>(null);
+const previewVisible = ref(false);
+const previewUrl = ref('');
+const previewType = ref<'image' | 'video'>('image');
 
 /**
  * 将后台媒体列表转换为表格展示所需的衍生字段。
@@ -101,6 +133,15 @@ const mediaList = computed(() =>
     raw: item
   }))
 );
+
+function resetSelection(): void {
+  tableRef.value?.clearSelection();
+  selectedIds.value = [];
+}
+
+function handleSelectionChange(selection: Array<MediaData & { raw?: MediaData }>): void {
+  selectedIds.value = selection.map((item) => Number(item.id)).filter((id) => !Number.isNaN(id));
+}
 
 /**
  * 将字节大小格式化为便于后台表格阅读的文本。
@@ -120,6 +161,13 @@ function formatFileSize(size?: number): string {
   return `${Math.max(1, Math.round(size / 1024))}KB`;
 }
 
+function getPreviewUrl(url: string): string {
+  if (isVideoUrl(url)) {
+    return url;
+  }
+  return getAdminMediaContentUrl(url);
+}
+
 /**
  * 获取后台媒体库列表并刷新表格数据源。
  *
@@ -128,8 +176,9 @@ function formatFileSize(size?: number): string {
  * @author Dyx
  */
 async function loadMediaList(): Promise<void> {
-  const response = await getAdminMedia();
-  mediaRawList.value = response.data ?? [];
+  const result = await getAdminMedia();
+  const mediaData = (result as { data?: MediaData[] })?.data;
+  mediaRawList.value = Array.isArray(mediaData) ? mediaData : [];
 }
 
 /**
@@ -145,8 +194,8 @@ async function handleImportExisting(): Promise<void> {
   }
   importing.value = true;
   try {
-    const response = await importExistingAdminMedia();
-    const importedCount = Number(response.data ?? 0);
+    const result = await importExistingAdminMedia();
+    const importedCount = Number((result as { data?: number })?.data ?? 0);
     ElMessage.success(importedCount > 0 ? `已导入 ${importedCount} 个已有文件` : 'uploads 中暂无可新增导入文件');
     await loadMediaList();
   } catch (error) {
@@ -182,7 +231,7 @@ async function handleUpload(options: UploadRequestOptions): Promise<void> {
 
 /**
  * 根据媒体类型打开预览。
- * 图片以内嵌弹窗展示，其他文件交由新窗口打开。
+ * 图片与视频使用大尺寸弹窗，其他文件交由新窗口打开。
  *
  * @param url 待预览的媒体地址。
  * @returns 无返回值。
@@ -190,24 +239,20 @@ async function handleUpload(options: UploadRequestOptions): Promise<void> {
  * @author Dyx
  */
 function openPreview(url: string): void {
+  const resolvedPreviewUrl = getPreviewUrl(url);
   if (isImageUrl(url)) {
-    void ElMessageBox.alert(h('img', {
-      src: url,
-      alt: 'preview',
-      style: {
-        display: 'block',
-        maxWidth: '100%',
-        maxHeight: '70vh',
-        margin: '0 auto',
-        borderRadius: '20px',
-        objectFit: 'contain'
-      }
-    }), '图片预览', {
-      confirmButtonText: '关闭'
-    });
+    previewType.value = 'image';
+    previewUrl.value = resolvedPreviewUrl;
+    previewVisible.value = true;
     return;
   }
-  void window.open(url, '_blank', 'noopener,noreferrer');
+  if (isVideoUrl(url)) {
+    previewType.value = 'video';
+    previewUrl.value = resolvedPreviewUrl;
+    previewVisible.value = true;
+    return;
+  }
+  void window.open(resolvedPreviewUrl, '_blank', 'noopener,noreferrer');
 }
 
 /**
@@ -234,11 +279,39 @@ async function handleDelete(item: MediaData): Promise<void> {
     await deleteAdminMedia(item.id);
     ElMessage.success('媒体删除成功');
     await loadMediaList();
+    resetSelection();
   } catch (error) {
     if (error === 'cancel' || error === 'close') {
       return;
     }
     ElMessage.error(resolveErrorMessage(error, '媒体删除失败'));
+  }
+}
+
+async function handleBatchDelete(): Promise<void> {
+  if (!selectedIds.value.length) {
+    return;
+  }
+  try {
+    await ElMessageBox.confirm(
+      h('div', { class: 'space-y-2' }, [
+        h('p', `确认删除选中的 ${selectedIds.value.length} 个媒体文件吗？`),
+        h('p', { class: 'text-sm text-slate-500' }, '若所选媒体中存在仍被引用的文件，系统会阻止删除。')
+      ]),
+      '批量删除确认',
+      {
+        type: 'warning'
+      }
+    );
+    await deleteAdminMediaBatch(selectedIds.value);
+    ElMessage.success('媒体批量删除成功');
+    await loadMediaList();
+    resetSelection();
+  } catch (error) {
+    if (error === 'cancel' || error === 'close') {
+      return;
+    }
+    ElMessage.error(resolveErrorMessage(error, '媒体批量删除失败'));
   }
 }
 

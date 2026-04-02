@@ -25,7 +25,10 @@ import com.dyx.blog.storage.MediaStorageResult;
 import com.dyx.blog.storage.OssMediaStorage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -37,6 +40,7 @@ import org.springframework.web.multipart.MultipartFile;
 import javax.imageio.ImageIO;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.RandomAccessFile;
 import java.net.IDN;
 import java.net.InetAddress;
 import java.net.URI;
@@ -69,7 +73,7 @@ public class MediaServiceImpl implements MediaService {
     private static final Set<String> IMPORTABLE_EXTENSIONS = Set.of(
             "jpg", "jpeg", "png", "gif", "webp", "bmp", "pdf", "mp4", "webm", "mov", "m4v"
     );
-    private static final long MAX_UPLOAD_SIZE = 20L * 1024 * 1024;
+    private static final long MAX_UPLOAD_SIZE = 2L * 1024 * 1024 * 1024;
     private static final Set<String> ALLOWED_UPLOAD_EXTENSIONS = Set.of(
             "jpg", "jpeg", "png", "gif", "webp", "bmp", "pdf", "mp4", "webm", "mov", "m4v"
     );
@@ -188,7 +192,7 @@ public class MediaServiceImpl implements MediaService {
     }
 
     @Override
-    public ResponseEntity<byte[]> proxyMedia(String fileUrl) {
+    public ResponseEntity<byte[]> proxyMedia(String fileUrl, String range) {
         if (!StringUtils.hasText(fileUrl)) {
             throw new BusinessException("媒体资源链接无效");
         }
@@ -199,9 +203,9 @@ public class MediaServiceImpl implements MediaService {
             throw new BusinessException("媒体资源不存在");
         }
         if (fileUrl.startsWith(normalizeAccessPrefix())) {
-            return proxyLocalMedia(media);
+            return proxyLocalMedia(media, range);
         }
-        return proxyRemoteMedia(media);
+        return proxyRemoteMedia(media, range);
     }
 
 
@@ -213,6 +217,21 @@ public class MediaServiceImpl implements MediaService {
     @Override
     public void deleteById(Long id) {
         Media media = dyxMediaMapper.selectById(id);
+        deleteMedia(media);
+    }
+
+    @Override
+    public void deleteBatchByIds(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            throw new BusinessException("请选择需要删除的媒体文件");
+        }
+        for (Long id : ids) {
+            Media media = dyxMediaMapper.selectById(id);
+            deleteMedia(media);
+        }
+    }
+
+    private void deleteMedia(Media media) {
         if (media == null) {
             throw new BusinessException("媒体资源不存在");
         }
@@ -225,7 +244,7 @@ public class MediaServiceImpl implements MediaService {
             throw new BusinessException("该媒体仍被" + referenceModule + "引用，请先解除引用后再删除");
         }
         resolveStorageForMedia(media).delete(media.getFileName(), media.getFileUrl());
-        dyxMediaMapper.deleteById(id);
+        dyxMediaMapper.deleteById(media.getId());
     }
 
     /**
@@ -244,7 +263,7 @@ public class MediaServiceImpl implements MediaService {
             throw new BusinessException("上传文件不能为空");
         }
         if (file.getSize() > MAX_UPLOAD_SIZE) {
-            throw new BusinessException("上传文件不能超过 20MB");
+            throw new BusinessException("上传文件不能超过 2GB");
         }
         String originalFilename = file.getOriginalFilename();
         String extension = normalizeExtension(StringUtils.getFilenameExtension(originalFilename));
@@ -338,15 +357,21 @@ public class MediaServiceImpl implements MediaService {
      * @throws BusinessException 当本地文件不存在或读取失败时抛出。
      * @author Dyx
      */
-    private ResponseEntity<byte[]> proxyLocalMedia(Media media) {
+    private ResponseEntity<byte[]> proxyLocalMedia(Media media, String range) {
         try {
             Path path = resolveLocalFilePath(media);
             if (!Files.exists(path) || !Files.isRegularFile(path)) {
                 throw new BusinessException("媒体文件不存在");
             }
-            byte[] bytes = Files.readAllBytes(path);
+            long fileLength = Files.size(path);
             String contentType = resolveMediaType(media, Files.probeContentType(path));
-            return buildMediaResponse(bytes, contentType, media.getOriginalName(), path.getFileName().toString());
+            String fallbackName = path.getFileName().toString();
+            if (!StringUtils.hasText(range)) {
+                byte[] bytes = Files.readAllBytes(path);
+                return buildMediaResponse(bytes, contentType, media.getOriginalName(), fallbackName);
+            }
+            ByteRange byteRange = parseByteRange(range, fileLength);
+            return buildPartialLocalMediaResponse(path, contentType, media.getOriginalName(), fallbackName, byteRange, fileLength);
         } catch (IOException exception) {
             throw new BusinessException("读取本地媒体文件失败");
         }
@@ -360,16 +385,24 @@ public class MediaServiceImpl implements MediaService {
      * @throws BusinessException 当远程地址不受信任、请求失败或响应内容异常时抛出。
      * @author Dyx
      */
-    private ResponseEntity<byte[]> proxyRemoteMedia(Media media) {
+    private ResponseEntity<byte[]> proxyRemoteMedia(Media media, String range) {
         URI remoteUri = validateRemoteMediaUri(media.getFileUrl());
         try {
-            ResponseEntity<ByteArrayResource> response = restTemplate.getForEntity(remoteUri, ByteArrayResource.class);
+            HttpHeaders headers = new HttpHeaders();
+            if (StringUtils.hasText(range)) {
+                headers.set(HttpHeaders.RANGE, range.trim());
+            }
+            ResponseEntity<ByteArrayResource> response = restTemplate.exchange(
+                    remoteUri,
+                    HttpMethod.GET,
+                    new HttpEntity<>(headers),
+                    ByteArrayResource.class);
             ByteArrayResource body = response.getBody();
             if (!response.getStatusCode().is2xxSuccessful() || body == null) {
                 throw new BusinessException("读取远程媒体文件失败");
             }
             String contentType = resolveMediaType(media, response.getHeaders().getFirst(HttpHeaders.CONTENT_TYPE));
-            return buildMediaResponse(body.getByteArray(), contentType, media.getOriginalName(), media.getFileName());
+            return buildRemoteMediaResponse(body.getByteArray(), contentType, media.getOriginalName(), media.getFileName(), response);
         } catch (RestClientException exception) {
             throw new BusinessException("读取远程媒体文件失败");
         }
@@ -379,10 +412,140 @@ public class MediaServiceImpl implements MediaService {
         String fileName = StringUtils.hasText(originalName) ? originalName : fallbackName;
         return ResponseEntity.ok()
                 .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                .header(HttpHeaders.ACCEPT_RANGES, "bytes")
                 .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + sanitizeFileName(fileName) + "\"")
                 .contentType(MediaType.parseMediaType(contentType))
                 .contentLength(bytes.length)
                 .body(bytes);
+    }
+
+    private ResponseEntity<byte[]> buildPartialLocalMediaResponse(Path path,
+                                                                  String contentType,
+                                                                  String originalName,
+                                                                  String fallbackName,
+                                                                  ByteRange byteRange,
+                                                                  long fileLength) throws IOException {
+        int length = Math.toIntExact(byteRange.end() - byteRange.start() + 1);
+        byte[] bytes = new byte[length];
+        try (RandomAccessFile randomAccessFile = new RandomAccessFile(path.toFile(), "r")) {
+            randomAccessFile.seek(byteRange.start());
+            randomAccessFile.readFully(bytes);
+        }
+        return buildPartialMediaResponse(bytes, contentType, originalName, fallbackName, byteRange, fileLength);
+    }
+
+    private ResponseEntity<byte[]> buildRemoteMediaResponse(byte[] bytes,
+                                                            String contentType,
+                                                            String originalName,
+                                                            String fallbackName,
+                                                            ResponseEntity<ByteArrayResource> response) {
+        String contentRange = response.getHeaders().getFirst(HttpHeaders.CONTENT_RANGE);
+        if (!StringUtils.hasText(contentRange)) {
+            return buildMediaResponse(bytes, contentType, originalName, fallbackName);
+        }
+        ByteRange byteRange = parseContentRange(contentRange, bytes.length);
+        long totalLength = resolveTotalLength(contentRange, bytes.length);
+        return buildPartialMediaResponse(bytes, contentType, originalName, fallbackName, byteRange, totalLength);
+    }
+
+    private ResponseEntity<byte[]> buildPartialMediaResponse(byte[] bytes,
+                                                             String contentType,
+                                                             String originalName,
+                                                             String fallbackName,
+                                                             ByteRange byteRange,
+                                                             long fileLength) {
+        String fileName = StringUtils.hasText(originalName) ? originalName : fallbackName;
+        return ResponseEntity.status(HttpStatus.PARTIAL_CONTENT)
+                .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                .header(HttpHeaders.ACCEPT_RANGES, "bytes")
+                .header(HttpHeaders.CONTENT_RANGE,
+                        "bytes " + byteRange.start() + "-" + byteRange.end() + "/" + fileLength)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + sanitizeFileName(fileName) + "\"")
+                .contentType(MediaType.parseMediaType(contentType))
+                .contentLength(bytes.length)
+                .body(bytes);
+    }
+
+    private ByteRange parseByteRange(String range, long fileLength) {
+        String normalized = range == null ? "" : range.trim().toLowerCase(Locale.ROOT);
+        if (!normalized.startsWith("bytes=")) {
+            throw new BusinessException("不支持的媒体范围请求");
+        }
+        String value = normalized.substring("bytes=".length()).trim();
+        if (value.isEmpty() || value.contains(",")) {
+            throw new BusinessException("不支持的媒体范围请求");
+        }
+        int separatorIndex = value.indexOf('-');
+        if (separatorIndex < 0) {
+            throw new BusinessException("不支持的媒体范围请求");
+        }
+        String startPart = value.substring(0, separatorIndex).trim();
+        String endPart = value.substring(separatorIndex + 1).trim();
+        try {
+            long start;
+            long end;
+            if (startPart.isEmpty()) {
+                long suffixLength = Long.parseLong(endPart);
+                if (suffixLength <= 0) {
+                    throw new BusinessException("不支持的媒体范围请求");
+                }
+                long effectiveLength = Math.min(suffixLength, fileLength);
+                start = fileLength - effectiveLength;
+                end = fileLength - 1;
+            } else {
+                start = Long.parseLong(startPart);
+                end = endPart.isEmpty() ? fileLength - 1 : Long.parseLong(endPart);
+            }
+            if (fileLength <= 0 || start < 0 || end < start || start >= fileLength) {
+                throw new BusinessException("媒体范围请求超出文件大小");
+            }
+            return new ByteRange(start, Math.min(end, fileLength - 1));
+        } catch (NumberFormatException exception) {
+            throw new BusinessException("不支持的媒体范围请求");
+        }
+    }
+
+    private ByteRange parseContentRange(String contentRange, int defaultLength) {
+        String normalized = contentRange == null ? "" : contentRange.trim();
+        if (!normalized.startsWith("bytes ")) {
+            return new ByteRange(0, Math.max(defaultLength - 1, 0));
+        }
+        int slashIndex = normalized.indexOf('/');
+        int dashIndex = normalized.indexOf('-');
+        if (dashIndex < 6 || slashIndex < 0 || dashIndex > slashIndex) {
+            return new ByteRange(0, Math.max(defaultLength - 1, 0));
+        }
+        try {
+            long start = Long.parseLong(normalized.substring(6, dashIndex).trim());
+            long end = Long.parseLong(normalized.substring(dashIndex + 1, slashIndex).trim());
+            if (start < 0 || end < start) {
+                return new ByteRange(0, Math.max(defaultLength - 1, 0));
+            }
+            return new ByteRange(start, end);
+        } catch (NumberFormatException exception) {
+            return new ByteRange(0, Math.max(defaultLength - 1, 0));
+        }
+    }
+
+    private long resolveTotalLength(String contentRange, int defaultLength) {
+        String normalized = contentRange == null ? "" : contentRange.trim();
+        int slashIndex = normalized.indexOf('/');
+        if (slashIndex < 0 || slashIndex == normalized.length() - 1) {
+            return defaultLength;
+        }
+        String totalPart = normalized.substring(slashIndex + 1).trim();
+        if (!StringUtils.hasText(totalPart) || "*".equals(totalPart)) {
+            return defaultLength;
+        }
+        try {
+            long totalLength = Long.parseLong(totalPart);
+            return totalLength > 0 ? totalLength : defaultLength;
+        } catch (NumberFormatException exception) {
+            return defaultLength;
+        }
+    }
+
+    private record ByteRange(long start, long end) {
     }
 
     private String resolveMediaType(Media media, String fallbackType) {

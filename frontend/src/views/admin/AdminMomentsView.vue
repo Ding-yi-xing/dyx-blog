@@ -5,10 +5,14 @@
         <h2 class="text-xl font-semibold text-slate-900">动态管理</h2>
         <p class="mt-2 text-sm text-slate-500">维护首页与动态页展示的近期更新内容。</p>
       </div>
-      <el-button type="primary" @click="openCreateDialog">新建动态</el-button>
+      <div class="flex items-center gap-3">
+        <el-button type="danger" plain :disabled="!selectedIds.length" @click="handleBatchDelete">批量删除</el-button>
+        <el-button type="primary" @click="openCreateDialog">新建动态</el-button>
+      </div>
     </div>
 
-    <el-table :data="moments" border>
+    <el-table ref="tableRef" :data="moments" border @selection-change="handleSelectionChange">
+      <el-table-column type="selection" width="52" align="center" />
       <el-table-column prop="title" label="标题" min-width="220" />
       <el-table-column prop="happenedAt" label="时间" width="180" />
       <el-table-column prop="mediaCount" label="媒体数" width="100" />
@@ -69,7 +73,7 @@
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { computed, onMounted, reactive, ref } from 'vue';
 import AdminMediaPicker from '@/views/admin/AdminMediaPicker.vue';
-import { deleteAdminMoment, getAdminMoments, saveAdminMoment } from '@/api/modules/admin';
+import { deleteAdminMoment, deleteAdminMoments, getAdminMoments, saveAdminMoment } from '@/api/modules/admin';
 import type { MomentData } from '@/api/modules/site';
 import { parseImageUrls, stringifyImageUrls } from '@/utils/media';
 
@@ -81,6 +85,8 @@ const rawList = ref<MomentData[]>([]);
 const dialogVisible = ref(false);
 const saving = ref(false);
 const selectedMediaUrls = ref<string[]>([]);
+const selectedIds = ref<number[]>([]);
+const tableRef = ref<{ clearSelection: () => void } | null>(null);
 
 const form = reactive<Partial<MomentData>>({
   id: undefined,
@@ -134,8 +140,18 @@ function resetForm(): void {
  * @author Dyx
  */
 async function loadMoments(): Promise<void> {
-  const response = await getAdminMoments();
-  rawList.value = response.data ?? [];
+  const result = await getAdminMoments();
+  const momentsData = (result as { data?: MomentData[] })?.data;
+  rawList.value = Array.isArray(momentsData) ? momentsData : [];
+}
+
+function resetSelection(): void {
+  tableRef.value?.clearSelection();
+  selectedIds.value = [];
+}
+
+function handleSelectionChange(selection: Array<MomentData & { raw?: MomentData }>): void {
+  selectedIds.value = selection.map((item) => Number(item.id)).filter((id) => !Number.isNaN(id));
 }
 
 /**
@@ -209,10 +225,32 @@ async function handleDelete(item: MomentData): Promise<void> {
     await deleteAdminMoment(item.id);
     ElMessage.success('动态删除成功');
     await loadMoments();
+    resetSelection();
   } catch (error) {
-    if (error !== 'cancel') {
-      ElMessage.error('动态删除失败');
+    if (error === 'cancel' || error === 'close') {
+      return;
     }
+    ElMessage.error('动态删除失败');
+  }
+}
+
+async function handleBatchDelete(): Promise<void> {
+  if (!selectedIds.value.length) {
+    return;
+  }
+  try {
+    await ElMessageBox.confirm(`确认删除选中的 ${selectedIds.value.length} 条动态吗？`, '批量删除确认', {
+      type: 'warning'
+    });
+    await deleteAdminMoments(selectedIds.value);
+    ElMessage.success('动态批量删除成功');
+    await loadMoments();
+    resetSelection();
+  } catch (error) {
+    if (error === 'cancel' || error === 'close') {
+      return;
+    }
+    ElMessage.error('动态批量删除失败');
   }
 }
 

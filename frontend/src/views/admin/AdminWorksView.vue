@@ -3,13 +3,20 @@
     <div class="flex items-center justify-between gap-4">
       <div>
         <h2 class="text-xl font-semibold text-slate-900">作品管理</h2>
-        <p class="mt-2 text-sm text-slate-500">维护关于我页面展示的个人作品、图集、视频与外部作品链接。</p>
+        <p class="mt-2 text-sm text-slate-500">
+          维护关于我页面展示的个人作品、图集、视频与外部作品链接。
+        </p>
       </div>
-      <el-button type="primary" @click="openCreateDialog">新建作品</el-button>
+      <div class="flex items-center gap-3">
+        <el-button type="danger" plain :disabled="!selectedIds.length" @click="handleBatchDelete">批量删除</el-button>
+        <el-button type="primary" @click="openCreateDialog">新建作品</el-button>
+      </div>
     </div>
 
-    <el-table :data="works" border>
+    <el-table ref="tableRef" :data="works" border @selection-change="handleSelectionChange">
+      <el-table-column type="selection" width="52" align="center" />
       <el-table-column prop="title" label="作品标题" min-width="220" />
+      <el-table-column prop="awardAt" label="获得时间" width="180" />
       <el-table-column prop="mediaTypeText" label="媒体类型" width="120" />
       <el-table-column prop="imageCount" label="图片数" width="100" />
       <el-table-column prop="hasLinkText" label="外链" width="100" />
@@ -18,22 +25,48 @@
       <el-table-column prop="updatedAt" label="更新时间" width="180" />
       <el-table-column label="操作" width="180" fixed="right">
         <template #default="scope">
-          <el-button link type="primary" @click="openEditDialog(scope.row.raw)">编辑</el-button>
-          <el-button link type="danger" @click="handleDelete(scope.row.raw)">删除</el-button>
+          <el-button link type="primary" @click="openEditDialog(scope.row.raw)"
+            >编辑</el-button
+          >
+          <el-button link type="danger" @click="handleDelete(scope.row.raw)"
+            >删除</el-button
+          >
         </template>
       </el-table-column>
     </el-table>
 
-    <el-dialog v-model="dialogVisible" :title="form.id ? '编辑作品' : '新建作品'" width="780px">
+    <el-dialog
+      v-model="dialogVisible"
+      :title="form.id ? '编辑作品' : '新建作品'"
+      width="780px"
+    >
       <el-form label-position="top">
         <el-form-item label="作品标题">
           <el-input v-model="form.title" placeholder="请输入作品标题" />
         </el-form-item>
         <el-form-item label="作品简介">
-          <el-input v-model="form.summary" type="textarea" :rows="4" placeholder="请输入作品简介" />
+          <el-input
+            v-model="form.summary"
+            type="textarea"
+            :rows="4"
+            placeholder="请输入作品简介"
+          />
+        </el-form-item>
+        <el-form-item label="获得时间">
+          <el-date-picker
+            v-model="form.awardAt"
+            type="datetime"
+            value-format="YYYY-MM-DD HH:mm:ss"
+            placeholder="选择获得时间"
+            class="!w-full"
+          />
         </el-form-item>
         <el-form-item label="封面图">
-          <AdminMediaPicker v-model="form.coverImage" button-text="选择封面图" empty-text="暂未选择作品封面" />
+          <AdminMediaPicker
+            v-model="form.coverImage"
+            button-text="选择封面图"
+            empty-text="暂未选择作品封面"
+          />
         </el-form-item>
         <el-form-item label="作品图集">
           <AdminMediaPicker
@@ -45,10 +78,18 @@
         </el-form-item>
         <div class="grid gap-4 sm:grid-cols-2">
           <el-form-item label="视频地址">
-            <AdminMediaPicker v-model="form.videoUrl" button-text="选择视频文件" empty-text="暂未选择视频文件" />
+            <AdminMediaPicker
+              v-model="form.videoUrl"
+              button-text="选择视频文件"
+              empty-text="暂未选择视频文件"
+            />
           </el-form-item>
           <el-form-item label="视频封面">
-            <AdminMediaPicker v-model="form.videoPoster" button-text="选择视频封面" empty-text="暂未选择视频封面" />
+            <AdminMediaPicker
+              v-model="form.videoPoster"
+              button-text="选择视频封面"
+              empty-text="暂未选择视频封面"
+            />
           </el-form-item>
         </div>
         <el-form-item label="作品链接">
@@ -56,7 +97,11 @@
         </el-form-item>
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <el-form-item label="排序">
-            <el-input-number v-model="form.sortOrder" :min="0" class="!w-full" />
+            <el-input-number
+              v-model="form.sortOrder"
+              :min="0"
+              class="!w-full"
+            />
           </el-form-item>
           <el-form-item label="发布状态">
             <el-select v-model="form.published" class="!w-full">
@@ -68,19 +113,26 @@
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="handleSave">保存</el-button>
+        <el-button type="primary" :loading="saving" @click="handleSave"
+          >保存</el-button
+        >
       </template>
     </el-dialog>
   </section>
 </template>
 
 <script setup lang="ts">
-import { ElMessage, ElMessageBox } from 'element-plus';
-import { computed, onMounted, reactive, ref } from 'vue';
-import { deleteAdminWork, getAdminWorks, saveAdminWork } from '@/api/modules/admin';
-import type { WorkData } from '@/api/modules/site';
-import { isImageUrl, parseImageUrls, stringifyImageUrls } from '@/utils/media';
-import AdminMediaPicker from '@/views/admin/AdminMediaPicker.vue';
+import { ElMessage, ElMessageBox } from "element-plus";
+import { computed, onMounted, reactive, ref } from "vue";
+import {
+  deleteAdminWork,
+  deleteAdminWorks,
+  getAdminWorks,
+  saveAdminWork,
+} from "@/api/modules/admin";
+import type { WorkData } from "@/api/modules/site";
+import { isImageUrl, parseImageUrls, stringifyImageUrls } from "@/utils/media";
+import AdminMediaPicker from "@/views/admin/AdminMediaPicker.vue";
 
 /**
  * 后台作品管理页。
@@ -90,18 +142,21 @@ const rawList = ref<WorkData[]>([]);
 const dialogVisible = ref(false);
 const saving = ref(false);
 const selectedImageUrls = ref<string[]>([]);
+const selectedIds = ref<number[]>([]);
+const tableRef = ref<{ clearSelection: () => void } | null>(null);
 
 const form = reactive<Partial<WorkData>>({
   id: undefined,
-  title: '',
-  summary: '',
-  coverImage: '',
-  imageUrls: '',
-  videoUrl: '',
-  videoPoster: '',
-  workLink: '',
+  title: "",
+  summary: "",
+  coverImage: "",
+  imageUrls: "",
+  videoUrl: "",
+  videoPoster: "",
+  workLink: "",
+  awardAt: "",
   sortOrder: 0,
-  published: 1
+  published: 1,
 });
 
 /**
@@ -111,12 +166,21 @@ const works = computed(() =>
   rawList.value.map((item) => ({
     ...item,
     imageCount: resolveImageCount(item),
-    hasLinkText: item.workLink ? '已配置' : '无',
-    mediaTypeText: item.videoUrl ? '视频' : '图文',
-    statusText: item.published === 1 ? '已发布' : '草稿',
-    raw: item
+    hasLinkText: item.workLink ? "已配置" : "无",
+    mediaTypeText: item.videoUrl ? "视频" : "图文",
+    statusText: item.published === 1 ? "已发布" : "草稿",
+    raw: item,
   }))
 );
+
+function resetSelection(): void {
+  tableRef.value?.clearSelection();
+  selectedIds.value = [];
+}
+
+function handleSelectionChange(selection: Array<WorkData & { raw?: WorkData }>): void {
+  selectedIds.value = selection.map((item) => Number(item.id)).filter((id) => !Number.isNaN(id));
+}
 
 /**
  * 统计作品关联的有效图片数量。
@@ -128,11 +192,13 @@ const works = computed(() =>
  * @author Dyx
  */
 function resolveImageCount(item: WorkData): number {
-  return new Set([
-    item.coverImage,
-    item.videoPoster,
-    ...parseImageUrls(item.imageUrls).filter((url) => isImageUrl(url))
-  ].filter((url): url is string => !!url && isImageUrl(url))).size;
+  return new Set(
+    [
+      item.coverImage,
+      item.videoPoster,
+      ...parseImageUrls(item.imageUrls).filter((url) => isImageUrl(url)),
+    ].filter((url): url is string => !!url && isImageUrl(url))
+  ).size;
 }
 
 /**
@@ -145,15 +211,16 @@ function resolveImageCount(item: WorkData): number {
 function resetForm(): void {
   Object.assign(form, {
     id: undefined,
-    title: '',
-    summary: '',
-    coverImage: '',
-    imageUrls: '',
-    videoUrl: '',
-    videoPoster: '',
-    workLink: '',
+    title: "",
+    summary: "",
+    coverImage: "",
+    imageUrls: "",
+    videoUrl: "",
+    videoPoster: "",
+    workLink: "",
+    awardAt: "",
     sortOrder: 0,
-    published: 1
+    published: 1,
   });
   selectedImageUrls.value = [];
 }
@@ -166,8 +233,10 @@ function resetForm(): void {
  * @author Dyx
  */
 async function loadWorks(): Promise<void> {
-  const response = await getAdminWorks();
-  rawList.value = response.data ?? [];
+  const result = await getAdminWorks();
+  // 响应拦截器返回的是 Result 对象 {code, message, data}，需要提取 data 字段
+  const worksData = (result as { data?: WorkData[] })?.data;
+  rawList.value = Array.isArray(worksData) ? worksData : [];
 }
 
 /**
@@ -193,7 +262,9 @@ function openCreateDialog(): void {
 function openEditDialog(item: WorkData): void {
   resetForm();
   Object.assign(form, item);
-  selectedImageUrls.value = parseImageUrls(item.imageUrls).filter((url) => isImageUrl(url));
+  selectedImageUrls.value = parseImageUrls(item.imageUrls).filter((url) =>
+    isImageUrl(url)
+  );
   dialogVisible.value = true;
 }
 
@@ -211,15 +282,22 @@ async function handleSave(): Promise<void> {
   }
   saving.value = true;
   try {
-    await saveAdminWork({
+    const payload: Partial<WorkData> = {
       ...form,
-      imageUrls: stringifyImageUrls(selectedImageUrls.value)
-    });
-    ElMessage.success(form.id ? '作品更新成功' : '作品创建成功');
+      imageUrls: stringifyImageUrls(selectedImageUrls.value),
+    };
+    if (!payload.awardAt) {
+      delete payload.awardAt;
+    }
+    if (payload.id === undefined || payload.id === null) {
+      delete payload.id;
+    }
+    await saveAdminWork(payload);
+    ElMessage.success(form.id ? "作品更新成功" : "作品创建成功");
     dialogVisible.value = false;
     await loadWorks();
   } catch (error) {
-    ElMessage.error('作品保存失败');
+    ElMessage.error("作品保存失败");
   } finally {
     saving.value = false;
   }
@@ -235,16 +313,38 @@ async function handleSave(): Promise<void> {
  */
 async function handleDelete(item: WorkData): Promise<void> {
   try {
-    await ElMessageBox.confirm(`确认删除作品“${item.title}”吗？`, '删除确认', {
-      type: 'warning'
+    await ElMessageBox.confirm(`确认删除作品"${item.title}"吗？`, "删除确认", {
+      type: "warning",
     });
     await deleteAdminWork(item.id);
-    ElMessage.success('作品删除成功');
+    ElMessage.success("作品删除成功");
     await loadWorks();
+    resetSelection();
   } catch (error) {
-    if (error !== 'cancel') {
-      ElMessage.error('作品删除失败');
+    if (error === "cancel" || error === "close") {
+      return;
     }
+    ElMessage.error("作品删除失败");
+  }
+}
+
+async function handleBatchDelete(): Promise<void> {
+  if (!selectedIds.value.length) {
+    return;
+  }
+  try {
+    await ElMessageBox.confirm(`确认删除选中的 ${selectedIds.value.length} 个作品吗？`, "批量删除确认", {
+      type: "warning",
+    });
+    await deleteAdminWorks(selectedIds.value);
+    ElMessage.success("作品批量删除成功");
+    await loadWorks();
+    resetSelection();
+  } catch (error) {
+    if (error === "cancel" || error === "close") {
+      return;
+    }
+    ElMessage.error("作品批量删除失败");
   }
 }
 

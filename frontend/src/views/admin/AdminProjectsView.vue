@@ -5,10 +5,14 @@
         <h2 class="text-xl font-semibold text-slate-900">项目经历管理</h2>
         <p class="mt-2 text-sm text-slate-500">维护项目名称、技术栈、角色与成果描述。</p>
       </div>
-      <el-button type="primary" @click="openCreateDialog">新建项目</el-button>
+      <div class="flex items-center gap-3">
+        <el-button type="danger" plain :disabled="!selectedIds.length" @click="handleBatchDelete">批量删除</el-button>
+        <el-button type="primary" @click="openCreateDialog">新建项目</el-button>
+      </div>
     </div>
 
-    <el-table :data="projects" border>
+    <el-table ref="tableRef" :data="projects" border @selection-change="handleSelectionChange">
+      <el-table-column type="selection" width="52" align="center" />
       <el-table-column prop="name" label="项目名称" min-width="220" />
       <el-table-column prop="techStack" label="技术栈" min-width="180" />
       <el-table-column prop="roleName" label="角色" width="140" />
@@ -68,7 +72,7 @@
 <script setup lang="ts">
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { computed, onMounted, reactive, ref } from 'vue';
-import { deleteAdminProject, getAdminProjects, saveAdminProject } from '@/api/modules/admin';
+import { deleteAdminProject, deleteAdminProjects, getAdminProjects, saveAdminProject } from '@/api/modules/admin';
 import type { ProjectData } from '@/api/modules/site';
 
 /**
@@ -78,6 +82,8 @@ import type { ProjectData } from '@/api/modules/site';
 const rawList = ref<ProjectData[]>([]);
 const dialogVisible = ref(false);
 const saving = ref(false);
+const selectedIds = ref<number[]>([]);
+const tableRef = ref<{ clearSelection: () => void } | null>(null);
 
 const form = reactive<Partial<ProjectData>>({
   id: undefined,
@@ -101,6 +107,15 @@ const projects = computed(() =>
     raw: item
   }))
 );
+
+function resetSelection(): void {
+  tableRef.value?.clearSelection();
+  selectedIds.value = [];
+}
+
+function handleSelectionChange(selection: Array<ProjectData & { raw?: ProjectData }>): void {
+  selectedIds.value = selection.map((item) => Number(item.id)).filter((id) => !Number.isNaN(id));
+}
 
 /**
  * 重置项目表单，供新建与编辑前复用。
@@ -131,8 +146,9 @@ function resetForm(): void {
  * @author Dyx
  */
 async function loadProjects(): Promise<void> {
-  const response = await getAdminProjects();
-  rawList.value = response.data ?? [];
+  const result = await getAdminProjects();
+  const projectsData = (result as { data?: ProjectData[] })?.data;
+  rawList.value = Array.isArray(projectsData) ? projectsData : [];
 }
 
 /**
@@ -202,10 +218,32 @@ async function handleDelete(item: ProjectData): Promise<void> {
     await deleteAdminProject(item.id);
     ElMessage.success('项目删除成功');
     await loadProjects();
+    resetSelection();
   } catch (error) {
-    if (error !== 'cancel') {
-      ElMessage.error('项目删除失败');
+    if (error === 'cancel' || error === 'close') {
+      return;
     }
+    ElMessage.error('项目删除失败');
+  }
+}
+
+async function handleBatchDelete(): Promise<void> {
+  if (!selectedIds.value.length) {
+    return;
+  }
+  try {
+    await ElMessageBox.confirm(`确认删除选中的 ${selectedIds.value.length} 个项目吗？`, '批量删除确认', {
+      type: 'warning'
+    });
+    await deleteAdminProjects(selectedIds.value);
+    ElMessage.success('项目批量删除成功');
+    await loadProjects();
+    resetSelection();
+  } catch (error) {
+    if (error === 'cancel' || error === 'close') {
+      return;
+    }
+    ElMessage.error('项目批量删除失败');
   }
 }
 

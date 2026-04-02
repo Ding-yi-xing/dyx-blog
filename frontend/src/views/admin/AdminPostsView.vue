@@ -5,10 +5,14 @@
         <h2 class="text-xl font-semibold text-slate-900">博客管理</h2>
         <p class="mt-2 text-sm text-slate-500">集中维护文章标题、摘要、分类与发布状态。</p>
       </div>
-      <el-button type="primary" @click="openCreateDialog">新建文章</el-button>
+      <div class="flex items-center gap-3">
+        <el-button type="danger" plain :disabled="!selectedIds.length" @click="handleBatchDelete">批量删除</el-button>
+        <el-button type="primary" @click="openCreateDialog">新建文章</el-button>
+      </div>
     </div>
 
-    <el-table :data="posts" border>
+    <el-table ref="tableRef" :data="posts" border @selection-change="handleSelectionChange">
+      <el-table-column type="selection" width="52" align="center" />
       <el-table-column prop="title" label="标题" min-width="220" />
       <el-table-column prop="category" label="分类" width="140" />
       <el-table-column prop="tags" label="标签" min-width="180" show-overflow-tooltip />
@@ -63,7 +67,7 @@
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { computed, onMounted, reactive, ref } from 'vue';
 import AdminMediaPicker from '@/views/admin/AdminMediaPicker.vue';
-import { deleteAdminPost, getAdminPosts, saveAdminPost } from '@/api/modules/admin';
+import { deleteAdminPost, deleteAdminPosts, getAdminPosts, saveAdminPost } from '@/api/modules/admin';
 import type { PostData } from '@/api/modules/site';
 import { resolveErrorMessage } from '@/utils/error';
 
@@ -74,6 +78,8 @@ import { resolveErrorMessage } from '@/utils/error';
 const rawList = ref<PostData[]>([]);
 const dialogVisible = ref(false);
 const saving = ref(false);
+const selectedIds = ref<number[]>([]);
+const tableRef = ref<{ clearSelection: () => void } | null>(null);
 
 const form = reactive<Partial<PostData>>({
   id: undefined,
@@ -125,8 +131,18 @@ function resetForm(): void {
  * @author Dyx
  */
 async function loadAdminPosts(): Promise<void> {
-  const response = await getAdminPosts();
-  rawList.value = response.data ?? [];
+  const result = await getAdminPosts();
+  const postsData = (result as { data?: PostData[] })?.data;
+  rawList.value = Array.isArray(postsData) ? postsData : [];
+}
+
+function resetSelection(): void {
+  tableRef.value?.clearSelection();
+  selectedIds.value = [];
+}
+
+function handleSelectionChange(selection: Array<PostData & { raw?: PostData }>): void {
+  selectedIds.value = selection.map((item) => Number(item.id)).filter((id) => !Number.isNaN(id));
 }
 
 /**
@@ -196,10 +212,32 @@ async function handleDelete(item: PostData): Promise<void> {
     await deleteAdminPost(item.id);
     ElMessage.success('文章删除成功');
     await loadAdminPosts();
+    resetSelection();
   } catch (error) {
-    if (error !== 'cancel') {
-      ElMessage.error('文章删除失败');
+    if (error === 'cancel' || error === 'close') {
+      return;
     }
+    ElMessage.error('文章删除失败');
+  }
+}
+
+async function handleBatchDelete(): Promise<void> {
+  if (!selectedIds.value.length) {
+    return;
+  }
+  try {
+    await ElMessageBox.confirm(`确认删除选中的 ${selectedIds.value.length} 篇文章吗？`, '批量删除确认', {
+      type: 'warning'
+    });
+    await deleteAdminPosts(selectedIds.value);
+    ElMessage.success('文章批量删除成功');
+    await loadAdminPosts();
+    resetSelection();
+  } catch (error) {
+    if (error === 'cancel' || error === 'close') {
+      return;
+    }
+    ElMessage.error(resolveErrorMessage(error, '文章批量删除失败'));
   }
 }
 

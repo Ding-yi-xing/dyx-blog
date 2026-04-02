@@ -6,7 +6,10 @@
           <h2 class="text-xl font-semibold text-slate-900">首页管理 / 足迹</h2>
           <p class="mt-2 text-sm text-slate-500">维护首页第二屏的足迹点位、展示顺序和文案内容。</p>
         </div>
-        <el-button type="primary" @click="openCreateDialog">新建足迹</el-button>
+        <div class="flex items-center gap-3">
+          <el-button type="danger" plain :disabled="!selectedIds.length" @click="handleBatchDelete">批量删除</el-button>
+          <el-button type="primary" @click="openCreateDialog">新建足迹</el-button>
+        </div>
       </div>
 
       <article class="mt-6 rounded-[24px] border border-slate-200 bg-slate-50 p-5">
@@ -43,7 +46,8 @@
     </article>
 
     <article class="rounded-[28px] bg-white p-6 shadow-sm">
-      <el-table :data="footprints" border>
+      <el-table ref="tableRef" :data="footprints" border @selection-change="handleSelectionChange">
+        <el-table-column type="selection" width="52" align="center" />
         <el-table-column prop="cityName" label="城市" min-width="140" />
         <el-table-column prop="regionLabel" label="地区" min-width="180" />
         <el-table-column prop="districtName" label="区县" min-width="140" />
@@ -113,6 +117,7 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import { computed, onMounted, reactive, ref } from 'vue';
 import {
   deleteAdminFootprint,
+  deleteAdminFootprints,
   getAdminFootprints,
   getAdminSystemConfig,
   saveAdminFootprint,
@@ -140,6 +145,8 @@ const saving = ref(false);
 const copySaving = ref(false);
 const regionSelection = ref<string[]>([]);
 const districtMap = ref<Record<number, string>>({});
+const selectedIds = ref<number[]>([]);
+const tableRef = ref<{ clearSelection: () => void } | null>(null);
 
 const form = reactive<Partial<FootprintData>>({
   id: undefined,
@@ -181,6 +188,15 @@ const footprints = computed<FootprintTableRow[]>(() =>
     raw: item
   }))
 );
+
+function resetSelection(): void {
+  tableRef.value?.clearSelection();
+  selectedIds.value = [];
+}
+
+function handleSelectionChange(selection: FootprintTableRow[]): void {
+  selectedIds.value = selection.map((item) => Number(item.id)).filter((id) => !Number.isNaN(id));
+}
 
 /**
  * 将系统配置接口返回的数据回填到足迹文案表单。
@@ -317,14 +333,17 @@ async function handleSaveCopy(): Promise<void> {
   }
   copySaving.value = true;
   try {
-    const response = await updateAdminSystemConfig({
+    const result = await updateAdminSystemConfig({
       id: systemConfigForm.id,
       footprintEyebrow: systemConfigForm.footprintEyebrow,
       footprintTitle: systemConfigForm.footprintTitle,
       footprintSubtitle: systemConfigForm.footprintSubtitle,
       footprintDescription: systemConfigForm.footprintDescription
     });
-    applySystemConfig(response.data);
+    const updatedConfig = (result as { data?: SystemConfigData })?.data;
+    if (updatedConfig) {
+      applySystemConfig(updatedConfig);
+    }
     ElMessage.success('足迹文案保存成功');
   } catch (error) {
     ElMessage.error(resolveErrorMessage(error, '足迹文案保存失败'));
@@ -386,10 +405,32 @@ async function handleDelete(item: FootprintData): Promise<void> {
     await deleteAdminFootprint(item.id as number);
     ElMessage.success('足迹删除成功');
     await loadPageData();
+    resetSelection();
   } catch (error) {
-    if (error !== 'cancel') {
-      ElMessage.error('足迹删除失败');
+    if (error === 'cancel' || error === 'close') {
+      return;
     }
+    ElMessage.error('足迹删除失败');
+  }
+}
+
+async function handleBatchDelete(): Promise<void> {
+  if (!selectedIds.value.length) {
+    return;
+  }
+  try {
+    await ElMessageBox.confirm(`确认删除选中的 ${selectedIds.value.length} 条足迹吗？`, '批量删除确认', {
+      type: 'warning'
+    });
+    await deleteAdminFootprints(selectedIds.value);
+    ElMessage.success('足迹批量删除成功');
+    await loadPageData();
+    resetSelection();
+  } catch (error) {
+    if (error === 'cancel' || error === 'close') {
+      return;
+    }
+    ElMessage.error(resolveErrorMessage(error, '足迹批量删除失败'));
   }
 }
 

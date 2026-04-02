@@ -98,6 +98,13 @@ public interface AdminService {
     void deleteGuestbookMessage(Long id);
 
     /**
+     * 批量删除留言。
+     *
+     * @param ids 留言主键列表。
+     */
+    void deleteGuestbookMessages(List<Long> ids);
+
+    /**
      * 查询全部文章。
      *
      * @return 文章列表。
@@ -118,6 +125,13 @@ public interface AdminService {
      * @param id 文章主键。
      */
     void deletePost(Long id);
+
+    /**
+     * 批量删除文章。
+     *
+     * @param ids 文章主键列表。
+     */
+    void deletePosts(List<Long> ids);
 
     /**
      * 查询全部动态。
@@ -142,6 +156,13 @@ public interface AdminService {
     void deleteMoment(Long id);
 
     /**
+     * 批量删除动态。
+     *
+     * @param ids 动态主键列表。
+     */
+    void deleteMoments(List<Long> ids);
+
+    /**
      * 查询全部项目经历。
      *
      * @return 项目经历列表。
@@ -162,6 +183,13 @@ public interface AdminService {
      * @param id 项目经历主键。
      */
     void deleteProject(Long id);
+
+    /**
+     * 批量删除项目经历。
+     *
+     * @param ids 项目经历主键列表。
+     */
+    void deleteProjects(List<Long> ids);
 
     /**
      * 查询全部个人作品。
@@ -186,6 +214,13 @@ public interface AdminService {
     void deleteWork(Long id);
 
     /**
+     * 批量删除个人作品。
+     *
+     * @param ids 作品主键列表。
+     */
+    void deleteWorks(List<Long> ids);
+
+    /**
      * 查询全部荣誉。
      *
      * @return 荣誉列表。
@@ -208,6 +243,13 @@ public interface AdminService {
     void deleteHonor(Long id);
 
     /**
+     * 批量删除荣誉。
+     *
+     * @param ids 荣誉主键列表。
+     */
+    void deleteHonors(List<Long> ids);
+
+    /**
      * 查询全部首页足迹。
      *
      * @return 足迹列表。
@@ -228,6 +270,13 @@ public interface AdminService {
      * @param id 足迹主键。
      */
     void deleteFootprint(Long id);
+
+    /**
+     * 批量删除首页足迹。
+     *
+     * @param ids 足迹主键列表。
+     */
+    void deleteFootprints(List<Long> ids);
 
     /**
      * 获取首页横幅配置。

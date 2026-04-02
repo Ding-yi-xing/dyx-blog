@@ -37,9 +37,10 @@ public interface MediaService {
      * 以同源方式读取媒体资源，供前端裁剪等场景使用。
      *
      * @param fileUrl 媒体地址。
+     * @param range   请求的字节范围。
      * @return 媒体文件响应。
      */
-    ResponseEntity<byte[]> proxyMedia(String fileUrl);
+    ResponseEntity<byte[]> proxyMedia(String fileUrl, String range);
 
     /**
      * 删除未被引用的媒体资源。
@@ -47,4 +48,11 @@ public interface MediaService {
      * @param id 媒体主键。
      */
     void deleteById(Long id);
+
+    /**
+     * 批量删除未被引用的媒体资源。
+     *
+     * @param ids 媒体主键列表。
+     */
+    void deleteBatchByIds(List<Long> ids);
 }

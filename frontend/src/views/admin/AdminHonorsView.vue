@@ -5,10 +5,14 @@
         <h2 class="text-xl font-semibold text-slate-900">荣誉管理</h2>
         <p class="mt-2 text-sm text-slate-500">维护荣誉时间、授予机构、说明、配图与证书附件。</p>
       </div>
-      <el-button type="primary" @click="openCreateDialog">新建荣誉</el-button>
+      <div class="flex items-center gap-3">
+        <el-button type="danger" plain :disabled="!selectedIds.length" @click="handleBatchDelete">批量删除</el-button>
+        <el-button type="primary" @click="openCreateDialog">新建荣誉</el-button>
+      </div>
     </div>
 
-    <el-table :data="honors" border>
+    <el-table ref="tableRef" :data="honors" border @selection-change="handleSelectionChange">
+      <el-table-column type="selection" width="52" align="center" />
       <el-table-column prop="title" label="荣誉名称" min-width="220" />
       <el-table-column prop="issuer" label="授予机构" min-width="180" />
       <el-table-column prop="awardAt" label="获得时间" width="180" />
@@ -84,7 +88,7 @@
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { computed, onMounted, reactive, ref } from 'vue';
 import AdminMediaPicker from '@/views/admin/AdminMediaPicker.vue';
-import { deleteAdminHonor, getAdminHonors, saveAdminHonor } from '@/api/modules/admin';
+import { deleteAdminHonor, deleteAdminHonors, getAdminHonors, saveAdminHonor } from '@/api/modules/admin';
 import type { HonorData } from '@/api/modules/site';
 import { isImageUrl, parseImageUrls, stringifyImageUrls } from '@/utils/media';
 
@@ -96,6 +100,8 @@ const rawList = ref<HonorData[]>([]);
 const dialogVisible = ref(false);
 const saving = ref(false);
 const selectedImageUrls = ref<string[]>([]);
+const selectedIds = ref<number[]>([]);
+const tableRef = ref<{ clearSelection: () => void } | null>(null);
 
 const form = reactive<Partial<HonorData>>({
   id: undefined,
@@ -122,6 +128,15 @@ const honors = computed(() =>
     raw: item
   }))
 );
+
+function resetSelection(): void {
+  tableRef.value?.clearSelection();
+  selectedIds.value = [];
+}
+
+function handleSelectionChange(selection: Array<HonorData & { raw?: HonorData }>): void {
+  selectedIds.value = selection.map((item) => Number(item.id)).filter((id) => !Number.isNaN(id));
+}
 
 /**
  * 统计荣誉关联的有效图片数量。
@@ -166,8 +181,9 @@ function resetForm(): void {
  * @author Dyx
  */
 async function loadHonors(): Promise<void> {
-  const response = await getAdminHonors();
-  rawList.value = response.data ?? [];
+  const result = await getAdminHonors();
+  const honorsData = (result as { data?: HonorData[] })?.data;
+  rawList.value = Array.isArray(honorsData) ? honorsData : [];
 }
 
 /**
@@ -211,15 +227,20 @@ async function handleSave(): Promise<void> {
   }
   saving.value = true;
   try {
-    const payload = {
+    const isEditing = form.id !== undefined && form.id !== null;
+    const payload: Partial<HonorData> = {
       ...form,
+      id: isEditing ? form.id : undefined,
       imageUrls: stringifyImageUrls(selectedImageUrls.value)
     };
-    if (!payload.id) {
+    if (!payload.awardAt) {
+      delete payload.awardAt;
+    }
+    if (!isEditing) {
       delete payload.id;
     }
     await saveAdminHonor(payload);
-    ElMessage.success(form.id ? '荣誉更新成功' : '荣誉创建成功');
+    ElMessage.success(isEditing ? '荣誉更新成功' : '荣誉创建成功');
     dialogVisible.value = false;
     await loadHonors();
   } catch (error) {
@@ -245,10 +266,32 @@ async function handleDelete(item: HonorData): Promise<void> {
     await deleteAdminHonor(item.id);
     ElMessage.success('荣誉删除成功');
     await loadHonors();
+    resetSelection();
   } catch (error) {
-    if (error !== 'cancel') {
-      ElMessage.error('荣誉删除失败');
+    if (error === 'cancel' || error === 'close') {
+      return;
     }
+    ElMessage.error('荣誉删除失败');
+  }
+}
+
+async function handleBatchDelete(): Promise<void> {
+  if (!selectedIds.value.length) {
+    return;
+  }
+  try {
+    await ElMessageBox.confirm(`确认删除选中的 ${selectedIds.value.length} 条荣誉吗？`, '批量删除确认', {
+      type: 'warning'
+    });
+    await deleteAdminHonors(selectedIds.value);
+    ElMessage.success('荣誉批量删除成功');
+    await loadHonors();
+    resetSelection();
+  } catch (error) {
+    if (error === 'cancel' || error === 'close') {
+      return;
+    }
+    ElMessage.error('荣誉批量删除失败');
   }
 }
 

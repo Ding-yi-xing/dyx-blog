@@ -219,6 +219,15 @@ public class AdminServiceImpl implements AdminService {
         dyxGuestbookMessageMapper.deleteById(id);
     }
 
+    @Override
+    @Transactional
+    public void deleteGuestbookMessages(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            throw new BusinessException("请选择需要删除的留言");
+        }
+        dyxGuestbookMessageMapper.deleteBatchIds(ids);
+    }
+
     /**
      * 查询全部文章。
      *
@@ -284,6 +293,16 @@ public class AdminServiceImpl implements AdminService {
         dyxPostMapper.deleteById(id);
     }
 
+    @Override
+    @Transactional
+    @CacheEvict(value = "site", key = "'posts'")
+    public void deletePosts(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            throw new BusinessException("请选择需要删除的文章");
+        }
+        dyxPostMapper.deleteBatchIds(ids);
+    }
+
     /**
      * 查询全部动态。
      *
@@ -326,6 +345,16 @@ public class AdminServiceImpl implements AdminService {
     @CacheEvict(value = "site", key = "'moments'")
     public void deleteMoment(Long id) {
         dyxMomentMapper.deleteById(id);
+    }
+
+    @Override
+    @Transactional
+    @CacheEvict(value = "site", key = "'moments'")
+    public void deleteMoments(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            throw new BusinessException("请选择需要删除的动态");
+        }
+        dyxMomentMapper.deleteBatchIds(ids);
     }
 
     /**
@@ -372,6 +401,16 @@ public class AdminServiceImpl implements AdminService {
         dyxProjectMapper.deleteById(id);
     }
 
+    @Override
+    @Transactional
+    @CacheEvict(value = "site", key = "'projects'")
+    public void deleteProjects(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            throw new BusinessException("请选择需要删除的项目经历");
+        }
+        dyxProjectMapper.deleteBatchIds(ids);
+    }
+
     /**
      * 查询全部个人作品。
      *
@@ -380,6 +419,7 @@ public class AdminServiceImpl implements AdminService {
     @Override
     public List<Work> listWorks() {
         List<Work> works = dyxWorkMapper.selectList(new LambdaQueryWrapper<Work>()
+                .orderByDesc(Work::getAwardAt)
                 .orderByAsc(Work::getSortOrder)
                 .orderByDesc(Work::getUpdatedAt));
         works.forEach(work -> {
@@ -419,7 +459,23 @@ public class AdminServiceImpl implements AdminService {
     @Override
     @CacheEvict(value = "site", key = "'works'")
     public void deleteWork(Long id) {
-        dyxWorkMapper.deleteById(id);
+        int affected = dyxWorkMapper.deleteById(id);
+        if (affected == 0) {
+            throw new BusinessException(404, "作品不存在或已被删除");
+        }
+    }
+
+    @Override
+    @Transactional
+    @CacheEvict(value = "site", key = "'works'")
+    public void deleteWorks(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            throw new BusinessException("请选择需要删除的作品");
+        }
+        int affected = dyxWorkMapper.deleteBatchIds(ids);
+        if (affected == 0) {
+            throw new BusinessException(404, "作品不存在或已被删除");
+        }
     }
 
     /**
@@ -430,9 +486,7 @@ public class AdminServiceImpl implements AdminService {
     @Override
     public List<Honor> listHonors() {
         return dyxHonorMapper.selectList(new LambdaQueryWrapper<Honor>()
-                .orderByDesc(Honor::getAwardAt)
-                .orderByAsc(Honor::getSortOrder)
-                .orderByDesc(Honor::getUpdatedAt));
+                .orderByDesc(Honor::getAwardAt));
     }
 
     /**
@@ -449,9 +503,17 @@ public class AdminServiceImpl implements AdminService {
         if (honor.getId() == null) {
             honor.setCreatedAt(now);
             dyxHonorMapper.insert(honor);
-        } else {
-            dyxHonorMapper.updateById(honor);
+            return honor;
         }
+
+        Honor existingHonor = dyxHonorMapper.selectById(honor.getId());
+        if (existingHonor == null) {
+            throw new BusinessException("荣誉记录不存在");
+        }
+        if (honor.getCreatedAt() == null) {
+            honor.setCreatedAt(existingHonor.getCreatedAt());
+        }
+        dyxHonorMapper.updateById(honor);
         return honor;
     }
 
@@ -463,7 +525,21 @@ public class AdminServiceImpl implements AdminService {
     @Override
     @CacheEvict(value = "site", key = "'honors'")
     public void deleteHonor(Long id) {
-        dyxHonorMapper.deleteById(id);
+        if (dyxHonorMapper.deleteById(id) == 0) {
+            throw new BusinessException("荣誉记录不存在");
+        }
+    }
+
+    @Override
+    @Transactional
+    @CacheEvict(value = "site", key = "'honors'")
+    public void deleteHonors(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            throw new BusinessException("请选择需要删除的荣誉");
+        }
+        if (dyxHonorMapper.deleteBatchIds(ids) == 0) {
+            throw new BusinessException("荣誉记录不存在");
+        }
     }
 
     /**
@@ -517,6 +593,16 @@ public class AdminServiceImpl implements AdminService {
     @CacheEvict(value = "site", key = "'footprints'")
     public void deleteFootprint(Long id) {
         dyxFootprintMapper.deleteById(id);
+    }
+
+    @Override
+    @Transactional
+    @CacheEvict(value = "site", key = "'footprints'")
+    public void deleteFootprints(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            throw new BusinessException("请选择需要删除的足迹");
+        }
+        dyxFootprintMapper.deleteBatchIds(ids);
     }
 
     /**

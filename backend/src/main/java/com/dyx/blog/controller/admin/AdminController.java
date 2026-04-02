@@ -155,6 +155,18 @@ public class AdminController {
     }
 
     /**
+     * 批量删除留言。
+     *
+     * @param ids 留言主键列表。
+     * @return 删除结果。
+     */
+    @PostMapping("/guestbook/messages/batch-delete")
+    public Result<Void> deleteGuestbookMessages(@RequestBody List<Long> ids) {
+        dyxAdminService.deleteGuestbookMessages(ids);
+        return Result.success();
+    }
+
+    /**
      * 获取文章列表。
      *
      * @return 文章列表结果。
@@ -197,6 +209,18 @@ public class AdminController {
     @DeleteMapping("/posts/{id}")
     public Result<Void> deletePost(@PathVariable Long id) {
         dyxAdminService.deletePost(id);
+        return Result.success();
+    }
+
+    /**
+     * 批量删除文章。
+     *
+     * @param ids 文章主键列表。
+     * @return 删除结果。
+     */
+    @PostMapping("/posts/batch-delete")
+    public Result<Void> deletePosts(@RequestBody List<Long> ids) {
+        dyxAdminService.deletePosts(ids);
         return Result.success();
     }
 
@@ -247,6 +271,18 @@ public class AdminController {
     }
 
     /**
+     * 批量删除动态。
+     *
+     * @param ids 动态主键列表。
+     * @return 删除结果。
+     */
+    @PostMapping("/moments/batch-delete")
+    public Result<Void> deleteMoments(@RequestBody List<Long> ids) {
+        dyxAdminService.deleteMoments(ids);
+        return Result.success();
+    }
+
+    /**
      * 获取项目经历列表。
      *
      * @return 项目经历结果列表。
@@ -289,6 +325,18 @@ public class AdminController {
     @DeleteMapping("/projects/{id}")
     public Result<Void> deleteProject(@PathVariable Long id) {
         dyxAdminService.deleteProject(id);
+        return Result.success();
+    }
+
+    /**
+     * 批量删除项目经历。
+     *
+     * @param ids 项目经历主键列表。
+     * @return 删除结果。
+     */
+    @PostMapping("/projects/batch-delete")
+    public Result<Void> deleteProjects(@RequestBody List<Long> ids) {
+        dyxAdminService.deleteProjects(ids);
         return Result.success();
     }
 
@@ -339,6 +387,18 @@ public class AdminController {
     }
 
     /**
+     * 批量删除个人作品。
+     *
+     * @param ids 作品主键列表。
+     * @return 删除结果。
+     */
+    @PostMapping("/works/batch-delete")
+    public Result<Void> deleteWorks(@RequestBody List<Long> ids) {
+        dyxAdminService.deleteWorks(ids);
+        return Result.success();
+    }
+
+    /**
      * 获取荣誉列表。
      *
      * @return 荣誉结果列表。
@@ -385,6 +445,18 @@ public class AdminController {
     }
 
     /**
+     * 批量删除荣誉。
+     *
+     * @param ids 荣誉主键列表。
+     * @return 删除结果。
+     */
+    @PostMapping("/honors/batch-delete")
+    public Result<Void> deleteHonors(@RequestBody List<Long> ids) {
+        dyxAdminService.deleteHonors(ids);
+        return Result.success();
+    }
+
+    /**
      * 获取首页足迹列表。
      *
      * @return 足迹结果列表。
@@ -427,6 +499,18 @@ public class AdminController {
     @DeleteMapping("/footprints/{id}")
     public Result<Void> deleteFootprint(@PathVariable Long id) {
         dyxAdminService.deleteFootprint(id);
+        return Result.success();
+    }
+
+    /**
+     * 批量删除首页足迹。
+     *
+     * @param ids 足迹主键列表。
+     * @return 删除结果。
+     */
+    @PostMapping("/footprints/batch-delete")
+    public Result<Void> deleteFootprints(@RequestBody List<Long> ids) {
+        dyxAdminService.deleteFootprints(ids);
         return Result.success();
     }
 
@@ -556,11 +640,14 @@ public class AdminController {
      * @return 媒体文件响应。
      */
     @GetMapping("/media/content")
-    public ResponseEntity<byte[]> proxyMedia(@RequestParam String fileUrl) {
+    public ResponseEntity<byte[]> proxyMedia(@RequestParam String fileUrl,
+                                             @RequestParam(required = false) String range,
+                                             @org.springframework.web.bind.annotation.RequestHeader(value = "Range", required = false) String requestRange) {
         if (fileUrl == null || fileUrl.trim().isEmpty()) {
             throw new BusinessException("fileUrl 不能为空");
         }
-        return dyxMediaService.proxyMedia(fileUrl);
+        String resolvedRange = requestRange != null ? requestRange : range;
+        return dyxMediaService.proxyMedia(fileUrl, resolvedRange);
     }
 
     /**
@@ -583,6 +670,18 @@ public class AdminController {
     @DeleteMapping("/media/{id}")
     public Result<Void> deleteMedia(@PathVariable Long id) {
         dyxMediaService.deleteById(id);
+        return Result.success();
+    }
+
+    /**
+     * 批量删除媒体文件。
+     *
+     * @param ids 媒体主键列表。
+     * @return 删除结果。
+     */
+    @PostMapping("/media/batch-delete")
+    public Result<Void> deleteMediaBatch(@RequestBody List<Long> ids) {
+        dyxMediaService.deleteBatchByIds(ids);
         return Result.success();
     }
 

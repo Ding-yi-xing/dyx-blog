@@ -40,10 +40,12 @@
             <h3 class="text-lg font-semibold text-slate-950">留言列表</h3>
             <p class="mt-1 text-sm text-slate-500">支持修改正文、切换公开状态与删除。</p>
           </div>
+          <el-button type="danger" plain :disabled="!selectedIds.length" @click="handleBatchDelete">批量删除</el-button>
         </div>
       </div>
 
-      <el-table :data="messages" stripe>
+      <el-table ref="tableRef" :data="messages" stripe @selection-change="handleSelectionChange">
+        <el-table-column type="selection" width="52" align="center" />
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column label="正文" min-width="320">
           <template #default="scope">
@@ -109,6 +111,7 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import { onMounted, reactive, ref } from 'vue';
 import {
   deleteAdminGuestbookMessage,
+  deleteAdminGuestbookMessages,
   getAdminGuestbook,
   updateAdminGuestbookIntro,
   updateAdminGuestbookMessage,
@@ -127,6 +130,8 @@ const savingIntro = ref(false);
 const savingMessage = ref(false);
 const dialogVisible = ref(false);
 const editingId = ref<number | null>(null);
+const selectedIds = ref<number[]>([]);
+const tableRef = ref<{ clearSelection: () => void } | null>(null);
 const editForm = reactive<Partial<GuestbookMessageData>>({
   content: '',
   published: 1
@@ -145,6 +150,15 @@ function resetEditForm(): void {
   editForm.published = 1;
 }
 
+function resetSelection(): void {
+  tableRef.value?.clearSelection();
+  selectedIds.value = [];
+}
+
+function handleSelectionChange(selection: GuestbookMessageData[]): void {
+  selectedIds.value = selection.map((item) => Number(item.id)).filter((id) => !Number.isNaN(id));
+}
+
 /**
  * 获取留言页配置与留言列表，并同步到当前页面。
  *
@@ -153,8 +167,8 @@ function resetEditForm(): void {
  * @author Dyx
  */
 async function loadGuestbook(): Promise<void> {
-  const response = await getAdminGuestbook();
-  const data = (response.data ?? {}) as AdminGuestbookData;
+  const result = await getAdminGuestbook();
+  const data = ((result as { data?: AdminGuestbookData })?.data ?? {}) as AdminGuestbookData;
   guestbookIntro.value = data.guestbookIntro ?? '';
   messages.value = data.messages ?? [];
 }
@@ -260,11 +274,32 @@ async function handleDelete(item: GuestbookMessageData): Promise<void> {
     await deleteAdminGuestbookMessage(Number(item.id));
     ElMessage.success('留言删除成功');
     await loadGuestbook();
+    resetSelection();
   } catch (error) {
     if (error === 'cancel' || error === 'close') {
       return;
     }
     ElMessage.error(resolveErrorMessage(error, '留言删除失败'));
+  }
+}
+
+async function handleBatchDelete(): Promise<void> {
+  if (!selectedIds.value.length) {
+    return;
+  }
+  try {
+    await ElMessageBox.confirm(`确认删除选中的 ${selectedIds.value.length} 条留言吗？`, '批量删除确认', {
+      type: 'warning'
+    });
+    await deleteAdminGuestbookMessages(selectedIds.value);
+    ElMessage.success('留言批量删除成功');
+    await loadGuestbook();
+    resetSelection();
+  } catch (error) {
+    if (error === 'cancel' || error === 'close') {
+      return;
+    }
+    ElMessage.error(resolveErrorMessage(error, '留言批量删除失败'));
   }
 }
 
