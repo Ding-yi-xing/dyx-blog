@@ -13,8 +13,8 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
   servlet:
     multipart:
-      max-file-size: 500MB
-      max-request-size: 500MB
+      max-file-size: 2GB
+      max-request-size: 2GB
   web:
     resources:
       static-locations: classpath:/static/,file:uploads/

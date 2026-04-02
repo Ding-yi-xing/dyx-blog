@@ -100,6 +100,7 @@ public final class ClientIpUtil {
         return "127.0.0.1".equals(remoteAddr)
                 || "10.0.0.1".equals(remoteAddr)
                 || "172.16.0.1".equals(remoteAddr)
+                || "172.19.0.1".equals(remoteAddr)
                 || "192.168.0.1".equals(remoteAddr);
     }
 

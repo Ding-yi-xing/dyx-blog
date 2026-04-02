@@ -7,14 +7,14 @@ spring:
   application:
     name: dyx-blog
   datasource:
-    url: ${MYSQL_URL:jdbc:mysql://118.178.186.196:3306/dyx_blog?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai}
+    url: ${MYSQL_URL:jdbc:mysql://118.178.186.196:8060/dyx_blog?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai}
     username: ${MYSQL_USER:dyx_blog}
     password: ${MYSQL_PWD:Dyx@blog}
     driver-class-name: com.mysql.cj.jdbc.Driver
   servlet:
     multipart:
-      max-file-size: 20MB
-      max-request-size: 20MB
+      max-file-size: 2GB
+      max-request-size: 2GB
   web:
     resources:
       static-locations: classpath:/static/,file:uploads/
