@@ -54,9 +54,10 @@ Authorization: Bearer <token>
 - `data`：业务数据主体
 
 ### 1.5 鉴权与跳转行为
-- 后台未登录访问受保护路由时，会跳转到 `/dyx-manager/login`，见 `frontend/src/router/index.ts:83-97`
+- 后台未登录访问受保护路由时，会跳转到 `/dyx-manager/login`，见 `frontend/src/router/index.ts:95-103`
 - 接口返回 `401` 时，前端会清除登录态并重定向登录页，见 `frontend/src/api/http.ts:53-61`
 - 接口返回 `403` 时，前端会提示“当前账号无权限访问该功能”
+- 公开站点不再暴露显式后台入口；首页保留点击站点标题 5 次进入后台登录页的隐藏入口
 
 ---
 
@@ -257,7 +258,7 @@ Authorization: Bearer <token>
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | token | string | JWT |
-| user.id | number | 用户 ID |
+| user.id | string \| number | 用户 ID，后端 Long 主键会按字符串序列化返回 |
 | user.username | string | 用户名 |
 | user.displayName | string | 显示名 |
 | user.role | string | 角色 |
@@ -350,7 +351,14 @@ Authorization: Bearer <token>
 ### 4.12 获取博客列表
 **GET** `/api/site/posts`
 
+#### 查询参数
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|---:|---|
+| page | number | 否 | 页码，未传时返回默认列表 |
+| pageSize | number | 否 | 每页条数 |
+
 - 返回 `PostData[]`
+- 当前公开博客列表接口已支持 `page` / `pageSize` 可选分页参数
 - 旧文档中的 `/api/posts` 已不再适用，当前以后端控制器路径为准
 
 ### 4.13 获取博客详情
@@ -398,11 +406,15 @@ Authorization: Bearer <token>
 ### 5.3 删除单条访问日志
 **DELETE** `/api/dyx-manager/visit-logs/{id}`
 
+说明：仅 `ADMIN` 角色可删除。
+
 ### 5.4 批量删除访问日志
 **POST** `/api/dyx-manager/visit-logs/batch-delete`
 
 #### 请求体
 `number[]`
+
+说明：仅 `ADMIN` 角色可执行批量删除。
 
 ### 5.5 留言管理
 - **GET** `/api/dyx-manager/guestbook`：获取留言管理数据
@@ -470,7 +482,10 @@ Authorization: Bearer <token>
 - **PUT** `/api/dyx-manager/users/{id}`
 - **DELETE** `/api/dyx-manager/users/{id}`
 
-说明：后端已补充唯一用户名校验、当前登录管理员保护、至少保留一个管理员账号等约束。
+说明：
+- 仅 `ADMIN` 角色可管理用户
+- 后端已补充唯一用户名校验、当前登录管理员保护、至少保留一个管理员账号等约束
+- 用户 ID 在前后端交互中按 `string | number` 处理，避免 Long 精度丢失
 
 ### 5.16 媒体资源管理
 - **GET** `/api/dyx-manager/media`：获取媒体列表
@@ -482,6 +497,11 @@ Authorization: Bearer <token>
 #### 上传接口说明
 - Content-Type：`multipart/form-data`
 - 表单字段：`file`
+
+#### 使用流程说明
+- 媒体库可直接选择原图/原文件用于业务表单
+- 图片资源可在媒体选择弹窗中决定“直接使用”或“裁剪后使用”
+- 头像、首页首屏背景图、首页右侧人物图等业务字段会在具体页面调用裁剪弹窗
 
 #### 删除接口说明
 删除前会做引用检查，若资源仍被个人资料、文章、项目、作品、动态或荣誉使用，则应拒绝删除。

@@ -538,6 +538,8 @@ onMounted(() => {
 
 `frontend/src/layouts/AdminLayout.vue:136-182` 用数组声明导航组，再交给 Element Plus 菜单组件渲染。
 
+当前后台按“概览 / 首页管理 / 内容管理 / 个人资料 / 系统”分组，首页管理下已包含首屏管理、足迹管理、更新节奏等模块。
+
 #### 选型理由
 
 数据驱动菜单比手写大量模板更易维护，新增页面时只改一处即可。
@@ -551,6 +553,44 @@ onMounted(() => {
 
 - 替代方案：在模板中逐个写死菜单项。
 - 弃用原因：层级多、重复代码多，不利于维护后台导航分组。
+
+### 4.12 后台媒体选择与业务裁剪协作
+
+#### 场景
+
+后台多个业务表单都需要复用媒体库，但头像、首页首屏背景图、首页右侧人物图又需要不同的裁剪预览与导出结果。
+
+#### 需求
+
+- 媒体库负责统一上传、列表选择与资源复用。
+- 业务表单可以直接使用原图，也可以按业务场景单独裁剪。
+- 裁剪预览需要尽量贴近最终展示效果。
+
+#### 实现方案
+
+1. `frontend/src/views/admin/AdminMediaPicker.vue:69-208` 提供媒体弹窗、上传入口、资源卡片与已选状态。
+2. 图片资源在弹窗中拆分为“直接使用”和“裁剪后使用”两条路径，避免把媒体库强耦合成裁剪器。
+3. `frontend/src/components/admin/BusinessImageCropper.vue:1-195` 根据 `avatar`、`hero-background`、`hero-portrait` 三种业务模式切换预览布局。
+4. 当前裁剪框已允许自由缩放，预览区根据实时裁剪结果自适应，不再强制固定比例缩放框。
+
+#### 选型理由
+
+把“媒体资源管理”和“业务图片加工”拆开后，媒体库仍然保持通用，而具体业务页面可以决定是否需要裁剪以及采用哪种预览样式。
+
+#### 核心源码定位
+
+- `frontend/src/views/admin/AdminMediaPicker.vue:69-208`
+- `frontend/src/components/admin/BusinessImageCropper.vue:19-46`
+- `frontend/src/components/admin/BusinessImageCropper.vue:72-169`
+- `frontend/src/components/admin/BusinessImageCropper.vue:256-308`
+
+#### 替代方案对比
+
+- 替代方案：在媒体库中统一强制裁剪后再返回结果。
+- 弃用原因：视频、PDF 等非图片资源不适用，且会让单纯复用原图的场景操作过重。
+- 替代方案：每个业务页面各自实现一套媒体选择与裁剪。
+- 弃用原因：重复代码多，媒体上传、预览、选择逻辑会分散。
+
 
 ## 5. 数据流与状态管理
 
@@ -568,10 +608,12 @@ onMounted(() => {
 
 ### 5.2 全局状态管理
 
-当前全局状态集中在 `frontend/src/stores/auth.ts:9-61`，范围较克制：
+当前全局状态集中在 `frontend/src/stores/auth.ts:9-77`，范围较克制：
 
 - 只保存后台认证信息。
 - 业务数据（博客、动态、留言等）按页面请求，不做复杂全局缓存。
+- 登录态默认写入 `sessionStorage`，同时显式清理同名 `localStorage` 键，避免旧实现残留。
+- 后台登录用户 ID 当前按 `string | number` 处理，用于规避 Long 主键在浏览器中的精度丢失问题。
 
 这说明前端设计偏向“页面拉取 + 局部状态”，而不是 Redux/Vuex 风格的大型全局仓库。
 

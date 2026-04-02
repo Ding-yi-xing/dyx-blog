@@ -57,6 +57,7 @@
 - `video_url` varchar(255) 视频地址
 - `video_poster` varchar(255) 视频封面图
 - `work_link` varchar(255) 作品链接
+- `award_at` datetime 获得时间
 - `sort_order` int 排序
 - `published` tinyint 是否发布
 - `created_at` datetime 创建时间
@@ -200,4 +201,10 @@
 - 若旧库中的 `dyx_site_visit_log` 尚未包含 `device_name` 字段，启动时会自动补齐
 - 访问日志写入时会优先从 `X-Forwarded-For`、`X-Real-IP` 解析客户端 IP，并将 `::1`、`0:0:0:0:0:0:0:1`、`::ffff:127.0.0.1` 归一化为 `127.0.0.1`
 - 初始化 SQL 会补入站点访问统计初始记录、访问日志示例记录、留言示例、足迹示例与系统配置默认记录，便于后台模块直接展示数据
+
+## 17. 当前接口与前端交互约定
+- 表中主键仍以 `bigint` 存储，但面向前端返回时，用户、荣誉、作品等 Long 主键会按字符串安全序列化，避免 JavaScript `number` 精度丢失
+- `dyx_user.role` 当前区分 `ADMIN` 与 `USER`，其中后台登录与用户管理仅允许 `ADMIN` 使用
+- 访问日志的删除能力受角色限制，仅超级管理员可执行删除与批量删除
+- 媒体资源在数据库中只保存原始文件记录，头像、首页背景图、首页人物图等业务裁剪结果仍以业务字段中的 URL 字符串形式引用
 
