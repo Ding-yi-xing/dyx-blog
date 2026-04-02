@@ -36,3 +36,7 @@ Palindrome.class
 
 # Map screenshots
 map-*.png
+
+# Claude files
+CLAUDE.md
+about-snapshot*.yml
