@@ -235,7 +235,21 @@ public class AdminServiceImpl implements AdminService {
      */
     @Override
     public List<Post> listPosts() {
-        return dyxPostMapper.selectList(new LambdaQueryWrapper<Post>().orderByDesc(Post::getUpdatedAt));
+        return dyxPostMapper.selectList(new LambdaQueryWrapper<Post>()
+                .select(Post::getId, Post::getTitle, Post::getSummary, Post::getCoverImage, Post::getCategory,
+                        Post::getTags, Post::getPublished, Post::getPublishedAt, Post::getViewCount,
+                        Post::getCreatedAt, Post::getUpdatedAt)
+                .orderByDesc(Post::getPublishedAt)
+                .orderByDesc(Post::getUpdatedAt));
+    }
+
+    @Override
+    public Post getPost(Long id) {
+        Post post = dyxPostMapper.selectById(id);
+        if (post == null) {
+            throw new BusinessException(404, "文章不存在");
+        }
+        return post;
     }
 
     /**
@@ -251,6 +265,7 @@ public class AdminServiceImpl implements AdminService {
             throw new BusinessException("文章数据不能为空");
         }
         LocalDateTime now = LocalDateTime.now();
+        LocalDateTime publishedAt = post.getPublishedAt();
         if (post.getId() == null) {
             if (post.getContent() != null) {
                 post.setContent(XssUtil.cleanHtml(post.getContent()));
@@ -260,6 +275,10 @@ public class AdminServiceImpl implements AdminService {
             post.setCategory(normalizeNullableValue(post.getCategory()));
             post.setTags(normalizeNullableValue(post.getTags()));
             post.setCoverImage(normalizeNullableValue(post.getCoverImage()));
+            if (publishedAt == null && post.getPublished() != null && post.getPublished() == 1) {
+                publishedAt = now;
+            }
+            post.setPublishedAt(publishedAt);
             post.setUpdatedAt(now);
             post.setCreatedAt(now);
             dyxPostMapper.insert(post);
@@ -276,6 +295,10 @@ public class AdminServiceImpl implements AdminService {
         existingPost.setTags(normalizeNullableValue(post.getTags()));
         existingPost.setCoverImage(normalizeNullableValue(post.getCoverImage()));
         existingPost.setPublished(post.getPublished());
+        if (publishedAt == null && post.getPublished() != null && post.getPublished() == 1 && existingPost.getPublishedAt() == null) {
+            publishedAt = now;
+        }
+        existingPost.setPublishedAt(publishedAt != null ? publishedAt : existingPost.getPublishedAt());
         existingPost.setContent(post.getContent() == null ? null : XssUtil.cleanHtml(post.getContent()));
         existingPost.setUpdatedAt(now);
         dyxPostMapper.updateById(existingPost);
@@ -384,8 +407,8 @@ public class AdminServiceImpl implements AdminService {
         if (project.getId() == null) {
             project.setCreatedAt(now);
             dyxProjectMapper.insert(project);
-        } else {
-            dyxProjectMapper.updateById(project);
+        } else if (dyxProjectMapper.updateById(project) == 0) {
+            throw new BusinessException("项目经历不存在或已被删除");
         }
         return project;
     }
@@ -398,7 +421,9 @@ public class AdminServiceImpl implements AdminService {
     @Override
     @CacheEvict(value = "site", key = "'projects'")
     public void deleteProject(Long id) {
-        dyxProjectMapper.deleteById(id);
+        if (dyxProjectMapper.deleteById(id) == 0) {
+            throw new BusinessException("项目经历不存在或已被删除");
+        }
     }
 
     @Override
@@ -408,7 +433,9 @@ public class AdminServiceImpl implements AdminService {
         if (ids == null || ids.isEmpty()) {
             throw new BusinessException("请选择需要删除的项目经历");
         }
-        dyxProjectMapper.deleteBatchIds(ids);
+        if (dyxProjectMapper.deleteBatchIds(ids) == 0) {
+            throw new BusinessException("选中的项目经历不存在或已被删除");
+        }
     }
 
     /**

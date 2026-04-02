@@ -39,6 +39,7 @@ import org.springframework.stereotype.Service;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -79,10 +80,6 @@ public class SiteServiceImpl implements SiteService {
     public HomeDataDTO getHomeData() {
         return HomeDataDTO.builder()
                 .profile(getProfile())
-                .latestPosts(listPosts(1, 3))
-                .latestMoments(listMoments().stream().limit(3).toList())
-                .featuredProjects(listProjects().stream().limit(3).toList())
-                .latestHonors(listHonors().stream().limit(3).toList())
                 .footprints(listFootprints())
                 .systemConfig(getHomeSystemConfig())
                 .build();
@@ -165,6 +162,7 @@ public class SiteServiceImpl implements SiteService {
         int size = normalizePageSize(pageSize);
         List<Post> posts = dyxPostMapper.selectList(new LambdaQueryWrapper<Post>()
                 .eq(Post::getPublished, 1)
+                .orderByDesc(Post::getPublishedAt)
                 .orderByDesc(Post::getUpdatedAt));
         int fromIndex = (pageNo - 1) * size;
         if (fromIndex >= posts.size()) {

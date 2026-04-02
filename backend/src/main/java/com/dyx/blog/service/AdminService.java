@@ -112,6 +112,14 @@ public interface AdminService {
     List<Post> listPosts();
 
     /**
+     * 查询单篇文章完整数据。
+     *
+     * @param id 文章主键。
+     * @return 完整文章数据。
+     */
+    Post getPost(Long id);
+
+    /**
      * 保存文章。
      *
      * @param post 文章对象。

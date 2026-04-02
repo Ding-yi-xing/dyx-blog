@@ -2,6 +2,8 @@ package com.dyx.blog.entity;
 
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -14,8 +16,9 @@ import java.time.LocalDateTime;
 @TableName("dyx_project")
 public class Project {
 
-    /** 项目主键。 */
+    /** 项目主键，序列化为字符串以避免前端精度丢失。 */
     @TableId
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long id;
 
     /** 项目名称。 */

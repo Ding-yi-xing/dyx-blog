@@ -177,6 +177,17 @@ public class AdminController {
     }
 
     /**
+     * 获取单篇文章详情。
+     *
+     * @param id 文章主键。
+     * @return 文章详情结果。
+     */
+    @GetMapping("/posts/{id}")
+    public Result<Post> getPost(@PathVariable Long id) {
+        return Result.success(dyxAdminService.getPost(id));
+    }
+
+    /**
      * 新增文章。
      *
      * @param post 文章对象。

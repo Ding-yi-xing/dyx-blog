@@ -42,6 +42,9 @@ public class Post {
     /** 发布状态，1 表示前台可见。 */
     private Integer published;
 
+    /** 业务发布日期。 */
+    private LocalDateTime publishedAt;
+
     /** 浏览量。 */
     private Integer viewCount;
 
