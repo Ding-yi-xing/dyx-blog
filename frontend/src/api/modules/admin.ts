@@ -250,6 +250,16 @@ export function getAdminPosts() {
 }
 
 /**
+ * 获取单篇后台文章详情。
+ *
+ * @param id 文章主键。
+ * @returns 返回包含完整正文的文章详情数据。
+ */
+export function getAdminPostDetail(id: string | number) {
+  return adminHttp.get(`/dyx-manager/posts/${id}`);
+}
+
+/**
  * 保存后台文章数据。
  *
  * @param payload 文章表单数据；带有 id 时更新现有文章，否则创建新文章。
@@ -342,7 +352,7 @@ export function getAdminProjects() {
  * @author Dyx
  */
 export function saveAdminProject(payload: Partial<ProjectData>) {
-  if (payload.id) {
+  if (payload.id !== undefined && payload.id !== null) {
     return adminHttp.put(`/dyx-manager/projects/${payload.id}`, payload);
   }
   return adminHttp.post('/dyx-manager/projects', payload);
@@ -356,11 +366,11 @@ export function saveAdminProject(payload: Partial<ProjectData>) {
  * @throws 该函数不会主动抛出同步异常；删除失败或权限不足时会以 Promise reject 形式返回。
  * @author Dyx
  */
-export function deleteAdminProject(id: number) {
+export function deleteAdminProject(id: string | number) {
   return adminHttp.delete(`/dyx-manager/projects/${id}`);
 }
 
-export function deleteAdminProjects(ids: number[]) {
+export function deleteAdminProjects(ids: Array<string | number>) {
   return adminHttp.post('/dyx-manager/projects/batch-delete', ids);
 }
 

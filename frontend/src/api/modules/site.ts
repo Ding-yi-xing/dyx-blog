@@ -73,6 +73,7 @@ export interface PostData {
   category?: string;
   tags?: string;
   published?: number;
+  publishedAt?: string;
   updatedAt?: string;
   viewCount?: number;
 }
@@ -96,7 +97,7 @@ export interface MomentData {
  * 项目经历数据结构。
  */
 export interface ProjectData {
-  id: number;
+  id: string | number;
   name: string;
   roleName?: string;
   description?: string;
@@ -170,13 +171,10 @@ export interface HomeSystemConfigData {
 
 /**
  * 首页聚合数据结构。
+ * 仅保留首页当前实际使用的资料、足迹与首页系统配置。
  */
 export interface HomeData {
   profile?: ProfileData;
-  latestPosts?: PostData[];
-  latestMoments?: MomentData[];
-  featuredProjects?: ProjectData[];
-  latestHonors?: HonorData[];
   footprints?: FootprintData[];
   systemConfig?: HomeSystemConfigData;
 }
