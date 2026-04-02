@@ -103,8 +103,12 @@
                     :model-value="imageBlock.backgroundImageUrl"
                     button-text="选择背景图"
                     empty-text="暂未选择背景图"
+                    crop-mode="hero-background"
                     @update:model-value="handleBackgroundSelect"
                   />
+                  <div class="flex flex-wrap gap-3">
+                    <el-button plain :disabled="!imageBlock.backgroundImageUrl" @click="openBackgroundCropper">裁剪当前背景图</el-button>
+                  </div>
                 </div>
 
                 <div class="space-y-3 rounded-[18px] border border-slate-200 bg-slate-50 p-4">
@@ -122,8 +126,12 @@
                     :model-value="imageBlock.imageUrl"
                     button-text="选择右侧人物图"
                     empty-text="暂未选择右侧人物图"
+                    crop-mode="hero-portrait"
                     @update:model-value="handlePortraitSelect"
                   />
+                  <div class="flex flex-wrap gap-3">
+                    <el-button plain :disabled="!imageBlock.imageUrl" @click="openPortraitCropper">裁剪当前人物图</el-button>
+                  </div>
                   <el-input v-model="imageBlock.alt" placeholder="图片说明（可选）" />
                 </div>
               </div>
@@ -543,16 +551,23 @@ function handleBackgroundSelect(value: string | string[] | undefined): void {
   if (!imageBlock.value) {
     return;
   }
-  if (!nextUrl) {
-    imageBlock.value.backgroundImageUrl = '';
+  imageBlock.value.backgroundImageUrl = nextUrl;
+}
+
+/**
+ * 打开当前背景图的裁剪弹窗。
+ *
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；无图片时会直接忽略。
+ * @author Dyx
+ */
+function openBackgroundCropper(): void {
+  const currentUrl = imageBlock.value?.backgroundImageUrl?.trim();
+  if (!currentUrl) {
     return;
   }
-  if (nextUrl === imageBlock.value.backgroundImageUrl) {
-    imageBlock.value.backgroundImageUrl = nextUrl;
-    return;
-  }
-  pendingBackgroundUrl.value = nextUrl;
-  pendingBackgroundName.value = extractFileName(nextUrl);
+  pendingBackgroundUrl.value = currentUrl;
+  pendingBackgroundName.value = extractFileName(currentUrl);
   backgroundCropperVisible.value = true;
 }
 
@@ -569,16 +584,23 @@ function handlePortraitSelect(value: string | string[] | undefined): void {
   if (!imageBlock.value) {
     return;
   }
-  if (!nextUrl) {
-    imageBlock.value.imageUrl = '';
+  imageBlock.value.imageUrl = nextUrl;
+}
+
+/**
+ * 打开当前人物图的裁剪弹窗。
+ *
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；无图片时会直接忽略。
+ * @author Dyx
+ */
+function openPortraitCropper(): void {
+  const currentUrl = imageBlock.value?.imageUrl?.trim();
+  if (!currentUrl) {
     return;
   }
-  if (nextUrl === imageBlock.value.imageUrl) {
-    imageBlock.value.imageUrl = nextUrl;
-    return;
-  }
-  pendingPortraitUrl.value = nextUrl;
-  pendingPortraitName.value = extractFileName(nextUrl);
+  pendingPortraitUrl.value = currentUrl;
+  pendingPortraitName.value = extractFileName(currentUrl);
   portraitCropperVisible.value = true;
 }
 
@@ -637,8 +659,8 @@ async function handleBackgroundCropConfirm(payload: CropConfirmPayload): Promise
     return;
   }
   try {
-    const response = await uploadAdminMedia(payload.file);
-    imageBlock.value.backgroundImageUrl = response.data?.fileUrl ?? imageBlock.value.backgroundImageUrl;
+    const result = await uploadAdminMedia(payload.file);
+    imageBlock.value.backgroundImageUrl = (result as { data?: { fileUrl: string } })?.data?.fileUrl ?? imageBlock.value.backgroundImageUrl;
     ElMessage.success('横幅背景图裁剪并上传成功');
   } catch (error) {
     ElMessage.error('横幅背景图上传失败');
@@ -668,8 +690,8 @@ async function handlePortraitCropConfirm(payload: CropConfirmPayload): Promise<v
     return;
   }
   try {
-    const response = await uploadAdminMedia(payload.file);
-    imageBlock.value.imageUrl = response.data?.fileUrl ?? imageBlock.value.imageUrl;
+    const result = await uploadAdminMedia(payload.file);
+    imageBlock.value.imageUrl = (result as { data?: { fileUrl: string } })?.data?.fileUrl ?? imageBlock.value.imageUrl;
     ElMessage.success('横幅人物图裁剪并上传成功');
   } catch (error) {
     ElMessage.error('横幅人物图上传失败');
@@ -770,8 +792,9 @@ function isLastBlock(blockId: string): boolean {
  */
 async function loadProfile(): Promise<void> {
   try {
-    const response = await getAdminHeroProfile();
-    Object.assign(form, response.data ?? {});
+    const result = await getAdminHeroProfile();
+    const profileData = (result as { data?: ProfileData })?.data ?? {};
+    Object.assign(form, profileData);
     heroBlocks.value = normalizeHeroBlocks(form);
   } catch {
     ElMessage.error('首页横幅加载失败，请确认后端已重启');
@@ -793,14 +816,15 @@ async function handleSave(): Promise<void> {
   saving.value = true;
   try {
     syncHeroConfigToForm();
-    const response = await updateAdminHeroProfile({
+    const result = await updateAdminHeroProfile({
       id: form.id,
       siteTitle: form.siteTitle,
       heroTitle: form.heroTitle,
       heroSubtitle: form.heroSubtitle,
       heroConfig: form.heroConfig
     });
-    Object.assign(form, response.data ?? {});
+    const updatedProfile = (result as { data?: ProfileData })?.data ?? {};
+    Object.assign(form, updatedProfile);
     heroBlocks.value = normalizeHeroBlocks(form);
     ElMessage.success('首页横幅保存成功');
   } catch {

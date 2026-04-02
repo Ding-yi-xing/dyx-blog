@@ -74,7 +74,7 @@
         <p class="text-sm text-slate-500">
           点击卡片即可{{
             multiple ? "多选" : "选择"
-          }}，上传成功后会自动加入当前选择。
+          }}，图片资源支持“直接使用”或“裁剪后使用”，上传成功后会自动加入当前选择。
         </p>
         <el-upload :show-file-list="false" :http-request="handleUpload">
           <el-button type="primary" :loading="uploading">上传文件</el-button>
@@ -150,15 +150,12 @@
               <p class="truncate text-sm font-medium text-slate-900 flex-1">
                 {{ item.originalName || item.fileName || "未命名文件" }}
               </p>
-              <el-button
-                v-if="isImageUrl(item.fileUrl)"
-                type="primary"
-                link
-                size="small"
-                @click.stop="openCropper(item)"
+              <span
+                v-if="isSelected(item.fileUrl)"
+                class="rounded-full bg-slate-900 px-3 py-1 text-xs text-white"
               >
-                裁剪
-              </el-button>
+                已选
+              </span>
             </div>
             <p class="text-xs text-slate-500">
               {{ item.mediaType || "未知类型" }}
@@ -166,6 +163,23 @@
             <p class="text-xs text-slate-400">
               {{ item.createdAt || "暂无时间" }}
             </p>
+            <div class="flex flex-wrap gap-2 pt-1">
+              <el-button
+                size="small"
+                @click.stop="applyMedia(item.fileUrl)"
+              >
+                直接使用
+              </el-button>
+              <el-button
+                v-if="isImageUrl(item.fileUrl)"
+                type="primary"
+                size="small"
+                plain
+                @click.stop="openCropper(item)"
+              >
+                裁剪后使用
+              </el-button>
+            </div>
           </div>
         </div>
       </div>
@@ -268,6 +282,23 @@ function openCropper(item: MediaPickerItem): void {
 }
 
 /**
+ * 直接应用当前媒体资源到草稿选择。
+ *
+ * @param url 当前媒体地址。
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；空地址会被直接忽略。
+ * @author Dyx
+ */
+function applyMedia(url?: string): void {
+  if (!url) {
+    return;
+  }
+  draftUrls.value = props.multiple
+    ? [...new Set([...draftUrls.value, url])]
+    : [url];
+}
+
+/**
  * 处理图片裁剪确认结果，并在需要时上传新图片后回填当前选择。
  *
  * @param payload 图片裁剪组件返回的确认结果。
@@ -285,8 +316,8 @@ async function handleCropConfirm(payload: CropConfirmPayload): Promise<void> {
     return;
   }
   try {
-    const response = await uploadAdminMedia(payload.file);
-    const newUrl = response.data?.fileUrl;
+    const result = await uploadAdminMedia(payload.file);
+    const newUrl = (result as { data?: { fileUrl: string } })?.data?.fileUrl;
     await loadMediaList();
     if (newUrl) {
       if (props.multiple) {
@@ -360,8 +391,9 @@ function openDialog(): void {
 async function loadMediaList(): Promise<void> {
   loading.value = true;
   try {
-    const response = await getAdminMedia();
-    mediaList.value = ((response.data ?? []) as MediaPickerItem[]).map(
+    const result = await getAdminMedia();
+    const mediaData = (result as { data?: MediaPickerItem[] })?.data ?? [];
+    mediaList.value = (mediaData as MediaPickerItem[]).map(
       (item: MediaPickerItem) => ({
         id: item.id,
         originalName: item.originalName,
@@ -461,8 +493,8 @@ function clearSelection(): void {
 async function handleUpload(options: UploadRequestOptions): Promise<void> {
   uploading.value = true;
   try {
-    const response = await uploadAdminMedia(options.file as File);
-    const fileUrl = response.data?.fileUrl;
+    const result = await uploadAdminMedia(options.file as File);
+    const fileUrl = (result as { data?: { fileUrl: string } })?.data?.fileUrl;
     await loadMediaList();
     if (fileUrl) {
       draftUrls.value = props.multiple

@@ -12,6 +12,9 @@
             </div>
             <div class="flex flex-1 flex-col gap-3">
               <AdminMediaPicker :model-value="form.avatarUrl" button-text="选择头像" empty-text="暂未选择头像" @update:model-value="handleAvatarSelect" />
+              <div class="flex flex-wrap gap-3">
+                <el-button plain :disabled="!form.avatarUrl" @click="openAvatarCropper">裁剪当前头像</el-button>
+              </div>
               <el-input v-model="form.avatarUrl" placeholder="可直接粘贴头像地址，或从媒体库选择" />
             </div>
           </div>
@@ -170,16 +173,23 @@ function findLegacyContactValue(types: string[]): string {
  */
 function handleAvatarSelect(value: string | string[]): void {
   const nextUrl = typeof value === 'string' ? value.trim() : value[0]?.trim() || '';
-  if (!nextUrl) {
-    form.avatarUrl = '';
+  form.avatarUrl = nextUrl;
+}
+
+/**
+ * 打开当前头像的裁剪弹窗。
+ *
+ * @returns 无返回值。
+ * @throws 该函数不会主动抛出异常；无头像时会直接忽略。
+ * @author Dyx
+ */
+function openAvatarCropper(): void {
+  const currentUrl = form.avatarUrl?.trim();
+  if (!currentUrl) {
     return;
   }
-  if (nextUrl === form.avatarUrl) {
-    form.avatarUrl = nextUrl;
-    return;
-  }
-  pendingAvatarUrl.value = nextUrl;
-  pendingAvatarName.value = extractFileName(nextUrl);
+  pendingAvatarUrl.value = currentUrl;
+  pendingAvatarName.value = extractFileName(currentUrl);
   avatarCropperVisible.value = true;
 }
 
@@ -219,8 +229,8 @@ async function handleAvatarCropConfirm(payload: CropConfirmPayload): Promise<voi
     return;
   }
   try {
-    const response = await uploadAdminMedia(payload.file);
-    form.avatarUrl = response.data?.fileUrl ?? form.avatarUrl;
+    const result = await uploadAdminMedia(payload.file);
+    form.avatarUrl = (result as { data?: { fileUrl: string } })?.data?.fileUrl ?? form.avatarUrl;
     ElMessage.success('头像裁剪并上传成功');
   } catch (error) {
     ElMessage.error('头像上传失败');
@@ -235,9 +245,10 @@ async function handleAvatarCropConfirm(payload: CropConfirmPayload): Promise<voi
  * @author Dyx
  */
 async function loadProfile(): Promise<void> {
-  const response = await getAdminProfile();
-  Object.assign(form, response.data ?? {});
-  contactMethods.value = resolveProfileContactMethods(response.data ?? {});
+  const result = await getAdminProfile();
+  const profileData = (result as { data?: ProfileData })?.data ?? {};
+  Object.assign(form, profileData);
+  contactMethods.value = resolveProfileContactMethods(profileData);
 }
 
 /**
@@ -262,9 +273,10 @@ async function handleSave(): Promise<void> {
       wechat: findLegacyContactValue(['wechat', '微信']),
       githubUrl: findLegacyContactValue(['github'])
     };
-    const response = await updateAdminProfile(payload);
-    Object.assign(form, response.data ?? {});
-    contactMethods.value = resolveProfileContactMethods(response.data ?? payload);
+    const result = await updateAdminProfile(payload);
+    const updatedProfile = (result as { data?: ProfileData })?.data ?? payload;
+    Object.assign(form, updatedProfile);
+    contactMethods.value = resolveProfileContactMethods(updatedProfile);
     ElMessage.success('资料保存成功');
   } finally {
     saving.value = false;

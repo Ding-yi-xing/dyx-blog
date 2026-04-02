@@ -15,12 +15,7 @@
         <div class="rounded-[20px] bg-slate-900 p-4">
           <div
             class="h-[460px] overflow-hidden rounded-[16px] bg-slate-950/90"
-            @pointerdown.capture="handlePointerDown"
-            @pointermove.capture="handlePointerMove"
-            @pointerup.capture="handlePointerUp"
-            @pointercancel.capture="handlePointerUp"
-            @pointerleave.capture="handlePointerUp"
-            @wheel.capture="markEdited"
+            @wheel="markEdited"
           >
             <VueCropper
               v-if="visible && cropSourceUrl"
@@ -32,8 +27,7 @@
               :auto-crop="true"
               :auto-crop-width="config.autoCropWidth"
               :auto-crop-height="config.autoCropHeight"
-              :fixed="true"
-              :fixed-number="config.fixedNumber"
+              :fixed="false"
               :fixed-box="false"
               :can-scale="true"
               :can-move="true"
@@ -48,6 +42,8 @@
               class="h-full w-full"
               @realTime="handleRealtime"
               @imgLoad="handleImgLoad"
+              @imgMoving="markEdited"
+              @cropMoving="markEdited"
             />
             <div
               v-else
@@ -83,15 +79,17 @@
             >
               <div
                 v-if="hasPreview"
-                :style="previewFrameStyle"
+                :style="previewViewportStyle"
                 class="preview-frame"
               >
-                <div :style="preview.div">
-                  <img
-                    :src="preview.url || cropSourceUrl"
-                    :style="preview.img"
-                    alt="avatar-preview"
-                  />
+                <div :style="previewContentStyle">
+                  <div :style="preview.div">
+                    <img
+                      :src="preview.url || cropSourceUrl"
+                      :style="preview.img"
+                      alt="avatar-preview"
+                    />
+                  </div>
                 </div>
               </div>
               <span v-else class="text-xs text-slate-400">等待预览</span>
@@ -106,15 +104,17 @@
               <div class="relative h-32 w-full bg-slate-900">
                 <div
                   v-if="hasPreview"
-                  :style="previewFrameStyle"
+                  :style="previewViewportStyle"
                   class="preview-frame absolute inset-0"
                 >
-                  <div :style="preview.div">
-                    <img
-                      :src="preview.url || cropSourceUrl"
-                      :style="preview.img"
-                      alt="hero-background-preview"
-                    />
+                  <div :style="previewContentStyle">
+                    <div :style="preview.div">
+                      <img
+                        :src="preview.url || cropSourceUrl"
+                        :style="preview.img"
+                        alt="hero-background-preview"
+                      />
+                    </div>
                   </div>
                 </div>
                 <div
@@ -148,15 +148,17 @@
               >
                 <div
                   v-if="hasPreview"
-                  :style="previewFrameStyle"
+                  :style="previewViewportStyle"
                   class="preview-frame"
                 >
-                  <div :style="preview.div">
-                    <img
-                      :src="preview.url || cropSourceUrl"
-                      :style="preview.img"
-                      alt="hero-portrait-preview"
-                    />
+                  <div :style="previewContentStyle">
+                    <div :style="preview.div">
+                      <img
+                        :src="preview.url || cropSourceUrl"
+                        :style="preview.img"
+                        alt="hero-portrait-preview"
+                      />
+                    </div>
                   </div>
                 </div>
                 <span v-else class="px-4 text-center text-xs text-slate-400"
@@ -181,12 +183,12 @@
     <template #footer>
       <div class="flex flex-wrap items-center justify-between gap-3">
         <p class="text-sm text-slate-500">
-          未调整裁剪区域时会直接使用原图，只有实际编辑后才重新上传。
+          调整完成后确认生成裁剪图片；未调整时会直接沿用原图。
         </p>
         <div class="flex gap-3">
           <el-button @click="emit('update:visible', false)">取消</el-button>
           <el-button type="primary" :loading="exporting" @click="handleConfirm"
-            >确认裁剪并上传</el-button
+            >确认裁剪</el-button
           >
         </div>
       </div>
@@ -212,10 +214,6 @@ interface CropperInstance {
   rotateLeft: () => void;
   rotateRight: () => void;
   getCropBlob: (callback: (blob: Blob | null) => void) => void;
-  trueWidth?: number;
-  trueHeight?: number;
-  cropW?: number;
-  cropH?: number;
 }
 
 interface CropPreviewData {
@@ -251,7 +249,7 @@ const exporting = ref(false);
 const cropperKey = ref(0);
 const preview = ref<CropPreviewData>({});
 const edited = ref(false);
-const pointerStart = ref<{ x: number; y: number } | null>(null);
+
 
 /**
  * 根据裁剪模式返回弹窗标题、说明文案与固定裁剪比例。
@@ -292,11 +290,23 @@ const cropSourceUrl = computed(() => {
   return imageUrl ? getAdminMediaContentUrl(imageUrl) : "";
 });
 const hasPreview = computed(() => !!preview.value.div && !!preview.value.img);
-const previewFrameStyle = computed(() => ({
-  width: `${preview.value.w ?? 0}px`,
-  height: `${preview.value.h ?? 0}px`,
+const previewViewportStyle = computed(() => ({
+  width: "100%",
+  height: "100%",
   overflow: "hidden",
 }));
+const previewContentStyle = computed(() => {
+  const width = preview.value.w ?? 0;
+  const height = preview.value.h ?? 0;
+  if (!width || !height) {
+    return {};
+  }
+  return {
+    width: `${width}px`,
+    height: `${height}px`,
+    margin: "0 auto",
+  };
+});
 
 /**
  * 监听弹窗显示状态与图片来源变化，重置裁剪器内部状态。
@@ -308,12 +318,10 @@ watch(
       cropperRef.value = null;
       preview.value = {};
       edited.value = false;
-      pointerStart.value = null;
       return;
     }
     preview.value = {};
     edited.value = false;
-    pointerStart.value = null;
     cropperKey.value += 1;
     await nextTick();
   },
@@ -333,50 +341,8 @@ function handleRealtime(data: CropPreviewData): void {
 }
 
 /**
- * 记录首次按下指针时的位置，用于判断用户是否实际拖动过裁剪区域。
- *
- * @param event 当前指针事件对象。
- * @returns 无返回值。
- * @throws 该函数不会主动抛出异常；仅记录本地指针起点。
- * @author Dyx
- */
-function handlePointerDown(event: PointerEvent): void {
-  pointerStart.value = { x: event.clientX, y: event.clientY };
-}
-
-/**
- * 在拖动过程中判断位移是否超过阈值，超过后标记为已编辑。
- *
- * @param event 当前指针事件对象。
- * @returns 无返回值。
- * @throws 该函数不会主动抛出异常；仅更新是否已编辑的状态。
- * @author Dyx
- */
-function handlePointerMove(event: PointerEvent): void {
-  if (!pointerStart.value || edited.value) {
-    return;
-  }
-  const distanceX = Math.abs(event.clientX - pointerStart.value.x);
-  const distanceY = Math.abs(event.clientY - pointerStart.value.y);
-  if (distanceX > 3 || distanceY > 3) {
-    edited.value = true;
-  }
-}
-
-/**
- * 清理当前指针起点记录，结束一次拖动检测。
- *
- * @returns 无返回值。
- * @throws 该函数不会主动抛出异常；仅重置本地指针状态。
- * @author Dyx
- */
-function handlePointerUp(): void {
-  pointerStart.value = null;
-}
-
-/**
  * 手动将当前图片标记为已编辑。
- * 供滚轮缩放等无法通过拖动距离判断的交互复用。
+ * 供滚轮缩放等交互复用。
  *
  * @returns 无返回值。
  * @throws 该函数不会主动抛出异常；仅更新编辑标记。
@@ -417,32 +383,17 @@ function handleRotate(degree: number): void {
 }
 
 /**
- * 在图片加载成功后，将裁剪框尺寸初始化为原图尺寸。
- * 这样用户未做任何调整时，确认按钮会直接复用原图而不是输出新的裁剪结果。
+ * 处理图片加载完成事件。
  *
  * @param status vue-cropper 返回的图片加载状态。
  * @returns 无返回值。
- * @throws 该函数不会主动抛出异常；内部尺寸字段不可用时会保持当前默认裁剪框。
+ * @throws 该函数不会主动抛出异常。
  * @author Dyx
  */
 function handleImgLoad(status: string): void {
   if (status === "success") {
-    // 图片加载成功后，将裁剪框设置为图片原始大小，实现默认全选
-    nextTick(() => {
-      if (cropperRef.value) {
-        // @ts-ignore: vue-cropper internal method
-        const imgW = cropperRef.value.trueWidth;
-        // @ts-ignore: vue-cropper internal method
-        const imgH = cropperRef.value.trueHeight;
-        if (imgW && imgH) {
-          // 强制设置裁剪框为图片原始尺寸
-          // @ts-ignore: vue-cropper internal method
-          cropperRef.value.cropW = imgW;
-          // @ts-ignore: vue-cropper internal method
-          cropperRef.value.cropH = imgH;
-        }
-      }
-    });
+    // 图片加载成功，无需手动设置裁剪框尺寸
+    // vue-cropper 会根据配置自动处理
   }
 }
 
@@ -457,7 +408,6 @@ function handleReset(): void {
   cropperRef.value = null;
   preview.value = {};
   edited.value = false;
-  pointerStart.value = null;
   cropperKey.value += 1;
 }
 
@@ -511,7 +461,6 @@ function handleClosed(): void {
   cropperRef.value = null;
   preview.value = {};
   edited.value = false;
-  pointerStart.value = null;
   cropperKey.value += 1;
 }
 
