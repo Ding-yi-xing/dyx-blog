@@ -224,8 +224,11 @@ function applyFormData(data?: SystemConfigData): void {
  * @author Dyx
  */
 async function loadSystemConfig(): Promise<void> {
-  const response = await getAdminSystemConfig();
-  applyFormData(response.data);
+  const result = await getAdminSystemConfig();
+  const configData = (result as { data?: SystemConfigData })?.data;
+  if (configData) {
+    applyFormData(configData);
+  }
 }
 
 /**
@@ -262,8 +265,11 @@ async function handleSave(): Promise<void> {
   }
   saving.value = true;
   try {
-    const response = await updateAdminSystemConfig(buildPayload());
-    applyFormData(response.data);
+    const result = await updateAdminSystemConfig(buildPayload());
+    const updatedConfig = (result as { data?: SystemConfigData })?.data;
+    if (updatedConfig) {
+      applyFormData(updatedConfig);
+    }
     ElMessage.success('系统配置保存成功');
   } catch (error) {
     ElMessage.error(resolveErrorMessage(error, '系统配置保存失败'));

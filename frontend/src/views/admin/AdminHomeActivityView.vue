@@ -20,19 +20,19 @@
         </div>
 
         <div class="grid gap-4 sm:grid-cols-2">
-          <RouterLink to="/admin/posts" class="rounded-[20px] border border-slate-200 bg-white p-4 transition hover:border-slate-300 hover:shadow-sm">
+          <RouterLink to="/dyx-manager/posts" class="rounded-[20px] border border-slate-200 bg-white p-4 transition hover:border-slate-300 hover:shadow-sm">
             <p class="text-sm font-semibold text-slate-900">去博客管理</p>
             <p class="mt-2 text-sm leading-6 text-slate-500">调整文章发布时间、封面与摘要。</p>
           </RouterLink>
-          <RouterLink to="/admin/moments" class="rounded-[20px] border border-slate-200 bg-white p-4 transition hover:border-slate-300 hover:shadow-sm">
+          <RouterLink to="/dyx-manager/moments" class="rounded-[20px] border border-slate-200 bg-white p-4 transition hover:border-slate-300 hover:shadow-sm">
             <p class="text-sm font-semibold text-slate-900">去动态管理</p>
             <p class="mt-2 text-sm leading-6 text-slate-500">维护近期动态内容和展示顺序。</p>
           </RouterLink>
-          <RouterLink to="/admin/works" class="rounded-[20px] border border-slate-200 bg-white p-4 transition hover:border-slate-300 hover:shadow-sm">
+          <RouterLink to="/dyx-manager/works" class="rounded-[20px] border border-slate-200 bg-white p-4 transition hover:border-slate-300 hover:shadow-sm">
             <p class="text-sm font-semibold text-slate-900">去作品管理</p>
             <p class="mt-2 text-sm leading-6 text-slate-500">补充作品展示，影响首页更新节奏卡片。</p>
           </RouterLink>
-          <RouterLink to="/admin/honors" class="rounded-[20px] border border-slate-200 bg-white p-4 transition hover:border-slate-300 hover:shadow-sm">
+          <RouterLink to="/dyx-manager/honors" class="rounded-[20px] border border-slate-200 bg-white p-4 transition hover:border-slate-300 hover:shadow-sm">
             <p class="text-sm font-semibold text-slate-900">去荣誉管理</p>
             <p class="mt-2 text-sm leading-6 text-slate-500">维护获奖与成果内容。</p>
           </RouterLink>

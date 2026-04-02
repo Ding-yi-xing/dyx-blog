@@ -240,9 +240,10 @@ function formatDateTime(value?: string): string {
 async function loadDashboardSummary(): Promise<void> {
   loading.value = true;
   try {
-    const response = await getDashboardSummary();
-    if (response.data) {
-      summary.value = response.data;
+    const result = await getDashboardSummary();
+    const summaryData = (result as { data?: DashboardSummaryData })?.data;
+    if (summaryData) {
+      summary.value = summaryData;
     }
   } finally {
     loading.value = false;

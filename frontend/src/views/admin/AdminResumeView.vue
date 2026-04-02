@@ -42,10 +42,14 @@
         <div>
           <h2 class="text-xl font-semibold text-slate-900">项目经历管理</h2>
         </div>
-        <el-button type="primary" @click="openCreateDialog">新建项目</el-button>
+        <div class="flex items-center gap-3">
+          <el-button type="danger" plain :disabled="!selectedIds.length" @click="handleBatchDeleteProjects">批量删除</el-button>
+          <el-button type="primary" @click="openCreateDialog">新建项目</el-button>
+        </div>
       </div>
 
-      <el-table :data="projects" border>
+      <el-table ref="tableRef" :data="projects" border @selection-change="handleSelectionChange">
+        <el-table-column type="selection" width="52" align="center" />
         <el-table-column prop="name" label="项目名称" min-width="220" />
         <el-table-column prop="techStack" label="技术栈" min-width="180" />
         <el-table-column prop="roleName" label="角色" width="140" />
@@ -109,6 +113,7 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import AdminMediaPicker from '@/views/admin/AdminMediaPicker.vue';
 import {
   deleteAdminProject,
+  deleteAdminProjects,
   getAdminProfile,
   getAdminProjects,
   saveAdminProject,
@@ -124,6 +129,8 @@ const savingProfile = ref(false);
 const savingProject = ref(false);
 const dialogVisible = ref(false);
 const rawList = ref<ProjectData[]>([]);
+const selectedIds = ref<number[]>([]);
+const tableRef = ref<{ clearSelection: () => void } | null>(null);
 
 const form = reactive<ProfileData>({
   id: 1,
@@ -164,6 +171,15 @@ const projects = computed(() =>
   }))
 );
 
+function resetSelection(): void {
+  tableRef.value?.clearSelection();
+  selectedIds.value = [];
+}
+
+function handleSelectionChange(selection: Array<ProjectData & { raw?: ProjectData }>): void {
+  selectedIds.value = selection.map((item) => Number(item.id)).filter((id) => !Number.isNaN(id));
+}
+
 /**
  * 获取简历主信息并回填到页面表单。
  *
@@ -172,8 +188,9 @@ const projects = computed(() =>
  * @author Dyx
  */
 async function loadProfile(): Promise<void> {
-  const response = await getAdminProfile();
-  Object.assign(form, response.data ?? {});
+  const result = await getAdminProfile();
+  const profileData = (result as { data?: ProfileData })?.data ?? {};
+  Object.assign(form, profileData);
 }
 
 /**
@@ -184,8 +201,9 @@ async function loadProfile(): Promise<void> {
  * @author Dyx
  */
 async function loadProjects(): Promise<void> {
-  const response = await getAdminProjects();
-  rawList.value = response.data ?? [];
+  const result = await getAdminProjects();
+  const projectsData = (result as { data?: ProjectData[] })?.data;
+  rawList.value = Array.isArray(projectsData) ? projectsData : [];
 }
 
 /**
@@ -296,10 +314,32 @@ async function handleDeleteProject(item: ProjectData): Promise<void> {
     await deleteAdminProject(item.id);
     ElMessage.success('项目删除成功');
     await loadProjects();
+    resetSelection();
   } catch (error) {
-    if (error !== 'cancel') {
-      ElMessage.error('项目删除失败');
+    if (error === 'cancel' || error === 'close') {
+      return;
     }
+    ElMessage.error('项目删除失败');
+  }
+}
+
+async function handleBatchDeleteProjects(): Promise<void> {
+  if (!selectedIds.value.length) {
+    return;
+  }
+  try {
+    await ElMessageBox.confirm(`确认删除选中的 ${selectedIds.value.length} 个项目吗？`, '批量删除确认', {
+      type: 'warning'
+    });
+    await deleteAdminProjects(selectedIds.value);
+    ElMessage.success('项目批量删除成功');
+    await loadProjects();
+    resetSelection();
+  } catch (error) {
+    if (error === 'cancel' || error === 'close') {
+      return;
+    }
+    ElMessage.error('项目批量删除失败');
   }
 }
 

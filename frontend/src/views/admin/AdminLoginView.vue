@@ -86,8 +86,11 @@ async function handleLogin(): Promise<void> {
   }
   submitting.value = true;
   try {
-    const response = await adminLogin(form);
-    authStore.setAuth(response.data.token, response.data.user);
+    const result = await adminLogin(form);
+    const loginData = (result as { data?: { token: string; user: any } })?.data;
+    if (loginData) {
+      authStore.setAuth(loginData.token, loginData.user);
+    }
     ElMessage.success('登录成功');
     await router.push(resolveRedirectPath(route.query.redirect));
   } catch (error) {
