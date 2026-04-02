@@ -115,7 +115,7 @@ Authorization: Bearer <token>
 ### 2.4 ProjectData
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|---:|---|
-| id | number | 是 | 主键 |
+| id | string \| number | 是 | 主键（Long 主键以字符串返回，避免前端精度丢失） |
 | name | string | 是 | 项目名称 |
 | roleName | string | 否 | 角色名 |
 | description | string | 否 | 项目描述 |
@@ -125,7 +125,6 @@ Authorization: Bearer <token>
 | sortOrder | number | 否 | 排序值 |
 | published | number | 否 | 发布状态 |
 | updatedAt | string | 否 | 更新时间 |
-
 ### 2.5 WorkData
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|---:|---|

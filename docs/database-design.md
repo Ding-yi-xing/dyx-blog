@@ -14,11 +14,12 @@
 - `id` bigint 主键
 - `title` varchar(200) 标题
 - `summary` varchar(500) 摘要
-- `content` longtext 内容
+- `content` longtext 内容，当前用于保存经过白名单清洗的博客 HTML 正文
 - `cover_image` varchar(255) 封面图
 - `category` varchar(100) 分类
 - `tags` varchar(255) 标签
 - `published` tinyint 是否发布
+- `published_at` datetime 业务发布日期，用于前台展示与排序
 - `view_count` int 浏览量
 - `created_at` datetime 创建时间
 - `updated_at` datetime 更新时间
@@ -165,6 +166,7 @@
 - 荣誉与动态均支持多图扩展，因此保留 `image_urls` 字段
 - 荣誉的图片展示与证书下载分离处理，附件通过 `attachment_url` 保存
 - 文章详情会累加 `dyx_post.view_count`，后台仪表盘聚合展示博客总浏览量
+- 博客列表与详情页优先使用 `dyx_post.published_at` 作为业务发布日期展示；若历史数据缺失则回退到 `updated_at`
 - 页面访问量通过 `dyx_site_visit_stat` 按页面 key 累计，当前覆盖 `home`、`profile`、`resume`、`moments`、`blog`、`blog-detail`
 - 页面访问明细通过 `dyx_site_visit_log` 保留，可用于设备分布、热门页面与独立访问日志模块展示
 - 仪表盘仅展示访问概览型统计，访问日志明细独立放在后台“访问日志”模块中
@@ -196,6 +198,7 @@
 
 ## 16. 旧库兼容说明
 - 应用启动时会自动补齐历史库缺失的 `dyx_profile.resume_pdf_url` 字段
+- 初始化 SQL 已包含 `dyx_post.published_at` 字段定义；旧库升级时需手动补齐该字段，并为历史文章按 `updated_at / created_at` 回填业务发布日期
 - 应用启动时会自动补齐历史库缺失的 `dyx_profile.guestbook_intro` 与 `dyx_profile.contact_methods` 字段
 - 应用启动时会自动确保 `dyx_work`、`dyx_site_visit_stat`、`dyx_site_visit_log`、`dyx_guestbook_message`、`dyx_footprint` 与 `dyx_system_config` 表存在
 - 若旧库中的 `dyx_site_visit_log` 尚未包含 `device_name` 字段，启动时会自动补齐

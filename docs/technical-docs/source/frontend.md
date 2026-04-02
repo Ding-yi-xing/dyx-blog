@@ -293,12 +293,13 @@ adminHttp.interceptors.request.use((config) => {
 
 #### 场景
 
-首页首屏不是固定模板，而是允许后台通过配置调整眉题、标题、副标题、标签和图片。
+首页首屏不是固定模板，而是允许后台通过配置调整眉题、标题、副标题、标签和图片，同时需要在不同屏宽下保持稳定的视觉节奏。
 
 #### 需求
 
 - 配置缺失时也能安全回退。
 - 需要保持页面结构可预测。
+- 首屏左侧文字与右侧主图在桌面端要有明确层级与留白，不因默认字号过小导致视觉重心不足。
 
 #### 实现方案
 
@@ -307,33 +308,68 @@ adminHttp.interceptors.request.use((config) => {
 - `createDefaultHeroConfig()`：生成默认配置。
 - `parseHeroConfig()`：解析 profile 中的 JSON 配置，失败则回退默认值。
 
+`frontend/src/views/web/HomeView.vue` 在渲染层追加了针对 Hero 首屏的响应式样式控制：
+
+- 放大 eyebrow、标题、副标题与按钮尺寸，强化首屏层级。
+- 调整 `heroGridClass`，让右侧图片列在大屏下略大于左侧文案列。
+- 提升外层横向 padding、列间距以及文案区右内边距，让左文右图之间的呼吸感更接近设计参考图。
+- 增大主图最大高度，并在大屏下增加左侧留白，使图片主体更靠右展示。
+
 #### 选型理由
 
-把配置解析逻辑放在 API/types 层，可以让 View 层专注于渲染，而不是处理 JSON 容错。
+把配置解析逻辑放在 API/types 层，可以让 View 层专注于渲染，而针对视觉节奏的调整保留在 View 层完成，也更符合首屏样式按页面语义微调的需求。
 
 #### 核心源码定位
 
 - `frontend/src/api/modules/site.ts:196-255`
+- `frontend/src/views/web/HomeView.vue:20-101`
+- `frontend/src/views/web/HomeView.vue:444-468`
 
 ```ts
-try {
-  const parsed = JSON.parse(profile.heroConfig) as Partial<HeroConfigData>;
-  if (!parsed || !Array.isArray(parsed.blocks)) {
-    return fallback;
-  }
-  return {
-    version: typeof parsed.version === 'number' ? parsed.version : 1,
-    blocks: parsed.blocks as HeroBlock[]
-  };
-} catch {
-  return fallback;
-}
+const heroGridClass = computed(() =>
+  hasHeroImage.value
+    ? "lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]"
+    : "lg:grid-cols-1"
+);
 ```
 
 #### 替代方案对比
 
-- 替代方案：页面组件内部直接 `JSON.parse`。
-- 弃用原因：多个页面或后台表单若都要解析，会造成逻辑分散；当前实现把容错收敛到了类型层。
+- 替代方案：仅调整标题字号，不改布局间距与图片占比。
+- 弃用原因：只能局部放大文本，无法同时改善左侧内容密度、按钮存在感和右侧图片的展示重心，整体观感仍会偏“缩在一起”。
+
+### 4.6 博客详情富文本渲染兼容
+
+#### 场景
+
+博客正文由后台富文本编辑器以 HTML 形式保存，但历史数据中可能存在已被 HTML 实体转义的内容，导致前台详情页直接显示 `<p>`、`<h2>` 等标签文本。
+
+#### 需求
+
+- 正常 HTML 正文应继续按富文本渲染。
+- 已转义的历史正文也需要在详情页中恢复为可渲染的 HTML。
+- 不影响摘要兜底与现有样式体系。
+
+#### 实现方案
+
+`frontend/src/views/web/BlogDetailView.vue` 在渲染层增加 `renderedContent` 计算属性：
+
+- 对 `post.content` 为空的情况直接返回空字符串。
+- 对包含 `&lt;` 的内容先通过浏览器 `textarea` 能力做一次 HTML 实体解码。
+- 模板改为优先渲染 `renderedContent`，兼容正常 HTML 与历史转义 HTML 两类数据。
+
+#### 选型理由
+
+问题更像历史入库数据格式不一致，而不是当前富文本编辑/保存链路整体失效。把兼容逻辑放在详情页渲染层，可以最小范围修复线上展示问题，同时不改变后台编辑器与后端 XSS 清洗策略。
+
+#### 核心源码定位
+
+- `frontend/src/views/web/BlogDetailView.vue`
+
+#### 替代方案对比
+
+- 替代方案：修改后端读取接口，统一反转义正文。
+- 暂未采用原因：会扩大影响范围，并混入“历史数据修复”与“接口语义调整”两类变更；当前以前端兼容修复更直接。
 
 ### 4.7 足迹地图渲染
 
@@ -386,7 +422,49 @@ function ensureWorldLayer(AMap: AMapNamespace): void {
 - 替代方案：用静态图片或纯 SVG 地图渲染。
 - 弃用原因：交互缩放、拖拽、城市级标注能力较弱，难以达到当前视觉效果。
 
-### 4.8 WebLayout 主题与导航可见性控制
+### 4.9 关于页作品区横向滚动优化
+
+#### 场景
+
+`ProfileView` 中的“个人作品”和“荣誉时间线”都包含横向滚动区域。除了滚轮横向滚动外，桌面端用户还希望能像拖拽内容轨道一样直接拖动区域，并且拖拽时不要触发页面滚动或误点卡片内容。
+
+#### 需求
+
+- 作品区与荣誉区在滚轮交互时只滚动各自区域。
+- 支持鼠标拖拽横向滚动。
+- 拖拽结束后不要误触发卡片点击。
+- 荣誉时间线在桌面端滚轮滚动时保持线性跟手，不出现输入结束后的持续自动滚动。
+- 荣誉时间线桌面端的滚轮步幅需要比移动端更稳，避免单次滚动过冲。
+- 不影响移动端原生触摸横滑。
+
+#### 实现方案
+
+在 `frontend/src/views/web/ProfileView.vue` 中：
+
+- 为作品区与荣誉区滚动容器都绑定 `wheel`、`pointerdown`、`pointermove`、`pointerup`、`pointercancel`、`pointerleave` 和捕获阶段 `click` 事件。
+- 抽出 `handleHorizontalWheel()`，当鼠标位于横向滚动区域内时始终 `preventDefault()`，并把滚轮输入直接转换为 `scrollLeft` 变化，从而阻止整页继续滚动，同时保持“滚多少滑多少”的线性手感。
+- 抽出 `handleHorizontalPointerDown/Move/Up()`，记录起始指针位置与滚动偏移，支持鼠标拖拽横向移动；拖拽过程中显式 `preventDefault()`，避免文本选择和浏览器默认行为干扰跟手性。
+- 使用 `shouldSuppressDragClick` 在拖拽后短暂抑制点击，避免把“拖拽结束”识别成打开素材或跳转链接。
+- 对荣誉时间线桌面端单独做步幅归一化处理：通过给通用滚轮逻辑传入缩放系数来减小桌面端单次滚动距离，而不是重新构造事件对象；手机端仍保持原始映射。
+- 荣誉卡片内的图片 / 视频媒体区域通过 `@pointerdown.stop` 与横向拖拽容器隔离，避免点击预览图片或操作视频控件时被误判为横向拖拽。
+- 为 `.works-scroll` / `.honors-scroll` 增加 `cursor: grab` / `grabbing`、`user-select: none`、`-webkit-overflow-scrolling: touch` 与 `overscroll-behavior-x: contain`，优化可拖拽反馈和横向滚动体验。
+
+#### 选型理由
+
+该方案只增强横向滚动容器本身的交互，不改作品卡片与荣誉时间线的数据结构和内容布局，改动范围小，但能明显提升桌面端浏览手感。
+
+#### 核心源码定位
+
+- `frontend/src/views/web/ProfileView.vue:68-78`
+- `frontend/src/views/web/ProfileView.vue:265-273`
+- `frontend/src/views/web/ProfileView.vue:568-650`
+
+#### 替代方案对比
+
+- 替代方案：引入第三方拖拽/轮播库统一处理横向滑动。
+- 弃用原因：当前需求只涉及两个简单横向滚动容器，使用原生事件即可完成，没必要额外增加依赖和复杂度。
+
+### 4.10 WebLayout 主题与导航可见性控制
 
 #### 场景
 
@@ -565,6 +643,7 @@ onMounted(() => {
 - 媒体库负责统一上传、列表选择与资源复用。
 - 业务表单可以直接使用原图，也可以按业务场景单独裁剪。
 - 裁剪预览需要尽量贴近最终展示效果。
+- 后台已选图片与媒体库图片在桌面端需要支持点击放大预览，便于编辑时核对细节。
 
 #### 实现方案
 
@@ -572,24 +651,27 @@ onMounted(() => {
 2. 图片资源在弹窗中拆分为“直接使用”和“裁剪后使用”两条路径，避免把媒体库强耦合成裁剪器。
 3. `frontend/src/components/admin/BusinessImageCropper.vue:1-195` 根据 `avatar`、`hero-background`、`hero-portrait` 三种业务模式切换预览布局。
 4. 当前裁剪框已允许自由缩放，预览区根据实时裁剪结果自适应，不再强制固定比例缩放框。
+5. `AdminMediaPicker` 内的已选图片列表与媒体库图片卡片都改为 `el-image`，并启用 `preview-src-list` + `preview-teleported`，使后台编辑场景下可直接点击缩略图查看大图。
 
 #### 选型理由
 
-把“媒体资源管理”和“业务图片加工”拆开后，媒体库仍然保持通用，而具体业务页面可以决定是否需要裁剪以及采用哪种预览样式。
+把“媒体资源管理”和“业务图片加工”拆开后，媒体库仍然保持通用，而具体业务页面可以决定是否需要裁剪以及采用哪种预览样式；同时复用 Element Plus 原生预览能力，比额外维护一套自定义图片灯箱更轻、更稳定。
 
 #### 核心源码定位
 
-- `frontend/src/views/admin/AdminMediaPicker.vue:69-208`
+- `frontend/src/views/admin/AdminMediaPicker.vue:4-45`
+- `frontend/src/views/admin/AdminMediaPicker.vue:104-147`
+- `frontend/src/views/admin/AdminMediaPicker.vue:349-354`
 - `frontend/src/components/admin/BusinessImageCropper.vue:19-46`
 - `frontend/src/components/admin/BusinessImageCropper.vue:72-169`
 - `frontend/src/components/admin/BusinessImageCropper.vue:256-308`
 
 #### 替代方案对比
 
-- 替代方案：在媒体库中统一强制裁剪后再返回结果。
-- 弃用原因：视频、PDF 等非图片资源不适用，且会让单纯复用原图的场景操作过重。
-- 替代方案：每个业务页面各自实现一套媒体选择与裁剪。
-- 弃用原因：重复代码多，媒体上传、预览、选择逻辑会分散。
+- 替代方案：继续使用普通 `<img>` 作为后台缩略图。
+- 弃用原因：编辑时无法直接核对原图细节，尤其在荣誉、头像、首屏配图等场景下不利于内容确认。
+- 替代方案：为后台单独实现自定义灯箱组件。
+- 弃用原因：当前只需要基础放大预览，复用 Element Plus 现有能力即可，没必要额外增加维护成本。
 
 
 ## 5. 数据流与状态管理

@@ -39,7 +39,19 @@ docs/       项目文档
 2. 导入初始化脚本：
    - `backend/src/main/resources/sql/dyx-blog-init.sql`
 
-说明：项目当前已有完整初始化 SQL，旧的 `schema.sql` 已不再作为当前主入口使用。
+说明：
+- 项目当前已有完整初始化 SQL，旧的 `schema.sql` 已不再作为当前主入口使用。
+- 初始化 SQL 已包含博客表 `dyx_post.published_at` 字段。
+- 初始化 SQL 已内置首批 8 篇 PDF 笔记整理博客数据；若数据库中不存在同名文章，导入脚本时会自动补入。
+- 若你的数据库是历史旧库而不是全新导入，请手动补齐 `published_at` 字段，并执行一次历史回填：
+
+```sql
+ALTER TABLE dyx_post ADD COLUMN published_at DATETIME NULL AFTER published;
+
+UPDATE dyx_post
+SET published_at = COALESCE(updated_at, created_at)
+WHERE published_at IS NULL;
+```
 
 ### 4.3 启动后端
 在 `backend` 目录执行：
@@ -118,6 +130,10 @@ npm install
 npm run build
 ```
 
+前端开发代理地址由环境变量控制：
+- `.env.local`：本地开发使用的 `/api`、`/media` 代理目标
+- `.env.production`：生产构建使用的代理目标占位配置
+
 将生成后的 `dist/` 部署到 Nginx 静态目录。
 
 ### 5.3 Nginx 代理要点
@@ -181,6 +197,10 @@ npm run build
 - 动态用于时间流式内容展示
 - 博客详情会累加阅读量
 - 公开页面会记录访问量
+- 博客列表与详情优先展示 `publishedAt`，若历史数据没有该字段值，则回退显示 `updatedAt`
+- 博客正文已支持后台富文本编辑，保存时以后端白名单清洗后的 HTML 形式落库，并在前台详情页按排版样式渲染
+- 当前初始化 SQL 已预置首批 8 篇 PDF 笔记整理博客，导库后即可在前台查看
+- 其中首批笔记博客正文已补充为富文本排版内容，并可按静态资源路径插入来源 PDF 的页面配图
 
 ## 7. 后台使用说明
 
@@ -237,6 +257,13 @@ npm run build
 - 编辑
 - 删除
 - 发布 / 草稿控制（视数据字段而定）
+
+博客管理补充说明：
+- 后台文章管理支持维护业务发布时间。
+- `publishedAt` 用于前台展示与排序，`updatedAt` 仍保留最后编辑时间语义。
+- 文章正文已改为富文本编辑器，支持标题、列表、引用、链接与图片 URL 等基础内容编排。
+- 正文保存后会由后端统一做 XSS 白名单清洗，前台详情页展示清洗后的 HTML 结果。
+- 若历史文章没有 `publishedAt`，建议按初始化 SQL 中的回填规则补齐。
 
 ### 7.5 首页配置
 包含：
