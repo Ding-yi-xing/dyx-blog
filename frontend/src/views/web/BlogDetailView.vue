@@ -53,6 +53,13 @@ import { getPostDetail, recordSiteVisit, type PostData } from '@/api/modules/sit
 import { formatDateYmd } from '@/utils/date';
 import { resolveErrorMessage } from '@/utils/error';
 
+const SITE_NAME = 'dyx-blog';
+const SITE_URL = 'https://www.dyx.company';
+const DEFAULT_TITLE = `博客详情 | ${SITE_NAME}`;
+const DEFAULT_DESCRIPTION = '查看 dyx-blog 的博客详情内容与文章摘要。';
+const DEFAULT_IMAGE = '';
+const JSON_LD_ID = 'dyx-blog-post-jsonld';
+
 const route = useRoute();
 const post = ref<Partial<PostData>>({});
 const loading = ref(false);
@@ -76,6 +83,125 @@ function decodeHtmlEntities(content?: string): string {
   return htmlEntityDecoder.value;
 }
 
+function stripHtml(content?: string): string {
+  if (!content) {
+    return '';
+  }
+  return content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function buildDescription(currentPost: Partial<PostData>): string {
+  const summary = currentPost.summary?.trim();
+  if (summary) {
+    return summary.slice(0, 120);
+  }
+  const plainTextContent = stripHtml(decodeHtmlEntities(currentPost.content));
+  if (plainTextContent) {
+    return plainTextContent.slice(0, 120);
+  }
+  return DEFAULT_DESCRIPTION;
+}
+
+function getSiteOrigin(): string {
+  if (typeof window === 'undefined') {
+    return SITE_URL;
+  }
+  const currentOrigin = window.location.origin;
+  if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(currentOrigin)) {
+    return currentOrigin;
+  }
+  return SITE_URL;
+}
+
+function upsertMeta(selector: string, attributes: Record<string, string>, content: string): void {
+  let element = document.head.querySelector<HTMLMetaElement>(selector);
+  if (!element) {
+    element = document.createElement('meta');
+    Object.entries(attributes).forEach(([key, value]) => element?.setAttribute(key, value));
+    document.head.appendChild(element);
+  }
+  element.setAttribute('content', content);
+}
+
+function upsertLink(selector: string, attributes: Record<string, string>, href: string): void {
+  let element = document.head.querySelector<HTMLLinkElement>(selector);
+  if (!element) {
+    element = document.createElement('link');
+    Object.entries(attributes).forEach(([key, value]) => element?.setAttribute(key, value));
+    document.head.appendChild(element);
+  }
+  element.setAttribute('href', href);
+}
+
+function removeMeta(selector: string): void {
+  document.head.querySelector(selector)?.remove();
+}
+
+function removeJsonLd(): void {
+  document.getElementById(JSON_LD_ID)?.remove();
+}
+
+function updateJsonLd(currentPost: Partial<PostData>, canonicalUrl: string, description: string): void {
+  removeJsonLd();
+  if (!currentPost.title) {
+    return;
+  }
+  const element = document.createElement('script');
+  element.type = 'application/ld+json';
+  element.id = JSON_LD_ID;
+  element.text = JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'BlogPosting',
+    headline: currentPost.title,
+    description,
+    mainEntityOfPage: canonicalUrl,
+    url: canonicalUrl,
+    image: currentPost.coverImage ? [currentPost.coverImage] : undefined,
+    datePublished: currentPost.publishedAt || undefined,
+    dateModified: currentPost.updatedAt || currentPost.publishedAt || undefined,
+    author: {
+      '@type': 'Person',
+      name: 'Dyx'
+    },
+    publisher: {
+      '@type': 'Person',
+      name: 'Dyx'
+    },
+    inLanguage: 'zh-CN'
+  });
+  document.head.appendChild(element);
+}
+
+function applyPostSeo(currentPost: Partial<PostData>): void {
+  const origin = getSiteOrigin();
+  const canonicalUrl = new URL(`/blog/${route.params.id}`, origin).toString();
+  const title = currentPost.title ? `${currentPost.title} | ${SITE_NAME}` : DEFAULT_TITLE;
+  const description = buildDescription(currentPost);
+  const image = currentPost.coverImage || DEFAULT_IMAGE;
+  const robots = currentPost.id ? 'index,follow,max-image-preview:large' : 'noindex,follow';
+
+  document.title = title;
+  upsertMeta('meta[name="description"]', { name: 'description' }, description);
+  upsertMeta('meta[name="robots"]', { name: 'robots' }, robots);
+  upsertMeta('meta[property="og:title"]', { property: 'og:title' }, title);
+  upsertMeta('meta[property="og:description"]', { property: 'og:description' }, description);
+  upsertMeta('meta[property="og:type"]', { property: 'og:type' }, 'article');
+  upsertMeta('meta[property="og:url"]', { property: 'og:url' }, canonicalUrl);
+  upsertMeta('meta[name="twitter:title"]', { name: 'twitter:title' }, title);
+  upsertMeta('meta[name="twitter:description"]', { name: 'twitter:description' }, description);
+  upsertLink('link[rel="canonical"]', { rel: 'canonical' }, canonicalUrl);
+
+  if (image) {
+    upsertMeta('meta[property="og:image"]', { property: 'og:image' }, image);
+    upsertMeta('meta[name="twitter:image"]', { name: 'twitter:image' }, image);
+  } else {
+    removeMeta('meta[property="og:image"]');
+    removeMeta('meta[name="twitter:image"]');
+  }
+
+  updateJsonLd(currentPost, canonicalUrl, description);
+}
+
 async function loadPostDetail(): Promise<void> {
   loading.value = true;
   errorMessage.value = '';
@@ -85,18 +211,22 @@ async function loadPostDetail(): Promise<void> {
     if (!nextPost.id) {
       post.value = {};
       errorMessage.value = '文章不存在或未发布。';
+      applyPostSeo({});
       return;
     }
     post.value = nextPost;
+    applyPostSeo(nextPost);
   } catch (error) {
     post.value = {};
     errorMessage.value = resolveErrorMessage(error, '文章加载失败，请稍后重试。');
+    applyPostSeo({});
   } finally {
     loading.value = false;
   }
 }
 
 onMounted(() => {
+  applyPostSeo(post.value);
   void recordSiteVisit('blog-detail');
   void loadPostDetail();
 });

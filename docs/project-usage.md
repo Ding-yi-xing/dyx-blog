@@ -136,6 +136,12 @@ npm run build
 
 将生成后的 `dist/` 部署到 Nginx 静态目录。
 
+SEO 相关静态文件：
+- `frontend/public/robots.txt`：声明公开页面抓取策略并指向站点地图
+- `frontend/public/sitemap.xml`：当前收录首页、博客、动态、关于我、简历、留言等公开页面
+- 前端已在运行时根据公开路由更新页面标题、描述、canonical、Open Graph / Twitter 标签
+- 博客详情页会在文章加载完成后动态更新文章级 SEO 信息与 `BlogPosting` 结构化数据
+
 ### 5.3 Nginx 代理要点
 - 前端静态资源由 Nginx 托管
 - `/api/` 反向代理到 Spring Boot

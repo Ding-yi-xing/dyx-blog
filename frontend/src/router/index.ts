@@ -3,6 +3,17 @@ import { useAuthStore } from '@/stores/auth';
 import WebLayout from '@/layouts/WebLayout.vue';
 import AdminLayout from '@/layouts/AdminLayout.vue';
 
+const SITE_NAME = 'dyx-blog';
+
+interface SeoMeta {
+  title?: string;
+  description?: string;
+  canonicalPath?: string;
+  ogType?: 'website' | 'article';
+  robots?: string;
+  pageBgClass?: string;
+}
+
 /**
  * 前台路由配置。
  * 负责承载个人站点相关页面。
@@ -13,18 +24,99 @@ const webRoutes: RouteRecordRaw[] = [
     component: WebLayout,
     meta: { pageBgClass: 'dyx-page-bg-default' },
     children: [
-      { path: '', name: 'dyx-home', component: () => import('@/views/web/HomeView.vue'), meta: { pageBgClass: 'dyx-page-bg-home-hero' } },
-      { path: 'moments', name: 'dyx-moments', component: () => import('@/views/web/MomentsView.vue') },
-      { path: 'moments/:id', name: 'dyx-moment-detail', component: () => import('@/views/web/MomentDetailView.vue') },
+      {
+        path: '',
+        name: 'dyx-home',
+        component: () => import('@/views/web/HomeView.vue'),
+        meta: {
+          pageBgClass: 'dyx-page-bg-home-hero',
+          title: `${SITE_NAME} | 个人主页、博客与简历`,
+          description: '浏览 dyx-blog 的个人主页、博客文章、项目经历、简历展示、动态记录与留言互动内容。',
+          canonicalPath: '/',
+          ogType: 'website'
+        } satisfies SeoMeta
+      },
+      {
+        path: 'moments',
+        name: 'dyx-moments',
+        component: () => import('@/views/web/MomentsView.vue'),
+        meta: {
+          title: `动态记录 | ${SITE_NAME}`,
+          description: '查看 dyx-blog 的动态记录，了解日常思考、项目进展与碎片化内容更新。',
+          canonicalPath: '/moments',
+          ogType: 'website'
+        } satisfies SeoMeta
+      },
+      {
+        path: 'moments/:id',
+        name: 'dyx-moment-detail',
+        component: () => import('@/views/web/MomentDetailView.vue'),
+        meta: {
+          title: `动态详情 | ${SITE_NAME}`,
+          description: '查看 dyx-blog 的动态详情内容。',
+          canonicalPath: '/moments',
+          ogType: 'article'
+        } satisfies SeoMeta
+      },
       { path: 'projects', redirect: '/resume' },
       { path: 'photos', redirect: '/about' },
       { path: 'experience', redirect: '/resume' },
-      { path: 'resume', name: 'dyx-resume', component: () => import('@/views/web/ExperienceView.vue') },
-      { path: 'guestbook', name: 'dyx-guestbook', component: () => import('@/views/web/GuestbookView.vue') },
+      {
+        path: 'resume',
+        name: 'dyx-resume',
+        component: () => import('@/views/web/ExperienceView.vue'),
+        meta: {
+          title: `个人简历 | ${SITE_NAME}`,
+          description: '查看 dyx-blog 的个人简历、教育经历、工作经历、项目经历与 PDF 简历信息。',
+          canonicalPath: '/resume',
+          ogType: 'website'
+        } satisfies SeoMeta
+      },
+      {
+        path: 'guestbook',
+        name: 'dyx-guestbook',
+        component: () => import('@/views/web/GuestbookView.vue'),
+        meta: {
+          title: `留言板 | ${SITE_NAME}`,
+          description: '在 dyx-blog 留言板中查看访客留言并留下你的建议与想法。',
+          canonicalPath: '/guestbook',
+          ogType: 'website'
+        } satisfies SeoMeta
+      },
       { path: 'profile', redirect: '/about' },
-      { path: 'about', name: 'dyx-about', component: () => import('@/views/web/ProfileView.vue') },
-      { path: 'blog', name: 'dyx-blog-list', component: () => import('@/views/web/BlogListView.vue') },
-      { path: 'blog/:id', name: 'dyx-blog-detail', component: () => import('@/views/web/BlogDetailView.vue') }
+      {
+        path: 'about',
+        name: 'dyx-about',
+        component: () => import('@/views/web/ProfileView.vue'),
+        meta: {
+          title: `关于我 | ${SITE_NAME}`,
+          description: '了解 dyx-blog 站点作者的个人介绍、联系方式、作品列表与荣誉经历。',
+          canonicalPath: '/about',
+          ogType: 'website'
+        } satisfies SeoMeta
+      },
+      {
+        path: 'blog',
+        name: 'dyx-blog-list',
+        component: () => import('@/views/web/BlogListView.vue'),
+        meta: {
+          title: `博客文章 | ${SITE_NAME}`,
+          description: '阅读 dyx-blog 发布的博客文章，涵盖技术总结、项目记录、学习笔记与个人思考。',
+          canonicalPath: '/blog',
+          ogType: 'website'
+        } satisfies SeoMeta
+      },
+      {
+        path: 'blog/:id',
+        name: 'dyx-blog-detail',
+        component: () => import('@/views/web/BlogDetailView.vue'),
+        meta: {
+          title: `博客详情 | ${SITE_NAME}`,
+          description: '查看 dyx-blog 的博客详情内容与文章摘要。',
+          canonicalPath: '/blog',
+          ogType: 'article'
+        } satisfies SeoMeta
+      }
     ]
   }
 ];
@@ -37,12 +129,13 @@ const adminRoutes: RouteRecordRaw[] = [
   {
     path: '/dyx-manager/login',
     name: 'dyx-admin-login',
-    component: () => import('@/views/admin/AdminLoginView.vue')
+    component: () => import('@/views/admin/AdminLoginView.vue'),
+    meta: { robots: 'noindex,nofollow' } satisfies SeoMeta
   },
   {
     path: '/dyx-manager',
     component: AdminLayout,
-    meta: { requiresAuth: true },
+    meta: { requiresAuth: true, robots: 'noindex,nofollow' } satisfies SeoMeta & { requiresAuth: boolean },
     children: [
       { path: '', redirect: '/dyx-manager/dashboard' },
       { path: 'dashboard', name: 'dyx-admin-dashboard', component: () => import('@/views/admin/AdminDashboardView.vue') },
