@@ -1,6 +1,8 @@
 package com.dyx.blog.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.dyx.blog.common.dto.GuestbookDataDTO;
 import com.dyx.blog.common.dto.HomeDataDTO;
 import com.dyx.blog.common.exception.BusinessException;
@@ -156,20 +158,23 @@ public class SiteServiceImpl implements SiteService {
      * @return 文章列表。
      */
     @Override
-    @Cacheable(value = "site", key = "'posts'")
+    @Cacheable(
+            value = "site",
+            key = "'posts:' + T(String).valueOf(#page == null ? 1 : #page) + ':' + T(String).valueOf(#pageSize == null ? 20 : #pageSize)"
+    )
     public List<Post> listPosts(Integer page, Integer pageSize) {
         int pageNo = normalizePage(page);
         int size = normalizePageSize(pageSize);
-        List<Post> posts = dyxPostMapper.selectList(new LambdaQueryWrapper<Post>()
-                .eq(Post::getPublished, 1)
-                .orderByDesc(Post::getPublishedAt)
-                .orderByDesc(Post::getUpdatedAt));
-        int fromIndex = (pageNo - 1) * size;
-        if (fromIndex >= posts.size()) {
-            return List.of();
-        }
-        int toIndex = Math.min(fromIndex + size, posts.size());
-        return posts.subList(fromIndex, toIndex);
+
+        Page<Post> pageReq = new Page<>(pageNo, size);
+        IPage<Post> pageResult = dyxPostMapper.selectPage(
+                pageReq,
+                new LambdaQueryWrapper<Post>()
+                        .eq(Post::getPublished, 1)
+                        .orderByDesc(Post::getPublishedAt)
+                        .orderByDesc(Post::getUpdatedAt)
+        );
+        return pageResult.getRecords();
     }
 
     /**

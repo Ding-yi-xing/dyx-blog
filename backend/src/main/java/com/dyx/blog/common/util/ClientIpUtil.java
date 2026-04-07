@@ -92,16 +92,38 @@ public final class ClientIpUtil {
 
     /**
      * 判断 remoteAddr 是否属于允许读取转发头的受信任代理来源。
+     * 当前实现将回环地址与常见私有网段视为受信代理来源。
      */
     private static boolean isTrustedProxy(String remoteAddr) {
         if (isBlank(remoteAddr)) {
             return false;
         }
-        return "127.0.0.1".equals(remoteAddr)
-                || "10.0.0.1".equals(remoteAddr)
-                || "172.16.0.1".equals(remoteAddr)
-                || "172.19.0.1".equals(remoteAddr)
-                || "192.168.0.1".equals(remoteAddr);
+        String addr = remoteAddr.trim();
+        // 本地回环地址
+        if ("127.0.0.1".equals(addr)) {
+            return true;
+        }
+        // 10.0.0.0/8
+        if (addr.startsWith("10.")) {
+            return true;
+        }
+        // 192.168.0.0/16
+        if (addr.startsWith("192.168.")) {
+            return true;
+        }
+        // 172.16.0.0/12
+        if (addr.startsWith("172.")) {
+            String[] parts = addr.split("\\.");
+            if (parts.length >= 2) {
+                try {
+                    int second = Integer.parseInt(parts[1]);
+                    return second >= 16 && second <= 31;
+                } catch (NumberFormatException ignored) {
+                    // 忽略解析失败，按非受信处理
+                }
+            }
+        }
+        return false;
     }
 
     /**

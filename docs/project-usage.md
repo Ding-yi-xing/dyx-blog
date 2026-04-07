@@ -15,7 +15,7 @@
 
 技术栈：
 - 前端：Vue 3、TypeScript、Pinia、Vue Router、Axios、Tailwind CSS、Element Plus
-- 后端：Spring Boot 3、MyBatis-Plus、MySQL、JWT
+- 后端：Spring Boot 3、MyBatis-Plus、MySQL、JWT、Spring Cache（默认使用 Redis 缓存公开站点常用数据）
 - 文件存储：本地存储 / 阿里云 OSS
 
 ## 3. 目录结构
@@ -117,7 +117,7 @@ export MYSQL_PORT=3306
 export MYSQL_USER=your_user
 export MYSQL_PWD=your_password
 export JWT_SECRET=replace_with_secure_secret
-export ENCRYPT_KEY=replace_with_32_char_key
+export DYX_ENCRYPT_KEY=replace_with_32_char_key
 
 nohup java -jar dyx-blog-1.0.0.jar --spring.profiles.active=prod > logs/stdout.log 2>&1 &
 ```

@@ -56,10 +56,17 @@ export MYSQL_PORT=3306
 export MYSQL_USER=dyx_user
 export MYSQL_PWD=你的数据库密码
 export JWT_SECRET=生成一个至少32位的随机字符串
-export ENCRYPT_KEY=生成一个32位的AES密钥
+export DYX_ENCRYPT_KEY=生成一个32位的AES密钥
+export SPRING_PROFILES_ACTIVE=prod
 
-nohup java -jar dyx-blog-1.0.0.jar --spring.profiles.active=prod > logs/stdout.log 2>&1 &
+# Redis 连接配置（如未配置则按 application.yml 默认值连接本地 Redis）
+export SPRING_DATA_REDIS_HOST=127.0.0.1
+export SPRING_DATA_REDIS_PORT=6379
+
+nohup java -jar dyx-blog-1.0.0.jar > logs/stdout.log 2>&1 &
 ```
+
+如需更复杂的 Redis 集群/哨兵配置，可在外部 `application-prod.yml` 中配置 Spring Data Redis 相关参数，Spring Cache 将自动使用该连接。
 
 ---
 

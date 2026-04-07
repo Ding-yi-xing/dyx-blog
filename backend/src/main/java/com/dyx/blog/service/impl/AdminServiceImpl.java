@@ -259,7 +259,7 @@ public class AdminServiceImpl implements AdminService {
      * @return 保存后的文章。
      */
     @Override
-    @CacheEvict(value = "site", key = "'posts'")
+    @CacheEvict(value = "site", allEntries = true)
     public Post savePost(Post post) {
         if (post == null) {
             throw new BusinessException("文章数据不能为空");
@@ -311,14 +311,14 @@ public class AdminServiceImpl implements AdminService {
      * @param id 文章主键。
      */
     @Override
-    @CacheEvict(value = "site", key = "'posts'")
+    @CacheEvict(value = "site", allEntries = true)
     public void deletePost(Long id) {
         dyxPostMapper.deleteById(id);
     }
 
     @Override
     @Transactional
-    @CacheEvict(value = "site", key = "'posts'")
+    @CacheEvict(value = "site", allEntries = true)
     public void deletePosts(List<Long> ids) {
         if (ids == null || ids.isEmpty()) {
             throw new BusinessException("请选择需要删除的文章");

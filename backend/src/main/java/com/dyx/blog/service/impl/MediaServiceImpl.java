@@ -73,7 +73,6 @@ public class MediaServiceImpl implements MediaService {
     private static final Set<String> IMPORTABLE_EXTENSIONS = Set.of(
             "jpg", "jpeg", "png", "gif", "webp", "bmp", "pdf", "mp4", "webm", "mov", "m4v"
     );
-    private static final long MAX_UPLOAD_SIZE = 2L * 1024 * 1024 * 1024;
     private static final Set<String> ALLOWED_UPLOAD_EXTENSIONS = Set.of(
             "jpg", "jpeg", "png", "gif", "webp", "bmp", "pdf", "mp4", "webm", "mov", "m4v"
     );
@@ -262,8 +261,10 @@ public class MediaServiceImpl implements MediaService {
         if (file == null || file.isEmpty()) {
             throw new BusinessException("上传文件不能为空");
         }
-        if (file.getSize() > MAX_UPLOAD_SIZE) {
-            throw new BusinessException("上传文件不能超过 2GB");
+        long maxSize = dyxFileProperties.getMaxUploadSizeBytes();
+        if (file.getSize() > maxSize) {
+            long maxMb = Math.max(1, maxSize / (1024 * 1024));
+            throw new BusinessException("上传文件不能超过 " + maxMb + "MB");
         }
         String originalFilename = file.getOriginalFilename();
         String extension = normalizeExtension(StringUtils.getFilenameExtension(originalFilename));
@@ -294,8 +295,10 @@ public class MediaServiceImpl implements MediaService {
             if (fileSize <= 0) {
                 throw new BusinessException("检测到空文件，禁止导入");
             }
-            if (fileSize > MAX_UPLOAD_SIZE) {
-                throw new BusinessException("检测到超出限制的文件，禁止导入");
+            long maxSize = dyxFileProperties.getMaxUploadSizeBytes();
+            if (fileSize > maxSize) {
+                long maxMb = Math.max(1, maxSize / (1024 * 1024));
+                throw new BusinessException("检测到超出限制的文件（超过 " + maxMb + "MB），禁止导入");
             }
             if (!ALLOWED_UPLOAD_MEDIA_TYPES.contains(mediaType)) {
                 throw new BusinessException("检测到不安全的本地文件类型，禁止导入");

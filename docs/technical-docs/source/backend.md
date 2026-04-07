@@ -344,6 +344,7 @@ public static void clear() {
 - 首页需要聚合多类内容。
 - 常用公开数据应具备缓存能力。
 - 文章详情需要增加阅读量。
+- 博客列表需要支持数据库层面的分页，避免随着数据量增长出现全表扫描与内存分页。
 
 #### 实现方案
 
@@ -351,6 +352,7 @@ public static void clear() {
 
 - `getHomeData()` 聚合首页内容。
 - `getProfile()`、`listPosts()`、`listMoments()`、`listProjects()`、`listWorks()`、`listHonors()`、`listFootprints()` 使用 `@Cacheable`。
+- `listPosts(Integer page, Integer pageSize)` 使用 MyBatis-Plus 的 `Page<Post>` / `IPage<Post>` 结合分页插件做物理分页，分页参数通过 `normalizePage()` 与 `normalizePageSize()` 校验，默认 `page=1`、`pageSize=20`，允许范围为 1–100。
 - `getPostDetail()` 使用 `JdbcTemplate` 原子递增浏览量。
 
 #### 选型理由
@@ -358,12 +360,15 @@ public static void clear() {
 - 聚合接口降低前端请求次数。
 - 常用公开数据缓存可降低数据库压力。
 - 对浏览量自增场景，直接 SQL update 比先查后改更直接。
+- 使用 MyBatis-Plus 官方分页能力配合分页插件，避免引入额外分页框架（如 PageHelper），与现有 ORM 选型保持一致。
 
 #### 核心源码定位
 
 - `backend/src/main/java/com/dyx/blog/service/impl/SiteServiceImpl.java:77-88`
 - `backend/src/main/java/com/dyx/blog/service/impl/SiteServiceImpl.java:95-107`
-- `backend/src/main/java/com/dyx/blog/service/impl/SiteServiceImpl.java:160-174`
+- `backend/src/main/java/com/dyx/blog/service/impl/SiteServiceImpl.java:160-178`
+- `backend/src/main/java/com/dyx/blog/service/impl/SiteServiceImpl.java:330-348`
+- `backend/src/main/java/com/dyx/blog/config/MybatisPlusConfig.java:1-20`
 - `backend/src/main/java/com/dyx/blog/service/impl/SiteServiceImpl.java:182-190`
 
 ```java
@@ -528,17 +533,18 @@ public void deleteVisitLogs(List<Long> ids) {
 - 删除前检查是否仍被其他业务引用。
 - 支持受控代理访问媒体内容。
 - 存储目录与访问前缀要能通过配置绑定统一控制。
+- 上传大小限制应通过配置集中控制，而不是在代码中写死常量，避免与 Spring MVC 上传配置不一致。
 
 #### 实现方案
 
 `MediaServiceImpl.java:62-318` 是媒体业务核心：
 
-- 上传校验：`validateUpload()`。
-- 本地文件导入：`importExistingFiles()`。
+- 上传校验：`validateUpload()`，通过 `dyxFileProperties.getMaxUploadSizeBytes()` 获取上传大小上限，默认 100MB；当超限时抛出带有 MB 单位提示的业务异常。
+- 本地文件导入：`importExistingFiles()`，导入时同样复用 `maxUploadSizeBytes` 限制，避免绕过上传大小控制。
 - 删除时通过 `resolveReferenceModule()` 判断是否仍被引用。
 - 本地走 `LocalMediaStorage`，远程走 `OssMediaStorage`。
 
-`backend/src/main/java/com/dyx/blog/config/FileProperties.java:10-23` 通过 `@ConfigurationProperties(prefix = "file")` 绑定 `storageType`、`uploadPath` 与 `accessPrefix`，让存储层与 MVC 资源映射共享同一份配置来源。
+`backend/src/main/java/com/dyx/blog/config/FileProperties.java:10-27` 通过 `@ConfigurationProperties(prefix = "file")` 绑定 `storageType`、`uploadPath`、`accessPrefix` 与 `maxUploadSizeBytes`，让存储层、MVC 资源映射与上传校验共享同一份配置来源；默认值在代码中为 100MB，可通过配置文件覆盖。
 
 `LocalMediaStorage.java:59-89` 使用路径规范化和目录边界检查防止路径穿越。
 
@@ -546,13 +552,13 @@ public void deleteVisitLogs(List<Long> ids) {
 
 #### 选型理由
 
-抽象 `MediaStorage` 接口后，本地与 OSS 的差异被收敛到存储层，业务层无需关心底层介质；再配合 `FileProperties` 集中绑定配置，可以避免上传路径在多个类中写死。
+抽象 `MediaStorage` 接口后，本地与 OSS 的差异被收敛到存储层，业务层无需关心底层介质；再配合 `FileProperties` 集中绑定配置，可以避免上传路径和大小限制在多个类中写死，便于本地、测试和生产环境统一调整上传策略。
 
 #### 核心源码定位
 
+- `backend/src/main/java/com/dyx/blog/service/impl/MediaServiceImpl.java:206-283`
 - `backend/src/main/java/com/dyx/blog/service/impl/MediaServiceImpl.java:224-243`
-- `backend/src/main/java/com/dyx/blog/service/impl/MediaServiceImpl.java:206-221`
-- `backend/src/main/java/com/dyx/blog/config/FileProperties.java:10-23`
+- `backend/src/main/java/com/dyx/blog/config/FileProperties.java:10-27`
 - `backend/src/main/java/com/dyx/blog/storage/LocalMediaStorage.java:69-89`
 - `backend/src/main/java/com/dyx/blog/storage/OssMediaStorage.java:176-204`
 
@@ -562,6 +568,7 @@ public class FileProperties {
     private String storageType = "local";
     private String uploadPath = "uploads/";
     private String accessPrefix;
+    private long maxUploadSizeBytes = 100L * 1024 * 1024;
 }
 ```
 
@@ -733,18 +740,23 @@ public class DyxSecurityProperties {
 - 本地存储使用 `resolvedPath.startsWith(uploadDirectory)` 防止目录逃逸。
 - OSS 凭证不写死在业务配置中，而是从环境变量读取（`OssMediaStorage.java:176-185`）。
 
-### 6.7 当前未发现的安全/稳定性能力
+### 6.8 Redis 缓存与热点数据
 
-以下能力在当前仓库中未明确发现：
+公开站点首页聚合数据、文章列表、动态、项目、作品、荣誉和首页足迹等属于典型的读多写少数据，为了降低数据库压力并在多实例部署下保持缓存一致性，项目通过 Spring Cache + Redis 统一缓存这些热点数据：
 
-- OAuth2
-- 接口幂等组件
-- 熔断/限流框架（除登录限速外）
-- Prometheus / Grafana
-- Sentry / ELK
-- 分布式缓存
+- 在启动类 `BlogApplication` 上启用 `@EnableCaching`
+- 配置 `RedisCacheManager` 作为 Spring Cache 的默认实现
+- 公开站点服务 `SiteServiceImpl` 通过 `@Cacheable(value = "site", key = ...)` 缓存首页聚合、文章分页列表、动态、项目、作品、荣誉和足迹
+- 后台管理服务 `AdminServiceImpl` 通过 `@CacheEvict` 在内容变更时主动驱逐 `site` 分组下的缓存，避免前台长期命中旧数据
 
-文档中应标注为“当前未发现/未配置”。
+这样可以做到：
+
+- 多个后端实例共享同一份缓存，不再依赖单实例内存 Map
+- 热点数据命中率提升时明显减轻数据库压力
+- 通过合理的缓存 key 设计和驱逐策略，保证内容更新后前台在短时间内看到最新结果
+
+缓存端口、库号等连接参数通过 `spring.data.redis.*` 配置绑定，具体见部署文档 `docs/DEPLOY.md` 中关于 Redis 的配置示例。
+
 
 ## 7. 测试与质量保障
 

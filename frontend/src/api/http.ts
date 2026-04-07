@@ -11,8 +11,8 @@ import { useAuthStore } from '@/stores/auth';
  */
 function createBaseClient(): AxiosInstance {
   return axios.create({
-    baseURL: '/api',
-    timeout: 600000
+    baseURL: '/api'
+    // 上传等特殊场景在具体请求上单独配置超时时间
   });
 }
 

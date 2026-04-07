@@ -1,7 +1,9 @@
 <template>
   <header
     class="fixed inset-x-0 top-0 z-50 w-full bg-transparent px-0 transition duration-300"
-    :class="props.visible === false ? 'dyx-topbar-hidden' : 'dyx-topbar-visible'"
+    :class="
+      props.visible === false ? 'dyx-topbar-hidden' : 'dyx-topbar-visible'
+    "
     style="background-color: transparent !important"
   >
     <div class="w-full px-3 sm:px-4 lg:px-5">
@@ -17,7 +19,7 @@
             <span class="min-w-0">
               <span
                 class="block truncate text-[12px] font-semibold tracking-[0.18em] dyx-text-main sm:text-[13px]"
-                >dyx-blog</span
+                >Eason-Blog</span
               >
             </span>
           </button>
@@ -131,15 +133,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { ref } from "vue";
+import { useRoute, useRouter } from "vue-router";
 
 /**
  * 前台顶部导航组件。
  * 负责桌面端导航、移动端抽屉菜单、品牌跳转以及主题切换入口展示。
  */
 const props = defineProps<{
-  theme: 'light' | 'dark';
+  theme: "light" | "dark";
   toggleTheme: () => void;
   visible?: boolean;
 }>();
@@ -152,11 +154,11 @@ const mobileNavOpen = ref(false);
  * 前台主导航项配置。
  */
 const dyxNavItems = [
-  { path: '/blog', label: '博客' },
-  { path: '/moments', label: '动态' },
-  { path: '/guestbook', label: '留言' },
-  { path: '/about', label: '关于我' },
-  { path: '/resume', label: '简历' }
+  { path: "/blog", label: "博客" },
+  { path: "/moments", label: "动态" },
+  { path: "/guestbook", label: "留言" },
+  { path: "/about", label: "关于我" },
+  { path: "/resume", label: "简历" },
 ];
 
 /**
@@ -167,7 +169,7 @@ const dyxNavItems = [
  * @author Dyx
  */
 function handleBrandClick(): void {
-  void router.push('/');
+  void router.push("/");
 }
 
 /**

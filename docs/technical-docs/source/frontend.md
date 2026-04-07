@@ -181,14 +181,14 @@ const router = createRouter({
 
 #### 实现方案
 
-1. `frontend/src/stores/auth.ts:26-61` 使用 Pinia 保存 token 与用户信息。
-2. 状态持久化到 `sessionStorage`，键名为 `dyx-admin-token` 与 `dyx-admin-user`。
+1. `frontend/src/stores/auth.ts:18-37` 使用 Pinia 保存 token 与用户信息，读取登录态时通过 `readSessionUser()` 包一层 `JSON.parse` 的异常防护，避免损坏的 `sessionStorage` 数据导致应用初始化报错；一旦解析失败会自动清理存储并回退为未登录状态。
+2. 状态持久化到 `sessionStorage`，键名为 `dyx-admin-token` 与 `dyx-admin-user`，并在登录成功时显式清理 `localStorage` 中的同名键，避免历史实现残留干扰当前逻辑。
 3. `frontend/src/router/index.ts:83-97` 使用 `beforeEach` 守卫拦截带 `requiresAuth` 的后台路由。
 
 #### 选型理由
 
 - Pinia 足够轻量，适合当前只管理认证状态的场景。
-- 使用 `sessionStorage` 而非 `localStorage`，更偏向“浏览器会话级后台登录”，降低长期残留风险。
+- 使用 `sessionStorage` 而非 `localStorage`，更偏向“浏览器会话级后台登录”，降低长期残留风险；同时对损坏的持久化数据做了防御性处理，让初始化阶段更稳健。
 
 #### 核心源码定位
 
@@ -227,14 +227,15 @@ if (to.meta.requiresAuth && !authStore.isAuthenticated) {
 
 `frontend/src/api/http.ts:8-79` 创建 `publicHttp` 与 `adminHttp` 两个 Axios 实例：
 
-- 两者共享 `baseURL: '/api'` 与超时配置。
+- 两者共享 `baseURL: '/api'`。
 - `adminHttp` 通过请求拦截器自动注入 `Authorization`。
 - 响应拦截器把非 `code === 200` 的统一返回结构转换为 Promise reject。
 - 遇到 401 时通过 `redirectToLogin()` 清空登录态并跳转。
+- 不再在 Axios 实例上全局配置超时时间，而是针对大文件上传等特殊场景在具体请求上单独放宽超时时间；例如 `uploadAdminMedia()` 在调用时传入 `timeout: 600000`（10 分钟），避免影响普通接口的响应体验。
 
 #### 选型理由
 
-把后台行为封装在独立实例中，避免公开接口被无意义地附加认证逻辑。
+把后台行为封装在独立实例中，避免公开接口被无意义地附加认证逻辑；同时将长耗时配置下沉到具体上传接口，兼顾大文件上传与日常接口的响应速度。
 
 #### 核心源码定位
 
@@ -242,6 +243,7 @@ if (to.meta.requiresAuth && !authStore.isAuthenticated) {
 - `frontend/src/api/http.ts:34-47`
 - `frontend/src/api/http.ts:53-59`
 - `frontend/src/api/http.ts:65-77`
+- `frontend/src/api/modules/admin.ts:657-666`
 
 ```ts
 adminHttp.interceptors.request.use((config) => {

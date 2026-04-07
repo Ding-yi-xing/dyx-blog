@@ -4,22 +4,24 @@ server:
 spring:
   jackson:
     time-zone: Asia/Shanghai
-  profiles:
-    active: prod# 默认激活开发环境配置
   application:
     name: dyx-blog
   datasource:
-    url: ${MYSQL_URL:jdbc:mysql://118.178.186.196:8060/dyx_blog?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai}
-    username: ${MYSQL_USER:dyx_blog}
-    password: ${MYSQL_PWD:Dyx@blog}
+    url: ${MYSQL_URL:jdbc:mysql://localhost:3306/dyx_blog?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai}
+    username: ${MYSQL_USER:root}
+    password: ${MYSQL_PWD:123456}
     driver-class-name: com.mysql.cj.jdbc.Driver
   servlet:
     multipart:
-      max-file-size: 2GB
-      max-request-size: 2GB
+      max-file-size: 100MB
+      max-request-size: 100MB
   web:
     resources:
       static-locations: classpath:/static/,file:uploads/
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:127.0.0.1}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
 
 mybatis-plus:
   configuration:
@@ -40,10 +42,11 @@ jwt:
 file:
   upload-path: uploads/
   access-prefix: /media/
+  max-upload-size-bytes: 104857600
 
 dyx:
   security:
-    encrypt-key: dyx-blog-prod-encrypt-key-32chars!!!
+    encrypt-key: ${DYX_ENCRYPT_KEY:dyx-blog-dev-encrypt-key-32chars!!!}
     cors-allowed-origins:
       - http://118.178.186.196
       - http://localhost:*

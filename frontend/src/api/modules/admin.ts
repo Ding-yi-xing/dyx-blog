@@ -660,7 +660,9 @@ export function uploadAdminMedia(file: File) {
   return adminHttp.post('/dyx-manager/media/upload', formData, {
     headers: {
       'Content-Type': 'multipart/form-data'
-    }
+    },
+    // 上传大文件可能耗时较长，这里单独放宽超时时间到 10 分钟
+    timeout: 600000
   });
 }
 

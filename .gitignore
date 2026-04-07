@@ -40,3 +40,6 @@ map-*.png
 # Claude files
 CLAUDE.md
 about-snapshot*.yml
+
+# docs
+docs
