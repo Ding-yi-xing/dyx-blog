@@ -114,12 +114,22 @@ public class SiteServiceImpl implements SiteService {
     @Override
     public GuestbookDataDTO getGuestbookData() {
         Profile profile = getProfile();
-        return GuestbookDataDTO.builder()
-                .guestbookIntro(profile.getGuestbookIntro())
-                .messages(dyxGuestbookMessageMapper.selectList(new LambdaQueryWrapper<GuestbookMessage>()
+        List<GuestbookPublicMessageDTO> messages = dyxGuestbookMessageMapper.selectList(new LambdaQueryWrapper<GuestbookMessage>()
                         .eq(GuestbookMessage::getPublished, 1)
                         .orderByDesc(GuestbookMessage::getCreatedAt)
-                        .orderByDesc(GuestbookMessage::getId)))
+                        .orderByDesc(GuestbookMessage::getId))
+                .stream()
+                .map(source -> GuestbookPublicMessageDTO.builder()
+                        .id(source.getId())
+                        .content(source.getContent())
+                        .published(source.getPublished())
+                        .createdAt(source.getCreatedAt())
+                        .updatedAt(source.getUpdatedAt())
+                        .build())
+                .toList();
+        return GuestbookDataDTO.builder()
+                .guestbookIntro(profile.getGuestbookIntro())
+                .messages(messages)
                 .build();
     }
 

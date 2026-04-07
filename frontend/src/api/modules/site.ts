@@ -183,7 +183,6 @@ export interface GuestbookMessageData {
   id?: number;
   content?: string;
   published?: number;
-  ipAddress?: string;
   createdAt?: string;
   updatedAt?: string;
 }

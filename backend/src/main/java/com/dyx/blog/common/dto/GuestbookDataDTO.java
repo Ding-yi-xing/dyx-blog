@@ -1,6 +1,5 @@
 package com.dyx.blog.common.dto;
 
-import com.dyx.blog.entity.GuestbookMessage;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -20,6 +19,6 @@ public class GuestbookDataDTO {
     /** 留言页介绍。 */
     private String guestbookIntro;
 
-    /** 已发布的留言列表。 */
-    private List<GuestbookMessage> messages;
+    /** 已发布的留言列表（已隐藏 IP 等敏感字段）。 */
+    private List<GuestbookPublicMessageDTO> messages;
 }

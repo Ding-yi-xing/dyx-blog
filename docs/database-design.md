@@ -212,3 +212,31 @@
 - 访问日志的删除能力受角色限制，仅超级管理员可执行删除与批量删除
 - 媒体资源在数据库中只保存原始文件记录，头像、首页背景图、首页人物图等业务裁剪结果仍以业务字段中的 URL 字符串形式引用
 
+## 18. 后续多租户扩展规划（暂不实现）
+
+为支持未来“一个平台托管多个个人博客站点”的多租户能力，数据库层面补充以下规划说明：
+- 新增站点表（暂定命名为 `dyx_site`），用于记录个人站点 / 博客的元信息：
+  - `id` bigint 主键
+  - `owner_user_id` bigint 站点拥有者用户 ID（关联 `dyx_user.id`）
+  - `site_slug` varchar(64) 站点路径标识，例如 `dyx`、`alice`，用于 `/u/{siteSlug}` 路由
+  - `site_title` varchar(200) 站点标题（可与 `dyx_profile.site_title` 配合使用或后续迁移）
+  - `enabled` tinyint 是否启用
+  - `created_at` datetime 创建时间
+  - `updated_at` datetime 更新时间
+- 现有业务表在保持当前实现不变的前提下，后续版本规划通过补充 `site_id` 字段实现数据按站点隔离：
+  - `dyx_profile.site_id`
+  - `dyx_post.site_id`
+  - `dyx_moment.site_id`
+  - `dyx_project.site_id`
+  - `dyx_work.site_id`
+  - `dyx_honor.site_id`
+  - `dyx_guestbook_message.site_id`
+  - `dyx_footprint.site_id`
+  - `dyx_media.site_id`
+  - `dyx_site_visit_stat.site_id`
+  - `dyx_site_visit_log.site_id`
+  - `dyx_system_config.site_id`
+- 现有 `dyx_user` 表仍作为平台级账号表，后续可按需扩展 `role` 语义：
+  - 平台级角色示例：`PLATFORM_ADMIN`（平台管理员）、`PLATFORM_USER`（普通用户）
+  - 站点级角色示例：`SITE_OWNER`（站点拥有者）、`SITE_EDITOR`（协同编辑，按站点关联）
+- 上述规划仅作为多租户改造的预留设计，当前版本暂不进行表结构调整与数据迁移

@@ -178,7 +178,6 @@ Authorization: Bearer <token>
 | id | number | 否 | 主键 |
 | content | string | 否 | 留言内容 |
 | published | number | 否 | 是否公开 |
-| ipAddress | string | 否 | 来源 IP |
 | createdAt | string | 否 | 创建时间 |
 | updatedAt | string | 否 | 更新时间 |
 
@@ -186,18 +185,7 @@ Authorization: Bearer <token>
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|---:|---|
 | guestbookIntro | string | 否 | 留言页介绍文案 |
-| messages | GuestbookMessageData[] | 否 | 留言列表 |
-
-### 2.10 HomeData
-| 字段 | 类型 | 必填 | 说明 |
-|---|---|---:|---|
-| profile | ProfileData | 否 | 首页人物资料 |
-| latestPosts | PostData[] | 否 | 最新文章 |
-| latestMoments | MomentData[] | 否 | 最新动态 |
-| featuredProjects | ProjectData[] | 否 | 精选项目 |
-| latestHonors | HonorData[] | 否 | 最新荣誉 |
-| footprints | FootprintData[] | 否 | 足迹列表 |
-| systemConfig | object | 否 | 首页足迹/页脚配置 |
+| messages | GuestbookMessageData[] | 否 | 留言列表（已脱敏，未包含 IP 等敏感字段） |
 
 ### 2.11 DashboardSummaryData
 | 字段 | 类型 | 说明 |
@@ -261,6 +249,44 @@ Authorization: Bearer <token>
 | user.username | string | 用户名 |
 | user.displayName | string | 显示名 |
 | user.role | string | 角色 |
+
+---
+
+## 3.2 预留：平台注册与站点初始化（未实现，仅文档规划）
+
+为未来支持“任意用户注册并创建自己的博客站点”，在接口层预留如下设计（当前实现中暂未提供对应 Controller 与路由，仅作为后续演进依据）：
+
+### 3.2.1 用户注册
+**POST** `/api/auth/register`
+
+- 说明：
+  - 支持通过账号密码完成注册
+  - 初期不强制邮箱校验与人工审核
+  - 注册成功后自动登录或返回登录所需凭证
+- 请求体示例：
+  - `username`: 用户名
+  - `password`: 密码
+  - （预留）`displayName`：显示昵称
+- 响应体示例：
+  - 注册成功的用户基础信息
+  - 可选返回初始站点简要信息
+
+### 3.2.2 站点初始化
+**POST** `/api/site/setup`
+
+- 说明：
+  - 在用户首次登录后台时，引导完成站点初始化
+  - 创建并绑定一个默认站点（例如基于用户名生成 `siteSlug`）
+  - 写入基础资料：站点标题、副标题、关于我、联系方式、主题配置等
+- 请求体示例：
+  - `siteTitle`: 站点标题
+  - `heroTitle`: 首页主标题
+  - `heroSubtitle`: 首页副标题
+  - `aboutContent`: 关于我
+  - `contactMethods`: 联系方式配置
+  - 其他站点级基础字段
+
+以上注册与站点初始化接口为规划中的预留设计，当前阶段不会对前后端代码造成影响，仅在文档中同步需求方向，便于后续版本统一实现。
 
 ---
 
