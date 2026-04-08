@@ -25,17 +25,24 @@
         <el-form-item label="联系方式">
           <div class="space-y-4">
             <div
-                  v-for="(item, index) in contactMethods"
-                  :key="index"
-                  class="rounded-[20px] border border-slate-200 bg-white p-4 shadow-sm"
-                >
-                  <div class="grid gap-4 md:grid-cols-[0.9fr_1fr_1.5fr_auto] md:items-end">
-                    <el-input v-model="item.type" placeholder="类型，如 email / github / 微信" />
-                    <el-input v-model="item.label" placeholder="显示名称，如 邮箱 / GitHub" />
-                    <el-input v-model="item.value" placeholder="联系方式内容" />
-                    <el-button type="danger" plain @click="removeContact(index)">删除</el-button>
-                  </div>
-                </div>
+              v-for="(item, index) in contactMethods"
+              :key="index"
+              class="rounded-[20px] border border-slate-200 bg-white p-4 shadow-sm"
+            >
+              <div class="grid gap-4 md:grid-cols-[1fr_1.6fr_0.9fr_auto] md:items-end">
+                <el-input v-model="item.label" placeholder="展示标签，如 邮箱 / GitHub / 微信" />
+                <el-input v-model="item.value" placeholder="联系方式内容" />
+                <el-select v-model="item.type" class="!w-full" placeholder="选择性质">
+                  <el-option label="文本" value="text" />
+                  <el-option label="链接" value="link" />
+                  <el-option label="邮箱" value="email" />
+                  <el-option label="电话" value="phone" />
+                  <el-option label="微信" value="wechat" />
+                  <el-option label="GitHub" value="github" />
+                </el-select>
+                <el-button type="danger" plain @click="removeContact(index)">删除</el-button>
+              </div>
+            </div>
             <el-button plain @click="addContact">新增联系方式</el-button>
           </div>
         </el-form-item>
@@ -50,7 +57,7 @@
       </p>
       <div class="mt-6 space-y-3 text-sm text-slate-600">
         <p v-if="contactMethods.length" v-for="(item, index) in contactMethods" :key="`${item.label || item.type}-${index}`">
-          {{ item.label || item.type || '联系方式' }}：{{ item.value || '-' }}
+          {{ resolveContactLabel(item) }}：{{ item.value || '-' }}
         </p>
         <p v-else>暂无联系方式</p>
       </div>
@@ -118,10 +125,30 @@ const form = reactive<ProfileData>({
  */
 function createEmptyContact(): ContactMethodData {
   return {
-    type: '',
+    type: 'text',
     label: '',
     value: ''
   };
+}
+
+function resolveContactLabel(item?: ContactMethodData | null): string {
+  if (item?.label?.trim()) {
+    return item.label.trim();
+  }
+  switch (item?.type) {
+    case 'email':
+      return '邮箱';
+    case 'phone':
+      return '电话';
+    case 'wechat':
+      return '微信';
+    case 'github':
+      return 'GitHub';
+    case 'link':
+      return '链接';
+    default:
+      return '联系方式';
+  }
 }
 
 /**
@@ -150,15 +177,21 @@ function removeContact(index: number): void {
 /**
  * 从联系方式扩展列表中回填旧版兼容字段值。
  *
- * @param types 需要匹配的类型关键词列表。
+ * @param type 需要匹配的标准联系方式类型。
  * @returns 返回首个匹配项的联系方式值；未命中时返回空字符串。
  * @throws 该函数不会主动抛出异常；仅执行本地查找。
  * @author Dyx
  */
-function findLegacyContactValue(types: string[]): string {
+function findLegacyContactValue(type: string): string {
   return contactMethods.value.find((item) => {
-    const normalized = `${item.type || ''} ${item.label || ''}`.toLowerCase();
-    return types.some((type) => normalized.includes(type));
+    const value = item.value?.trim() || '';
+    if (!value || item.type !== type) {
+      return false;
+    }
+    if (type === 'wechat' && /^[a-z][a-z\d+.-]*:/i.test(value)) {
+      return false;
+    }
+    return true;
   })?.value?.trim() || '';
 }
 
@@ -268,10 +301,10 @@ async function handleSave(): Promise<void> {
     const payload: ProfileData = {
       ...form,
       contactMethods: stringifyContactMethods(contactMethods.value),
-      email: findLegacyContactValue(['email', '邮箱']),
-      phone: findLegacyContactValue(['phone', '电话', 'mobile', '手机']),
-      wechat: findLegacyContactValue(['wechat', '微信']),
-      githubUrl: findLegacyContactValue(['github'])
+      email: findLegacyContactValue('email'),
+      phone: findLegacyContactValue('phone'),
+      wechat: findLegacyContactValue('wechat'),
+      githubUrl: findLegacyContactValue('github')
     };
     const result = await updateAdminProfile(payload);
     const updatedProfile = (result as { data?: ProfileData })?.data ?? payload;

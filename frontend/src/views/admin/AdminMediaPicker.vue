@@ -109,9 +109,9 @@
             @click="toggleMedia(item.fileUrl)"
           >
             <el-image
-              v-if="isImageUrl(item.fileUrl)"
-              :src="item.fileUrl"
-              :preview-src-list="[item.fileUrl]"
+              v-if="isImageUrl(item.fileUrl || '')"
+              :src="item.fileUrl || ''"
+              :preview-src-list="item.fileUrl ? [item.fileUrl] : []"
               fit="cover"
               preview-teleported
               class="h-full w-full cursor-zoom-in"

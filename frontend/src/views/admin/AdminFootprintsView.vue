@@ -70,7 +70,7 @@
         <el-form-item label="省 / 市 / 区县">
           <el-cascader
             v-model="regionSelection"
-            :options="chinaRegionOptions"
+            :options="cascaderOptions"
             :props="{ emitPath: true, checkStrictly: false, value: 'value', label: 'label' }"
             class="!w-full"
             placeholder="请选择省市区"
@@ -143,7 +143,7 @@ const rawList = ref<FootprintData[]>([]);
 const dialogVisible = ref(false);
 const saving = ref(false);
 const copySaving = ref(false);
-const regionSelection = ref<string[]>([]);
+const regionSelection = ref<(string | number)[]>([]);
 const districtMap = ref<Record<number, string>>({});
 const selectedIds = ref<number[]>([]);
 const tableRef = ref<{ clearSelection: () => void } | null>(null);
@@ -175,6 +175,8 @@ const systemConfigForm = reactive<SystemConfigData>({
   copyrightText: '',
   techSupportText: ''
 });
+
+const cascaderOptions = chinaRegionOptions as unknown as any[];
 
 /**
  * 将后台原始足迹列表转换为表格展示所需的衍生字段。
@@ -369,13 +371,15 @@ async function handleSave(): Promise<void> {
     return;
   }
   const [province, city] = regionSelection.value;
+  const regionName = String(province ?? '');
+  const cityName = String(city ?? '');
   saving.value = true;
   try {
     await saveAdminFootprint({
       ...form,
       countryName: '中国',
-      regionName: province,
-      cityName: city,
+      regionName,
+      cityName,
       positionX: form.positionX ?? 0,
       positionY: form.positionY ?? 0
     });
@@ -394,7 +398,7 @@ async function handleSave(): Promise<void> {
  *
  * @param item 待删除的足迹数据。
  * @returns 返回异步删除结果。
- * @throws 该函数不会主动向外抛出异常；取消删除时会静默结束，失败时通过页面提示反馈。
+ * @throws 该函数不会主动抛出异常；取消删除时会静默结束，失败时通过页面提示反馈。
  * @author Dyx
  */
 async function handleDelete(item: FootprintData): Promise<void> {

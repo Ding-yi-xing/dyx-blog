@@ -42,19 +42,19 @@
         </template>
       </el-table-column>
       <el-table-column prop="originalName" label="文件名" min-width="240" />
-      <el-table-column prop="mediaType" label="类型" min-width="180" />
+      <el-table-column prop="mediaType" label="类型" min-width="120" />
       <el-table-column prop="sizeText" label="大小" width="120" />
-      <el-table-column label="链接" min-width="220">
+      <el-table-column label="链接" min-width="160">
         <template #default="scope">
-          <a
+          <button
             v-if="scope.row.fileUrl"
-            :href="getPreviewUrl(scope.row.fileUrl)"
-            target="_blank"
-            rel="noreferrer"
-            class="text-sm text-slate-700 transition hover:text-slate-950"
+            type="button"
+            class="w-full break-all whitespace-normal text-left text-sm leading-6 text-slate-700 transition hover:text-slate-950"
+            :title="`点击复制：${scope.row.fileUrl}`"
+            @click="copyFileUrl(scope.row.fileUrl)"
           >
-            打开文件
-          </a>
+            {{ scope.row.fileUrl }}
+          </button>
           <span v-else class="text-sm text-slate-400">暂无链接</span>
         </template>
       </el-table-column>
@@ -159,6 +159,15 @@ function formatFileSize(size?: number): string {
     return `${(size / (1024 * 1024)).toFixed(1)}MB`;
   }
   return `${Math.max(1, Math.round(size / 1024))}KB`;
+}
+
+async function copyFileUrl(url: string): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(url);
+    ElMessage.success('链接已复制');
+  } catch (error) {
+    ElMessage.error('复制链接失败');
+  }
 }
 
 function getPreviewUrl(url: string): string {
