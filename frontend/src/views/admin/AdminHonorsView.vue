@@ -18,8 +18,9 @@
       <el-table-column prop="awardAt" label="获得时间" width="180" />
       <el-table-column prop="imageCount" label="配图数" width="100" />
       <el-table-column prop="attachmentText" label="附件" width="110" />
+      <el-table-column prop="homeFeaturedText" label="首页第三屏" width="120" />
+      <el-table-column prop="homeFeaturedOrder" label="首页排序" width="110" />
       <el-table-column prop="statusText" label="状态" width="120" />
-      <el-table-column prop="updatedAt" label="更新时间" width="180" />
       <el-table-column label="操作" width="180" fixed="right">
         <template #default="scope">
           <el-button link type="primary" @click="openEditDialog(scope.row.raw)">编辑</el-button>
@@ -74,6 +75,12 @@
               <el-option label="已发布" :value="1" />
             </el-select>
           </el-form-item>
+          <el-form-item label="首页第三屏候选">
+            <el-switch v-model="form.homeFeatured" :active-value="1" :inactive-value="0" />
+          </el-form-item>
+          <el-form-item label="首页排序">
+            <el-input-number v-model="form.homeFeaturedOrder" :min="0" class="!w-full" />
+          </el-form-item>
         </div>
       </el-form>
       <template #footer>
@@ -113,7 +120,9 @@ const form = reactive<Partial<HonorData>>({
   attachmentUrl: '',
   awardAt: '',
   sortOrder: 0,
-  published: 1
+  published: 1,
+  homeFeatured: 0,
+  homeFeaturedOrder: 0
 });
 
 /**
@@ -125,6 +134,7 @@ const honors = computed(() =>
     imageCount: resolveImageCount(item),
     attachmentText: item.attachmentUrl ? '已配置' : '无',
     statusText: item.published === 1 ? '已发布' : '草稿',
+    homeFeaturedText: item.homeFeatured === 1 ? '首页精选' : '未入选',
     raw: item
   }))
 );
@@ -168,7 +178,9 @@ function resetForm(): void {
     attachmentUrl: '',
     awardAt: '',
     sortOrder: 0,
-    published: 1
+    published: 1,
+    homeFeatured: 0,
+    homeFeaturedOrder: 0
   });
   selectedImageUrls.value = [];
 }

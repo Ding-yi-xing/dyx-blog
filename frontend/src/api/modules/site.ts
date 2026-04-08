@@ -76,6 +76,8 @@ export interface PostData {
   publishedAt?: string;
   updatedAt?: string;
   viewCount?: number;
+  homeFeatured?: number;
+  homeFeaturedOrder?: number;
 }
 
 /**
@@ -91,6 +93,8 @@ export interface MomentData {
   sortOrder?: number;
   published?: number;
   updatedAt?: string;
+  homeFeatured?: number;
+  homeFeaturedOrder?: number;
 }
 
 /**
@@ -107,6 +111,8 @@ export interface ProjectData {
   sortOrder?: number;
   published?: number;
   updatedAt?: string;
+  homeFeatured?: number;
+  homeFeaturedOrder?: number;
 }
 
 /**
@@ -125,6 +131,8 @@ export interface WorkData {
   sortOrder?: number;
   published?: number;
   updatedAt?: string;
+  homeFeatured?: number;
+  homeFeaturedOrder?: number;
 }
 
 /**
@@ -142,6 +150,8 @@ export interface HonorData {
   sortOrder?: number;
   published?: number;
   updatedAt?: string;
+  homeFeatured?: number;
+  homeFeaturedOrder?: number;
 }
 
 export interface FootprintData {
@@ -167,6 +177,22 @@ export interface HomeSystemConfigData {
   footprintDescription?: string;
   copyrightText?: string;
   techSupportText?: string;
+  homeActivityEnablePosts?: boolean;
+  homeActivityEnableMoments?: boolean;
+  homeActivityEnableProjects?: boolean;
+  homeActivityEnableWorks?: boolean;
+  homeActivityEnableHonors?: boolean;
+  homeActivityMaxItems?: number;
+  homeActivityMaxItemsPerType?: number;
+}
+
+export interface HomeActivityItemData {
+  type?: string;
+  refId?: number | string;
+  title?: string;
+  summary?: string;
+  coverImage?: string;
+  highlightTime?: string;
 }
 
 /**
@@ -177,8 +203,8 @@ export interface HomeData {
   profile?: ProfileData;
   footprints?: FootprintData[];
   systemConfig?: HomeSystemConfigData;
+  featuredItems?: HomeActivityItemData[];
 }
-
 export interface GuestbookMessageData {
   id?: number;
   content?: string;
@@ -285,6 +311,49 @@ export function resolveHeroConfig(profile?: Pick<ProfileData, 'heroConfig' | 'si
   return resolved;
 }
 
+function normalizeContactType(item?: ContactMethodData | null): ContactMethodData['type'] {
+  const type = item?.type?.trim().toLowerCase() || '';
+  const label = item?.label?.trim().toLowerCase() || '';
+  const value = item?.value?.trim() || '';
+  const normalized = `${type} ${label}`;
+  if (type === 'text' || type === 'link' || type === 'email' || type === 'phone' || type === 'wechat' || type === 'github') {
+    return type;
+  }
+  if (normalized.includes('email') || normalized.includes('邮箱') || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+    return 'email';
+  }
+  if (normalized.includes('phone') || normalized.includes('mobile') || normalized.includes('电话') || normalized.includes('手机')) {
+    return 'phone';
+  }
+  if (normalized.includes('wechat') || normalized.includes('微信')) {
+    return 'wechat';
+  }
+  if (normalized.includes('github') || /^https?:\/\/github\.com\//i.test(value) || /^github\.com\//i.test(value) || /^@[\w-]+$/.test(value)) {
+    return 'github';
+  }
+  if (/^[a-z][a-z\d+.-]*:/i.test(value) || /^(https?:)?\/\//i.test(value) || /^www\./i.test(value) || /^[\w.-]+\.[a-z]{2,}(?:[/:?#].*)?$/i.test(value)) {
+    return 'link';
+  }
+  return 'text';
+}
+
+function resolveDefaultContactLabel(type?: ContactMethodData['type']): string {
+  switch (type) {
+    case 'email':
+      return '邮箱';
+    case 'phone':
+      return '电话';
+    case 'wechat':
+      return '微信';
+    case 'github':
+      return 'GitHub';
+    case 'link':
+      return '链接';
+    default:
+      return '联系方式';
+  }
+}
+
 /**
  * 解析资料中的联系方式配置并过滤无效项。
  *
@@ -320,7 +389,7 @@ export function stringifyContactMethods(items: ContactMethodData[]): string {
   return JSON.stringify(
     items
       .map((item) => ({
-        type: item.type?.trim(),
+        type: normalizeContactType(item),
         label: item.label?.trim(),
         value: item.value?.trim()
       }))
@@ -342,11 +411,15 @@ export function resolveProfileContactMethods(
   const parsed = parseContactMethods(profile?.contactMethods);
   if (parsed.length) {
     return parsed
-      .map((item) => ({
-        type: item.type || item.label || 'contact',
-        label: item.label || item.type || '联系方式',
-        value: item.value?.trim()
-      }))
+      .map((item) => {
+        const value = item.value?.trim();
+        const type = normalizeContactType(item);
+        return {
+          type,
+          label: item.label?.trim() || resolveDefaultContactLabel(type),
+          value
+        };
+      })
       .filter((item) => !!item.value);
   }
   const fallbackContacts: Array<ContactMethodData | null> = [
@@ -371,15 +444,18 @@ export function resolveContactHref(item?: ContactMethodData | null): string {
   if (!value) {
     return '';
   }
-  const normalizedType = `${item?.type || ''} ${item?.label || ''}`.toLowerCase();
-  if (normalizedType.includes('email') || normalizedType.includes('邮箱') || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+  const type = normalizeContactType(item);
+  if (type === 'text') {
+    return '';
+  }
+  if (type === 'email') {
     return `mailto:${value}`;
   }
-  if (normalizedType.includes('phone') || normalizedType.includes('mobile') || normalizedType.includes('电话') || normalizedType.includes('手机')) {
+  if (type === 'phone') {
     const phoneValue = value.replace(/[^\d+]/g, '');
     return phoneValue ? `tel:${phoneValue}` : '';
   }
-  if (normalizedType.includes('github')) {
+  if (type === 'github') {
     if (/^https?:\/\//i.test(value)) {
       return value;
     }
@@ -388,6 +464,12 @@ export function resolveContactHref(item?: ContactMethodData | null): string {
       .replace(/^https?:\/\/github\.com\//i, '')
       .replace(/^github\.com\//i, '');
     return githubPath ? `https://github.com/${githubPath}` : '';
+  }
+  if (type === 'wechat' && !/^[a-z][a-z\d+.-]*:/i.test(value)) {
+    return '';
+  }
+  if (/^[a-z][a-z\d+.-]*:/i.test(value)) {
+    return value;
   }
   if (/^(https?:)?\/\//i.test(value)) {
     return value.startsWith('//') ? `https:${value}` : value;
@@ -402,12 +484,12 @@ export function resolveContactHref(item?: ContactMethodData | null): string {
  * 判断联系方式链接是否属于浏览器外部跳转地址。
  *
  * @param href 待判断的联系方式链接。
- * @returns 当链接既存在且不是 mailto/tel 协议时返回 true。
+ * @returns 当链接既存在且不是 mailto/tel/weixin 协议时返回 true。
  * @throws 该函数不会主动抛出异常。
  * @author Dyx
  */
 export function isExternalContactHref(href?: string): boolean {
-  return !!href && !href.startsWith('mailto:') && !href.startsWith('tel:');
+  return !!href && !href.startsWith('mailto:') && !href.startsWith('tel:') && !href.startsWith('weixin:');
 }
 
 /**

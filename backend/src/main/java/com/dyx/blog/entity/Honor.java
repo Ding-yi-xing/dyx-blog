@@ -50,6 +50,12 @@ public class Honor {
     /** 发布状态，1 表示前台可见。 */
     private Integer published;
 
+    /** 是否首页第三屏候选，1 表示参与精选。 */
+    private Integer homeFeatured;
+
+    /** 首页第三屏排序值，值越小越靠前。 */
+    private Integer homeFeaturedOrder;
+
     /** 创建时间。 */
     private LocalDateTime createdAt;
 

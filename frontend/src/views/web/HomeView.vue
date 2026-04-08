@@ -105,6 +105,7 @@
       </section>
 
       <section
+        ref="footprintMapContainer"
         class="relative h-full w-full snap-start overflow-hidden"
         :class="footprintSectionClass"
       >
@@ -120,7 +121,7 @@
             <el-skeleton animated :rows="4" class="w-[min(480px,90%)] rounded-2xl bg-black/10 px-6 py-5" />
           </div>
           <HomeFootprintMap
-            v-else-if="footprints.length"
+            v-else-if="footprints.length && isFootprintMapVisible"
             class="h-full w-full"
             :items="footprintMapData"
             :visited-province-names="visitedProvinceNames"
@@ -213,13 +214,14 @@
       </section>
 
       <section
+        ref="activitySectionContainer"
         class="relative h-full w-full snap-start overflow-hidden"
         :class="activitySectionClass"
       >
         <div class="absolute inset-0" :class="activityBackdropClass"></div>
-        <div class="relative z-10 flex h-full items-center justify-center px-4">
-          <div class="flex w-full max-w-6xl flex-col gap-8 lg:flex-row lg:items-stretch">
-            <div class="flex-1 space-y-4 text-left">
+        <div class="relative z-10 flex h-full items-start justify-center px-4 pt-14 sm:pt-16 lg:items-center lg:pt-0">
+          <div class="flex h-full w-full max-w-6xl flex-col gap-6 pb-28 lg:flex-row lg:items-stretch lg:gap-8 lg:pb-0">
+            <div class="shrink-0 flex-1 space-y-4 text-left lg:self-center">
               <p class="home-meta text-[11px] font-medium uppercase tracking-[0.3em]" :class="activityMetaClass">
                 能力与精选项目
               </p>
@@ -237,8 +239,8 @@
               </p>
             </div>
 
-            <div class="flex-1 min-w-0">
-              <div v-if="!hasInitLoadedOnce" class="grid gap-4 sm:grid-cols-2">
+            <div class="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain pb-2 pr-1 scrollbar-none lg:overflow-visible lg:pb-0 lg:pr-0">
+              <div v-if="!hasInitLoadedOnce" class="grid gap-4 sm:grid-cols-2 lg:h-full lg:content-start">
                 <el-skeleton
                   v-for="n in 2"
                   :key="`activity-skeleton-${n}`"
@@ -248,39 +250,31 @@
                 />
               </div>
 
-              <div v-else class="grid gap-4 sm:grid-cols-2">
+              <div
+                v-else
+                class="grid gap-4 sm:grid-cols-2 lg:h-full lg:content-start"
+              >
                 <article
-                  v-for="item in featuredProjects"
-                  :key="`project-${item.id}`"
+                  v-for="item in featuredItems"
+                  :key="`${item.type}-${item.refId}`"
                   class="dyx-page-card rounded-2xl p-4 shadow-dyx-soft/70"
+                  :class="isFeaturedItemClickable(item)
+                    ? 'cursor-pointer transition duration-200 hover:-translate-y-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent'
+                    : ''"
+                  :tabindex="isFeaturedItemClickable(item) ? 0 : undefined"
+                  :role="isFeaturedItemClickable(item) ? 'button' : undefined"
+                  @click="handleFeaturedItemClick(item)"
+                  @keydown.enter.prevent="handleFeaturedItemClick(item)"
+                  @keydown.space.prevent="handleFeaturedItemClick(item)"
                 >
                   <p class="text-[11px] font-medium tracking-[0.22em] uppercase" :class="activityMetaClass">
-                    项目
-                  </p>
-                  <h3 class="mt-2 text-base font-semibold" :class="activityTitleClass">
-                    {{ item.name }}
-                  </h3>
-                  <p class="mt-2 line-clamp-3 text-xs leading-6" :class="activityTextClass">
-                    {{ item.description || '这个项目还在整理描述。' }}
-                  </p>
-                  <p v-if="item.techStack" class="mt-2 text-[11px] leading-5 opacity-80" :class="activityTextClass">
-                    {{ item.techStack }}
-                  </p>
-                </article>
-
-                <article
-                  v-for="item in featuredWorks"
-                  :key="`work-${item.id}`"
-                  class="dyx-page-card rounded-2xl p-4 shadow-dyx-soft/70"
-                >
-                  <p class="text-[11px] font-medium tracking-[0.22em] uppercase" :class="activityMetaClass">
-                    作品
+                    {{ resolveActivityTypeLabel(item.type) }}
                   </p>
                   <h3 class="mt-2 text-base font-semibold" :class="activityTitleClass">
                     {{ item.title }}
                   </h3>
                   <p class="mt-2 line-clamp-3 text-xs leading-6" :class="activityTextClass">
-                    {{ item.summary || '这个作品的说明还在补充中。' }}
+                    {{ item.summary || '这条精选内容的描述还在整理中。' }}
                   </p>
                 </article>
               </div>
@@ -290,7 +284,7 @@
 
         <div
           v-if="copyrightText || techSupportText"
-          class="absolute bottom-6 right-6 z-50 text-right text-[11px] leading-5 sm:bottom-8 sm:right-8 lg:bottom-10 lg:right-10"
+          class="pointer-events-none absolute bottom-6 left-4 right-4 z-10 text-left text-[11px] leading-5 sm:bottom-8 sm:left-6 sm:right-6 lg:bottom-10 lg:left-auto lg:right-10 lg:text-right"
           :class="activeTheme === 'dark' ? 'text-slate-500' : 'text-slate-400'"
         >
           <p v-if="copyrightText" class="font-medium tracking-wide">
@@ -311,19 +305,17 @@
 <script setup lang="ts">
 import {
   computed,
+  defineAsyncComponent,
   inject,
-  nextTick,
   onBeforeUnmount,
   onMounted,
   ref,
   type Ref,
 } from "vue";
-import HomeFootprintMap from "@/components/web/HomeFootprintMap.vue";
+import { useRouter } from "vue-router";
 import {
   createDefaultHeroConfig,
   getHomeData,
-  getProjects,
-  getWorks,
   recordSiteVisit,
   resolveHeroConfig,
   type HeroConfigData,
@@ -331,14 +323,18 @@ import {
   type HeroTagsBlock,
   type HeroTextBlock,
   type HomeData,
-  type ProjectData,
-  type WorkData,
+  type HomeActivityItemData,
 } from "@/api/modules/site";
 import { getCurrentYear } from "@/utils/date";
 import { buildFootprintMapItems } from "@/utils/footprintGeo";
 
+const HomeFootprintMap = defineAsyncComponent(
+  () => import("@/components/web/HomeFootprintMap.vue")
+);
+
 type ThemeMode = "light" | "dark";
 
+const router = useRouter();
 const PROVINCE_AREA_MAP: Record<string, number> = {
   北京市: 16410,
   天津市: 11966,
@@ -382,13 +378,10 @@ const currentYear = getCurrentYear();
 
 const homeData = ref<HomeData>({});
 const heroConfigState = ref<HeroConfigData>(createDefaultHeroConfig());
-const projects = ref<ProjectData[]>([]);
-const works = ref<WorkData[]>([]);
-const featuredProjects = computed(() => projects.value.slice(0, 2));
-const featuredWorks = computed(() => works.value.slice(0, 2));
+const featuredItems = computed<HomeActivityItemData[]>(
+  () => homeData.value.featuredItems ?? []
+);
 const isInitLoading = ref(true);
-const isHeroReady = ref(false);
-const isAboveFoldReady = ref(false);
 const hasInitLoadedOnce = ref(false);
 const setTopNavVisible = inject<((visible: boolean) => void) | undefined>(
   "dyx-set-top-nav-visible"
@@ -562,15 +555,51 @@ const shouldActivateMap = computed(
 );
 
 const scrollContainer = ref<HTMLElement | null>(null);
+const footprintMapContainer = ref<HTMLElement | null>(null);
+const activitySectionContainer = ref<HTMLElement | null>(null);
+const isFootprintMapVisible = ref(false);
 const currentSectionIndex = ref(0);
 let wheelHandler: ((event: WheelEvent) => void) | null = null;
 let scrollSyncHandler: (() => void) | null = null;
 let scrollSnapTimer: number | null = null;
 let scrollFrameId: number | null = null;
 let wheelNavigationLocked = false;
+let footprintMapObserver: IntersectionObserver | null = null;
 
 function updateTopNavVisibility(): void {
   setTopNavVisible?.(currentSectionIndex.value === 0);
+}
+
+function isActivityScrollTarget(target: EventTarget | null): boolean {
+  const section = activitySectionContainer.value;
+  return !!section && target instanceof Node && section.contains(target);
+}
+
+function isLargeScreen(): boolean {
+  return typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches;
+}
+
+function updateCurrentSectionFromScrollPosition(): void {
+  const container = scrollContainer.value;
+  const section = activitySectionContainer.value;
+  if (!container || container.clientHeight <= 0) {
+    return;
+  }
+  if (!isLargeScreen() && section && container.scrollTop >= section.offsetTop - 8) {
+    if (currentSectionIndex.value !== HOME_SECTION_COUNT - 1) {
+      currentSectionIndex.value = HOME_SECTION_COUNT - 1;
+      updateTopNavVisibility();
+    }
+    return;
+  }
+  const nextIndex = Math.max(
+    0,
+    Math.min(HOME_SECTION_COUNT - 1, Math.round(container.scrollTop / container.clientHeight))
+  );
+  if (nextIndex !== currentSectionIndex.value) {
+    currentSectionIndex.value = nextIndex;
+    updateTopNavVisibility();
+  }
 }
 
 function unlockWheelNavigation(): void {
@@ -597,28 +626,13 @@ function scrollToSection(
   });
 }
 
-function syncCurrentSectionFromScroll(): void {
-  const el = scrollContainer.value;
-  if (!el || el.clientHeight <= 0) {
-    return;
-  }
-  const nextIndex = Math.max(
-    0,
-    Math.min(HOME_SECTION_COUNT - 1, Math.round(el.scrollTop / el.clientHeight))
-  );
-  if (nextIndex !== currentSectionIndex.value) {
-    currentSectionIndex.value = nextIndex;
-    updateTopNavVisibility();
-  }
-}
-
 function scheduleScrollSync(): void {
   if (scrollFrameId !== null) {
     return;
   }
   scrollFrameId = window.requestAnimationFrame(() => {
     scrollFrameId = null;
-    syncCurrentSectionFromScroll();
+    updateCurrentSectionFromScrollPosition();
   });
 }
 
@@ -636,50 +650,80 @@ function clearScrollFrame(): void {
   }
 }
 
-function isTagsBlock(
-  block: HeroTextBlock | HeroTagsBlock
-): block is HeroTagsBlock {
+function isTagsBlock(block: HeroTextBlock | HeroTagsBlock): block is HeroTagsBlock {
   return block.type === "tags";
 }
 
-async function finishInitLoading(): Promise<void> {
-  await nextTick();
-  window.setTimeout(() => {
-    isAboveFoldReady.value = true;
-    isInitLoading.value = false;
-    hasInitLoadedOnce.value = true;
-  }, 180);
+function resolveFeaturedItemRoute(item: HomeActivityItemData): string | null {
+  const normalizedType = (item.type || "").toUpperCase();
+  const refId = item.refId;
+  switch (normalizedType) {
+    case "POST":
+      return refId == null ? "/blog" : `/blog/${refId}`;
+    case "MOMENT":
+      return refId == null ? "/moments" : `/moments/${refId}`;
+    case "PROJECT":
+      return "/resume";
+    case "WORK":
+    case "HONOR":
+      return "/about";
+    default:
+      return null;
+  }
+}
+
+function isFeaturedItemClickable(item: HomeActivityItemData): boolean {
+  return !!resolveFeaturedItemRoute(item);
+}
+
+function handleFeaturedItemClick(item: HomeActivityItemData): void {
+  const target = resolveFeaturedItemRoute(item);
+  if (!target) {
+    return;
+  }
+  void router.push(target);
+}
+
+function resolveActivityTypeLabel(type?: string): string {
+  const normalized = (type || "").toUpperCase();
+  switch (normalized) {
+    case "POST":
+      return "博客";
+    case "MOMENT":
+      return "动态";
+    case "PROJECT":
+      return "项目";
+    case "WORK":
+      return "作品";
+    case "HONOR":
+      return "荣誉";
+    default:
+      return "精选";
+  }
 }
 
 async function loadHomeData(): Promise<void> {
-  const response = await Promise.allSettled([
-    getHomeData(),
-    getProjects(),
-    getWorks(),
-  ]);
-  const [homeResponse, projectResponse, workResponse] = response;
-  homeData.value =
-    homeResponse.status === "fulfilled" ? homeResponse.value.data ?? {} : {};
+  const response = await getHomeData();
+  const result = response as { data?: HomeData };
+  homeData.value = result.data ?? {};
   heroConfigState.value = resolveHeroConfig(homeData.value.profile);
-  projects.value =
-    projectResponse.status === "fulfilled" ? projectResponse.value.data ?? [] : [];
-  works.value =
-    workResponse.status === "fulfilled" ? workResponse.value.data ?? [] : [];
-  isHeroReady.value = true;
-  await finishInitLoading();
+  hasInitLoadedOnce.value = true;
+  isInitLoading.value = false;
 }
 
-onMounted(() => {
+onMounted(async () => {
   currentSectionIndex.value = 0;
   updateTopNavVisibility();
   void recordSiteVisit("home");
-  void loadHomeData();
+  await loadHomeData();
 
   const el = scrollContainer.value;
   if (!el) return;
 
   wheelHandler = (event: WheelEvent) => {
-    // 某些设备滚轮 deltaY 很小，降低阈值保证能触发翻页
+    if (isActivityScrollTarget(event.target) && currentSectionIndex.value === HOME_SECTION_COUNT - 1) {
+      return;
+    }
     const delta = event.deltaY;
     if (Math.abs(delta) < 1) {
       return;
@@ -691,13 +735,13 @@ onMounted(() => {
     const rawNextIndex = currentSectionIndex.value + (delta > 0 ? 1 : -1);
     const maxIndex = HOME_SECTION_COUNT - 1;
     const clampedIndex = Math.max(0, Math.min(rawNextIndex, maxIndex));
-    // 已在边界（比如已经在最后一屏），不触发锁定，避免卡死
     if (clampedIndex === currentSectionIndex.value) {
       return;
     }
     wheelNavigationLocked = true;
     scrollToSection(clampedIndex);
   };
+
   scrollSyncHandler = () => {
     scheduleScrollSync();
     clearScrollSnapTimer();
@@ -709,6 +753,26 @@ onMounted(() => {
 
   el.addEventListener("wheel", wheelHandler, { passive: false });
   el.addEventListener("scroll", scrollSyncHandler, { passive: true });
+
+  const mapContainer = footprintMapContainer.value;
+  if (mapContainer && "IntersectionObserver" in window) {
+    footprintMapObserver = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          isFootprintMapVisible.value = true;
+          footprintMapObserver?.disconnect();
+          footprintMapObserver = null;
+        }
+      },
+      {
+        root: el,
+        threshold: 0.25,
+      }
+    );
+    footprintMapObserver.observe(mapContainer);
+  } else {
+    isFootprintMapVisible.value = true;
+  }
 });
 
 onBeforeUnmount(() => {
@@ -718,6 +782,10 @@ onBeforeUnmount(() => {
   }
   if (el && scrollSyncHandler) {
     el.removeEventListener("scroll", scrollSyncHandler);
+  }
+  if (footprintMapObserver) {
+    footprintMapObserver.disconnect();
+    footprintMapObserver = null;
   }
   clearScrollSnapTimer();
   clearScrollFrame();

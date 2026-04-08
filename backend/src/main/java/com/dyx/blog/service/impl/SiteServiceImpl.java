@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.dyx.blog.common.dto.GuestbookDataDTO;
 import com.dyx.blog.common.dto.GuestbookPublicMessageDTO;
 import com.dyx.blog.common.dto.HomeDataDTO;
+import com.dyx.blog.common.dto.HomeActivityItemDTO;
 import com.dyx.blog.common.exception.BusinessException;
 import com.dyx.blog.common.util.ClientIpUtil;
 import com.dyx.blog.common.util.HeroConfigUtil;
@@ -44,6 +45,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -82,10 +84,36 @@ public class SiteServiceImpl implements SiteService {
      */
     @Override
     public HomeDataDTO getHomeData() {
+        SystemConfig systemConfig = dyxSystemConfigMapper.selectById(1L);
+        if (systemConfig == null) {
+            systemConfig = new SystemConfig();
+        }
+        if (systemConfig.getHomeActivityEnablePosts() == null) {
+            systemConfig.setHomeActivityEnablePosts(false);
+        }
+        if (systemConfig.getHomeActivityEnableMoments() == null) {
+            systemConfig.setHomeActivityEnableMoments(false);
+        }
+        if (systemConfig.getHomeActivityEnableProjects() == null) {
+            systemConfig.setHomeActivityEnableProjects(true);
+        }
+        if (systemConfig.getHomeActivityEnableWorks() == null) {
+            systemConfig.setHomeActivityEnableWorks(true);
+        }
+        if (systemConfig.getHomeActivityEnableHonors() == null) {
+            systemConfig.setHomeActivityEnableHonors(false);
+        }
+        if (systemConfig.getHomeActivityMaxItems() == null) {
+            systemConfig.setHomeActivityMaxItems(6);
+        }
+        if (systemConfig.getHomeActivityMaxItemsPerType() == null) {
+            systemConfig.setHomeActivityMaxItemsPerType(3);
+        }
         return HomeDataDTO.builder()
                 .profile(getProfile())
                 .footprints(listFootprints())
-                .systemConfig(getHomeSystemConfig())
+                .systemConfig(buildHomeSystemConfig(systemConfig))
+                .featuredItems(buildHomeFeaturedItems(systemConfig))
                 .build();
     }
 
@@ -361,16 +389,147 @@ public class SiteServiceImpl implements SiteService {
         return pageSize;
     }
 
-    private Map<String, Object> getHomeSystemConfig() {
-        SystemConfig systemConfig = dyxSystemConfigMapper.selectById(1L);
+    private Map<String, Object> buildHomeSystemConfig(SystemConfig systemConfig) {
         Map<String, Object> result = new HashMap<>();
-        result.put("footprintEyebrow", systemConfig == null ? null : systemConfig.getFootprintEyebrow());
-        result.put("footprintTitle", systemConfig == null ? null : systemConfig.getFootprintTitle());
-        result.put("footprintSubtitle", systemConfig == null ? null : systemConfig.getFootprintSubtitle());
-        result.put("footprintDescription", systemConfig == null ? null : systemConfig.getFootprintDescription());
-        result.put("copyrightText", systemConfig == null ? null : systemConfig.getCopyrightText());
-        result.put("techSupportText", systemConfig == null ? null : systemConfig.getTechSupportText());
+        if (systemConfig == null) {
+            return result;
+        }
+        result.put("footprintEyebrow", systemConfig.getFootprintEyebrow());
+        result.put("footprintTitle", systemConfig.getFootprintTitle());
+        result.put("footprintSubtitle", systemConfig.getFootprintSubtitle());
+        result.put("footprintDescription", systemConfig.getFootprintDescription());
+        result.put("copyrightText", systemConfig.getCopyrightText());
+        result.put("techSupportText", systemConfig.getTechSupportText());
+        result.put("homeActivityEnablePosts", systemConfig.getHomeActivityEnablePosts());
+        result.put("homeActivityEnableMoments", systemConfig.getHomeActivityEnableMoments());
+        result.put("homeActivityEnableProjects", systemConfig.getHomeActivityEnableProjects());
+        result.put("homeActivityEnableWorks", systemConfig.getHomeActivityEnableWorks());
+        result.put("homeActivityEnableHonors", systemConfig.getHomeActivityEnableHonors());
+        result.put("homeActivityMaxItems", systemConfig.getHomeActivityMaxItems());
+        result.put("homeActivityMaxItemsPerType", systemConfig.getHomeActivityMaxItemsPerType());
         return result;
+    }
+
+    private List<HomeActivityItemDTO> buildHomeFeaturedItems(SystemConfig systemConfig) {
+        if (systemConfig == null) {
+            return List.of();
+        }
+        int maxItems = systemConfig.getHomeActivityMaxItems() == null
+                ? 6
+                : Math.max(1, Math.min(systemConfig.getHomeActivityMaxItems(), 20));
+        int maxItemsPerType = systemConfig.getHomeActivityMaxItemsPerType() == null
+                ? 3
+                : Math.max(1, Math.min(systemConfig.getHomeActivityMaxItemsPerType(), 10));
+
+        List<HomeActivityItemDTO> items = new ArrayList<>();
+
+        if (Boolean.TRUE.equals(systemConfig.getHomeActivityEnablePosts())) {
+            List<Post> posts = dyxPostMapper.selectList(new LambdaQueryWrapper<Post>()
+                    .eq(Post::getPublished, 1)
+                    .eq(Post::getHomeFeatured, 1)
+                    .orderByAsc(Post::getHomeFeaturedOrder)
+                    .orderByDesc(Post::getUpdatedAt)
+                    .last("LIMIT " + maxItemsPerType));
+            posts.forEach(post -> items.add(HomeActivityItemDTO.builder()
+                    .type("POST")
+                    .refId(post.getId())
+                    .title(post.getTitle())
+                    .summary(post.getSummary())
+                    .coverImage(post.getCoverImage())
+                    .highlightTime(post.getUpdatedAt())
+                    .build()));
+        }
+
+        if (Boolean.TRUE.equals(systemConfig.getHomeActivityEnableMoments())) {
+            List<Moment> moments = dyxMomentMapper.selectList(new LambdaQueryWrapper<Moment>()
+                    .eq(Moment::getPublished, 1)
+                    .eq(Moment::getHomeFeatured, 1)
+                    .orderByAsc(Moment::getHomeFeaturedOrder)
+                    .orderByDesc(Moment::getHappenedAt)
+                    .orderByDesc(Moment::getUpdatedAt)
+                    .last("LIMIT " + maxItemsPerType));
+            moments.forEach(moment -> items.add(HomeActivityItemDTO.builder()
+                    .type("MOMENT")
+                    .refId(moment.getId())
+                    .title(moment.getTitle())
+                    .summary(moment.getContent())
+                    .coverImage(moment.getCoverImage())
+                    .highlightTime(moment.getHappenedAt() != null ? moment.getHappenedAt() : moment.getUpdatedAt())
+                    .build()));
+        }
+
+        if (Boolean.TRUE.equals(systemConfig.getHomeActivityEnableProjects())) {
+            List<Project> projects = dyxProjectMapper.selectList(new LambdaQueryWrapper<Project>()
+                    .eq(Project::getPublished, 1)
+                    .eq(Project::getHomeFeatured, 1)
+                    .orderByAsc(Project::getHomeFeaturedOrder)
+                    .orderByDesc(Project::getUpdatedAt)
+                    .last("LIMIT " + maxItemsPerType));
+            projects.forEach(project -> items.add(HomeActivityItemDTO.builder()
+                    .type("PROJECT")
+                    .refId(project.getId())
+                    .title(project.getName())
+                    .summary(project.getDescription())
+                    .coverImage(project.getCoverImage())
+                    .highlightTime(project.getUpdatedAt())
+                    .build()));
+        }
+
+        if (Boolean.TRUE.equals(systemConfig.getHomeActivityEnableWorks())) {
+            List<Work> works = dyxWorkMapper.selectList(new LambdaQueryWrapper<Work>()
+                    .eq(Work::getPublished, 1)
+                    .eq(Work::getHomeFeatured, 1)
+                    .orderByAsc(Work::getHomeFeaturedOrder)
+                    .orderByDesc(Work::getAwardAt)
+                    .orderByDesc(Work::getUpdatedAt)
+                    .last("LIMIT " + maxItemsPerType));
+            works.forEach(work -> items.add(HomeActivityItemDTO.builder()
+                    .type("WORK")
+                    .refId(work.getId())
+                    .title(work.getTitle())
+                    .summary(work.getSummary())
+                    .coverImage(work.getCoverImage())
+                    .highlightTime(work.getAwardAt() != null ? work.getAwardAt() : work.getUpdatedAt())
+                    .build()));
+        }
+
+        if (Boolean.TRUE.equals(systemConfig.getHomeActivityEnableHonors())) {
+            List<Honor> honors = dyxHonorMapper.selectList(new LambdaQueryWrapper<Honor>()
+                    .eq(Honor::getPublished, 1)
+                    .eq(Honor::getHomeFeatured, 1)
+                    .orderByAsc(Honor::getHomeFeaturedOrder)
+                    .orderByDesc(Honor::getAwardAt)
+                    .orderByDesc(Honor::getUpdatedAt)
+                    .last("LIMIT " + maxItemsPerType));
+            honors.forEach(honor -> items.add(HomeActivityItemDTO.builder()
+                    .type("HONOR")
+                    .refId(honor.getId())
+                    .title(honor.getTitle())
+                    .summary(honor.getDescription())
+                    .coverImage(honor.getCoverImage())
+                    .highlightTime(honor.getAwardAt() != null ? honor.getAwardAt() : honor.getUpdatedAt())
+                    .build()));
+        }
+
+        items.sort((a, b) -> {
+            LocalDateTime t1 = a.getHighlightTime();
+            LocalDateTime t2 = b.getHighlightTime();
+            if (t1 == null && t2 == null) {
+                return 0;
+            }
+            if (t1 == null) {
+                return 1;
+            }
+            if (t2 == null) {
+                return -1;
+            }
+            return t2.compareTo(t1);
+        });
+
+        if (items.size() > maxItems) {
+            return items.subList(0, maxItems);
+        }
+        return items;
     }
 
     /**

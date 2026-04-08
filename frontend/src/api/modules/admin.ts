@@ -106,6 +106,13 @@ export interface SystemConfigData {
   ossRegionConfigured?: boolean;
   ossBucketNameConfigured?: boolean;
   ossPublicUrlPrefixConfigured?: boolean;
+  homeActivityEnablePosts?: boolean;
+  homeActivityEnableMoments?: boolean;
+  homeActivityEnableProjects?: boolean;
+  homeActivityEnableWorks?: boolean;
+  homeActivityEnableHonors?: boolean;
+  homeActivityMaxItems?: number;
+  homeActivityMaxItemsPerType?: number;
 }
 
 /**

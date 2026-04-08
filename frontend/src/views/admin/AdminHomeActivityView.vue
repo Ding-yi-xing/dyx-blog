@@ -1,40 +1,44 @@
 <template>
-  <!--
-    后台首页更新节奏说明页。
-    当前用于说明第三屏采用自动聚合策略，并提供跳转到各内容管理页的快捷入口。
-  -->
   <section class="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
     <article class="rounded-[28px] bg-white p-6 shadow-sm">
       <h2 class="text-xl font-semibold text-slate-900">首页管理 / 更新节奏</h2>
       <p class="mt-2 text-sm leading-6 text-slate-500">
-        首页第三屏当前仍自动聚合博客、动态、作品等最新内容，这里先提供预览和维护入口。
+        首页第三屏会从已发布且被标记为“首页第三屏候选”的内容里自动聚合，这里提供维护入口。
       </p>
 
       <div class="mt-6 space-y-4 rounded-[24px] border border-slate-200 bg-slate-50 p-5">
         <div class="rounded-[20px] border border-slate-200 bg-white p-4">
           <p class="text-xs uppercase tracking-[0.22em] text-slate-400">当前策略</p>
-          <h3 class="mt-2 text-lg font-semibold text-slate-900">自动聚合最近更新</h3>
+          <h3 class="mt-2 text-lg font-semibold text-slate-900">自动聚合精选内容</h3>
           <p class="mt-3 text-sm leading-7 text-slate-600">
-            第三屏会根据已发布的博客、动态、作品与荣誉内容自动整理更新时间轴，不需要单独维护一套首页专用数据。
+            第三屏会综合博客、动态、项目、作品与荣誉中的候选项，并按系统配置限制总条数与单类型条数。
           </p>
         </div>
 
-        <div class="grid gap-4 sm:grid-cols-2">
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <RouterLink to="/dyx-manager/posts" class="rounded-[20px] border border-slate-200 bg-white p-4 transition hover:border-slate-300 hover:shadow-sm">
             <p class="text-sm font-semibold text-slate-900">去博客管理</p>
-            <p class="mt-2 text-sm leading-6 text-slate-500">调整文章发布时间、封面与摘要。</p>
+            <p class="mt-2 text-sm leading-6 text-slate-500">维护文章发布时间、摘要与首页第三屏候选状态。</p>
           </RouterLink>
           <RouterLink to="/dyx-manager/moments" class="rounded-[20px] border border-slate-200 bg-white p-4 transition hover:border-slate-300 hover:shadow-sm">
             <p class="text-sm font-semibold text-slate-900">去动态管理</p>
-            <p class="mt-2 text-sm leading-6 text-slate-500">维护近期动态内容和展示顺序。</p>
+            <p class="mt-2 text-sm leading-6 text-slate-500">维护动态内容、时间与首页第三屏候选状态。</p>
+          </RouterLink>
+          <RouterLink to="/dyx-manager/resume" class="rounded-[20px] border border-slate-200 bg-white p-4 transition hover:border-slate-300 hover:shadow-sm">
+            <p class="text-sm font-semibold text-slate-900">去简历管理</p>
+            <p class="mt-2 text-sm leading-6 text-slate-500">维护项目经历，并决定哪些项目进入首页第三屏。</p>
           </RouterLink>
           <RouterLink to="/dyx-manager/works" class="rounded-[20px] border border-slate-200 bg-white p-4 transition hover:border-slate-300 hover:shadow-sm">
             <p class="text-sm font-semibold text-slate-900">去作品管理</p>
-            <p class="mt-2 text-sm leading-6 text-slate-500">补充作品展示，影响首页更新节奏卡片。</p>
+            <p class="mt-2 text-sm leading-6 text-slate-500">补充作品展示，并标记首页第三屏候选内容。</p>
           </RouterLink>
           <RouterLink to="/dyx-manager/honors" class="rounded-[20px] border border-slate-200 bg-white p-4 transition hover:border-slate-300 hover:shadow-sm">
             <p class="text-sm font-semibold text-slate-900">去荣誉管理</p>
-            <p class="mt-2 text-sm leading-6 text-slate-500">维护获奖与成果内容。</p>
+            <p class="mt-2 text-sm leading-6 text-slate-500">维护获奖与成果内容，并标记首页第三屏候选内容。</p>
+          </RouterLink>
+          <RouterLink to="/dyx-manager/system-config" class="rounded-[20px] border border-slate-200 bg-white p-4 transition hover:border-slate-300 hover:shadow-sm">
+            <p class="text-sm font-semibold text-slate-900">去系统配置</p>
+            <p class="mt-2 text-sm leading-6 text-slate-500">调整参与类型、总条数、单类型条数和页脚文案。</p>
           </RouterLink>
         </div>
       </div>
@@ -43,20 +47,20 @@
     <article class="rounded-[28px] bg-white p-6 shadow-sm">
       <h3 class="text-lg font-semibold text-slate-900">第三屏说明</h3>
       <div class="mt-5 space-y-4 text-sm leading-7 text-slate-600">
-        <p>这里先不新增独立配置模型，避免首页第三屏和内容管理数据重复维护。</p>
-        <p>如果后续你希望把第三屏标题、说明文案或排序逻辑也单独抽到后台配置，再在这一页继续扩展即可。</p>
+        <p>第三屏不维护独立内容表，避免首页和内容模块出现双份数据。</p>
+        <p>前台卡片会根据内容类型跳转到对应页面：文章与动态进入详情页，项目跳转到简历页，作品与荣誉跳转到关于我页。</p>
       </div>
 
       <div class="mt-6 rounded-[24px] border border-dashed border-slate-300 bg-slate-50 p-5">
         <p class="text-xs uppercase tracking-[0.22em] text-slate-400">Preview</p>
         <div class="mt-4 space-y-3">
           <div class="rounded-[18px] bg-white p-4 shadow-sm">
-            <p class="text-sm font-semibold text-slate-900">最近更新节奏</p>
-            <p class="mt-2 text-sm text-slate-500">前台会自动汇总最近发布和最近更新的内容。</p>
+            <p class="text-sm font-semibold text-slate-900">第三屏精选内容</p>
+            <p class="mt-2 text-sm text-slate-500">前台会聚合候选内容，并在移动端保持单屏翻页、屏内滚动的浏览方式。</p>
           </div>
           <div class="grid gap-3">
-            <div class="rounded-[18px] border border-slate-200 bg-white p-4 text-sm text-slate-600">博客、动态、作品、荣誉将按更新时间形成节奏卡片。</div>
-            <div class="rounded-[18px] border border-slate-200 bg-white p-4 text-sm text-slate-600">无需额外录入首页专用条目，维护成本更低。</div>
+            <div class="rounded-[18px] border border-slate-200 bg-white p-4 text-sm text-slate-600">每个内容模块都可以单独决定是否参与第三屏聚合。</div>
+            <div class="rounded-[18px] border border-slate-200 bg-white p-4 text-sm text-slate-600">系统配置可控制总条数、单类型上限和第三屏页脚文案。</div>
           </div>
         </div>
       </div>

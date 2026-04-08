@@ -41,6 +41,12 @@ public class Moment {
     /** 排序值，值越小越靠前。 */
     private Integer sortOrder;
 
+    /** 是否首页第三屏候选，1 表示参与精选。 */
+    private Integer homeFeatured;
+
+    /** 首页第三屏排序值，值越小越靠前。 */
+    private Integer homeFeaturedOrder;
+
     /** 发布状态，1 表示前台可见。 */
     private Integer published;
 

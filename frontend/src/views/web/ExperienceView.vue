@@ -128,15 +128,25 @@
                 <p class="mt-3 text-sm leading-7 dyx-text-muted">
                   {{ item.description || '暂无项目描述。' }}
                 </p>
-                <a
-                  v-if="item.projectLink"
-                  :href="item.projectLink"
-                  target="_blank"
-                  rel="noreferrer"
-                  class="mt-4 inline-flex text-sm dyx-text-main underline-offset-4 hover:underline print:dyx-text-main"
-                >
-                  {{ item.projectLink }}
-                </a>
+                <div class="mt-4 flex flex-wrap gap-3">
+                  <button
+                    v-if="item.projectLink && isVideoUrl(item.projectLink)"
+                    type="button"
+                    class="dyx-ghost-pill inline-flex print:hidden"
+                    @click="openProjectVideo(item.projectLink)"
+                  >
+                    播放项目视频
+                  </button>
+                  <a
+                    v-else-if="item.projectLink"
+                    :href="item.projectLink"
+                    target="_blank"
+                    rel="noreferrer"
+                    class="inline-flex text-sm dyx-text-main underline-offset-4 hover:underline print:dyx-text-main"
+                  >
+                    {{ item.projectLink }}
+                  </a>
+                </div>
               </article>
               <article
                 v-if="!projects.length"
@@ -185,12 +195,49 @@
         </template>
       </div>
     </div>
+
+    <el-dialog
+      v-model="projectVideoDialogVisible"
+      width="min(960px, calc(100vw - 32px))"
+      top="96px"
+      append-to-body
+      destroy-on-close
+      :class="activeTheme === 'dark' ? 'resume-video-dialog resume-video-dialog--dark' : 'resume-video-dialog resume-video-dialog--light'"
+      :modal-class="'resume-video-overlay'"
+    >
+      <template #header>
+        <div class="flex items-center justify-between gap-3 pr-8">
+          <div>
+            <p class="text-xs uppercase tracking-[0.26em] dyx-text-meta">项目视频</p>
+            <p class="mt-1 text-sm dyx-text-muted">
+              该项目链接为视频地址，已在站内以播放器形式打开。
+            </p>
+          </div>
+        </div>
+      </template>
+
+      <div class="space-y-4">
+        <div class="resume-video-shell flex min-h-[320px] items-center justify-center overflow-hidden rounded-2xl">
+          <video
+            v-if="projectVideoDialogVisible && activeProjectVideoUrl"
+            :src="activeProjectVideoUrl"
+            controls
+            playsinline
+            preload="metadata"
+            class="block h-full max-h-[70vh] w-full max-w-full object-contain"
+          ></video>
+        </div>
+        <p class="break-all text-xs dyx-text-meta">
+          源地址：{{ activeProjectVideoUrl }}
+        </p>
+      </div>
+    </el-dialog>
   </section>
 </template>
 
 <script setup lang="ts">
 import { ElMessage } from 'element-plus';
-import { computed, onMounted, ref } from 'vue';
+import { computed, inject, onMounted, ref, type Ref } from 'vue';
 import {
   getHonors,
   getProfile,
@@ -204,11 +251,20 @@ import {
   type ProjectData
 } from '@/api/modules/site';
 import { formatDateYmd } from '@/utils/date';
+import { isVideoUrl } from '@/utils/media';
+
+type ThemeMode = 'light' | 'dark';
 
 const profile = ref<ProfileData>({});
 const projects = ref<ProjectData[]>([]);
 const honors = ref<HonorData[]>([]);
 const loading = ref(false);
+
+const projectVideoDialogVisible = ref(false);
+const activeProjectVideoUrl = ref('');
+
+const currentTheme = inject<Ref<ThemeMode> | undefined>('dyx-theme');
+const activeTheme = computed<ThemeMode>(() => currentTheme?.value ?? 'dark');
 
 const educationItems = computed(() => splitParagraphs(profile.value.educationExperience));
 const workItems = computed(() => splitParagraphs(profile.value.workExperience));
@@ -262,6 +318,14 @@ function handleResumePrint(): void {
   });
 }
 
+function openProjectVideo(url: string): void {
+  if (!url) {
+    return;
+  }
+  activeProjectVideoUrl.value = url;
+  projectVideoDialogVisible.value = true;
+}
+
 onMounted(() => {
   void recordSiteVisit('resume');
   void loadResumeData();
@@ -269,6 +333,75 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.resume-video-shell {
+  background:
+    radial-gradient(circle at center, rgba(148, 163, 184, 0.16), transparent 60%),
+    #020617;
+}
+
+.dark .resume-video-shell {
+  background:
+    radial-gradient(circle at center, rgba(148, 163, 184, 0.26), transparent 62%),
+    #020617;
+}
+
+:root:not(.dark) .resume-video-shell {
+  background:
+    radial-gradient(circle at center, rgba(30, 64, 175, 0.12), transparent 60%),
+    #e5e7eb;
+}
+
+:global(.resume-video-overlay) {
+  backdrop-filter: blur(14px);
+}
+
+:global(.resume-video-dialog .el-dialog) {
+  border-radius: 30px;
+  border: 1px solid rgb(var(--dyx-border-subtle-rgb) / 0.72);
+  box-shadow: var(--dyx-shadow-window);
+}
+
+:global(.resume-video-dialog .el-dialog__header) {
+  margin-right: 0;
+  padding: 24px 28px 8px;
+}
+
+:global(.resume-video-dialog .el-dialog__body) {
+  padding: 12px 28px 28px;
+}
+
+:global(.resume-video-dialog .el-dialog__headerbtn) {
+  top: 18px;
+  right: 18px;
+  z-index: 4;
+  display: inline-flex;
+  height: 36px;
+  width: 36px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+}
+
+:global(.resume-video-dialog .el-dialog__headerbtn:hover) {
+  transform: scale(1.04);
+}
+
+:global(.resume-video-dialog .el-dialog__close) {
+  color: inherit;
+}
+
+:global(.resume-video-dialog--dark.el-dialog),
+:global(.resume-video-dialog--dark .el-dialog) {
+  background: linear-gradient(180deg, rgb(var(--dyx-bg-surface-rgb) / 0.98), rgb(var(--dyx-bg-surface-muted-rgb) / 0.94));
+  color: rgb(var(--dyx-text-main-rgb));
+}
+
+:global(.resume-video-dialog--light.el-dialog),
+:global(.resume-video-dialog--light .el-dialog) {
+  background: linear-gradient(180deg, rgb(var(--dyx-bg-surface-elevated-rgb) / 0.98), rgb(var(--dyx-bg-surface-rgb) / 0.94));
+  color: rgb(var(--dyx-text-main-rgb));
+}
+
 @media print {
   :global(body) {
     background: #fff;

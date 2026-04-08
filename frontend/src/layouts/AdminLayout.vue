@@ -157,7 +157,7 @@ const adminNavGroups = [
     items: [
       { path: '/dyx-manager/home/hero', label: '首屏管理' },
       { path: '/dyx-manager/home/footprints', label: '足迹管理' },
-      { path: '/dyx-manager/home/activity', label: '更新节奏' }
+      { path: '/dyx-manager/home/activity', label: '第三屏说明' }
     ]
   },
   {

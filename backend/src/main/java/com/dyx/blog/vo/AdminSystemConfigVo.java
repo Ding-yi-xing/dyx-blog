@@ -52,4 +52,25 @@ public class AdminSystemConfigVo {
 
     /** OSS 公网访问前缀是否已配置。 */
     private Boolean ossPublicUrlPrefixConfigured;
+
+    /** 是否启用博客作为首页第三屏精选来源。 */
+    private Boolean homeActivityEnablePosts;
+
+    /** 是否启用动态作为首页第三屏精选来源。 */
+    private Boolean homeActivityEnableMoments;
+
+    /** 是否启用项目作为首页第三屏精选来源。 */
+    private Boolean homeActivityEnableProjects;
+
+    /** 是否启用作品作为首页第三屏精选来源。 */
+    private Boolean homeActivityEnableWorks;
+
+    /** 是否启用荣誉作为首页第三屏精选来源。 */
+    private Boolean homeActivityEnableHonors;
+
+    /** 首页第三屏最多展示总条数。 */
+    private Integer homeActivityMaxItems;
+
+    /** 首页第三屏单类型最多展示条数。 */
+    private Integer homeActivityMaxItemsPerType;
 }

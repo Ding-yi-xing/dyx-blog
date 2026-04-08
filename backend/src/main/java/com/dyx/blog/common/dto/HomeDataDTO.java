@@ -12,7 +12,7 @@ import java.util.Map;
 
 /**
  * 前台首页数据传输对象。
- * 仅聚合首页当前实际所需的 Hero、足迹与首页系统配置数据。
+ * 聚合首页 Hero、足迹、系统配置与第三屏精选内容。
  */
 @Data
 @Builder
@@ -28,4 +28,8 @@ public class HomeDataDTO {
 
     /** 首页相关系统配置。 */
     private Map<String, Object> systemConfig;
+
+    /** 首页第三屏精选条目列表。 */
+    private List<HomeActivityItemDTO> featuredItems;
 }
+

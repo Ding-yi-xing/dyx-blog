@@ -4,7 +4,7 @@
       <div>
         <h2 class="text-xl font-semibold text-slate-900">系统配置</h2>
         <p class="mt-2 text-sm leading-6 text-slate-500">
-          这里统一维护媒体存储和第三屏页脚信息。
+          这里统一维护媒体存储与首页第三屏聚合规则。
         </p>
       </div>
       <el-button type="primary" :loading="saving" @click="handleSave"
@@ -109,9 +109,9 @@
     >
       <div class="flex items-center justify-between gap-3">
         <div>
-          <h3 class="text-base font-semibold text-slate-900">第三屏页脚信息</h3>
+          <h3 class="text-base font-semibold text-slate-900">第三屏聚合配置</h3>
           <p class="text-xs text-slate-500">
-            控制首页第三屏右下角的版权与技术支持展示内容。
+            控制首页第三屏的版权文案、参与类型与展示数量。
           </p>
         </div>
         <el-tag type="warning">首页第三屏</el-tag>
@@ -134,6 +134,31 @@
             placeholder="如：技术支持 · Vue 3 + Spring Boot 3"
           />
         </el-form-item>
+        <el-form-item label="首页第三屏参与类型" class="md:col-span-2">
+          <div class="flex flex-wrap gap-3">
+            <el-checkbox v-model="form.homeActivityEnablePosts">博客</el-checkbox>
+            <el-checkbox v-model="form.homeActivityEnableMoments">动态</el-checkbox>
+            <el-checkbox v-model="form.homeActivityEnableProjects">项目</el-checkbox>
+            <el-checkbox v-model="form.homeActivityEnableWorks">作品</el-checkbox>
+            <el-checkbox v-model="form.homeActivityEnableHonors">荣誉</el-checkbox>
+          </div>
+        </el-form-item>
+        <el-form-item label="第三屏最多展示条数">
+          <el-input-number
+            v-model="form.homeActivityMaxItems"
+            :min="1"
+            :max="20"
+            class="!w-full"
+          />
+        </el-form-item>
+        <el-form-item label="单类型最多展示条数">
+          <el-input-number
+            v-model="form.homeActivityMaxItemsPerType"
+            :min="1"
+            :max="10"
+            class="!w-full"
+          />
+        </el-form-item>
       </el-form>
     </article>
 
@@ -153,7 +178,7 @@
         3. 公开访问前缀用于自定义 CDN / Bucket 访问域名；未填写时会按 Bucket +
         Endpoint 自动生成公开地址。
       </p>
-      <p>4. 首页第二屏文案已迁移到“足迹管理”页编辑，这里只保留全站级配置。</p>
+      <p>4. 首页第二屏文案已迁移到“足迹管理”页编辑，这里只保留第三屏聚合与存储配置。</p>
       <p>5. 本地模式下“导入 uploads 文件”仍可用，OSS 模式下会自动禁用。</p>
     </div>
   </section>
@@ -171,7 +196,7 @@ import { resolveErrorMessage } from '@/utils/error';
 
 /**
  * 后台系统配置页。
- * 负责维护媒体存储方式、OSS 参数以及首页第三屏页脚展示文案。
+ * 负责维护媒体存储方式、OSS 参数以及首页第三屏聚合配置。
  */
 const saving = ref(false);
 const form = reactive<SystemConfigData>({
@@ -214,8 +239,14 @@ function applyFormData(data?: SystemConfigData): void {
   form.ossRegionConfigured = Boolean(data?.ossRegionConfigured);
   form.ossBucketNameConfigured = Boolean(data?.ossBucketNameConfigured);
   form.ossPublicUrlPrefixConfigured = Boolean(data?.ossPublicUrlPrefixConfigured);
+  form.homeActivityEnablePosts = data?.homeActivityEnablePosts ?? false;
+  form.homeActivityEnableMoments = data?.homeActivityEnableMoments ?? false;
+  form.homeActivityEnableProjects = data?.homeActivityEnableProjects ?? true;
+  form.homeActivityEnableWorks = data?.homeActivityEnableWorks ?? true;
+  form.homeActivityEnableHonors = data?.homeActivityEnableHonors ?? false;
+  form.homeActivityMaxItems = data?.homeActivityMaxItems ?? 6;
+  form.homeActivityMaxItemsPerType = data?.homeActivityMaxItemsPerType ?? 3;
 }
-
 /**
  * 获取当前系统配置并回填页面表单。
  *
@@ -248,7 +279,14 @@ function buildPayload(): SystemConfigData {
     ossPublicUrlPrefix: form.ossPublicUrlPrefix,
     ossBaseDir: form.ossBaseDir,
     copyrightText: form.copyrightText,
-    techSupportText: form.techSupportText
+    techSupportText: form.techSupportText,
+    homeActivityEnablePosts: form.homeActivityEnablePosts,
+    homeActivityEnableMoments: form.homeActivityEnableMoments,
+    homeActivityEnableProjects: form.homeActivityEnableProjects,
+    homeActivityEnableWorks: form.homeActivityEnableWorks,
+    homeActivityEnableHonors: form.homeActivityEnableHonors,
+    homeActivityMaxItems: form.homeActivityMaxItems,
+    homeActivityMaxItemsPerType: form.homeActivityMaxItemsPerType
   };
 }
 

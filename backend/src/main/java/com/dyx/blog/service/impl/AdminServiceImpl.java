@@ -720,6 +720,27 @@ public class AdminServiceImpl implements AdminService {
             systemConfig.setOssBucketName(AESUtil.decrypt(systemConfig.getOssBucketName()));
             systemConfig.setOssPublicUrlPrefix(AESUtil.decrypt(systemConfig.getOssPublicUrlPrefix()));
         }
+        if (systemConfig.getHomeActivityEnablePosts() == null) {
+            systemConfig.setHomeActivityEnablePosts(false);
+        }
+        if (systemConfig.getHomeActivityEnableMoments() == null) {
+            systemConfig.setHomeActivityEnableMoments(false);
+        }
+        if (systemConfig.getHomeActivityEnableProjects() == null) {
+            systemConfig.setHomeActivityEnableProjects(true);
+        }
+        if (systemConfig.getHomeActivityEnableWorks() == null) {
+            systemConfig.setHomeActivityEnableWorks(true);
+        }
+        if (systemConfig.getHomeActivityEnableHonors() == null) {
+            systemConfig.setHomeActivityEnableHonors(false);
+        }
+        if (systemConfig.getHomeActivityMaxItems() == null) {
+            systemConfig.setHomeActivityMaxItems(6);
+        }
+        if (systemConfig.getHomeActivityMaxItemsPerType() == null) {
+            systemConfig.setHomeActivityMaxItemsPerType(3);
+        }
         return systemConfig;
     }
 
@@ -777,6 +798,41 @@ public class AdminServiceImpl implements AdminService {
         targetConfig.setFootprintDescription(normalizeNullableValue(systemConfig.getFootprintDescription()));
         targetConfig.setCopyrightText(normalizeNullableValue(systemConfig.getCopyrightText()));
         targetConfig.setTechSupportText(normalizeNullableValue(systemConfig.getTechSupportText()));
+        targetConfig.setHomeActivityEnablePosts(systemConfig.getHomeActivityEnablePosts() != null
+                ? systemConfig.getHomeActivityEnablePosts()
+                : existingConfig != null && existingConfig.getHomeActivityEnablePosts() != null
+                        ? existingConfig.getHomeActivityEnablePosts()
+                        : false);
+        targetConfig.setHomeActivityEnableMoments(systemConfig.getHomeActivityEnableMoments() != null
+                ? systemConfig.getHomeActivityEnableMoments()
+                : existingConfig != null && existingConfig.getHomeActivityEnableMoments() != null
+                        ? existingConfig.getHomeActivityEnableMoments()
+                        : false);
+        targetConfig.setHomeActivityEnableProjects(systemConfig.getHomeActivityEnableProjects() != null
+                ? systemConfig.getHomeActivityEnableProjects()
+                : existingConfig != null && existingConfig.getHomeActivityEnableProjects() != null
+                        ? existingConfig.getHomeActivityEnableProjects()
+                        : true);
+        targetConfig.setHomeActivityEnableWorks(systemConfig.getHomeActivityEnableWorks() != null
+                ? systemConfig.getHomeActivityEnableWorks()
+                : existingConfig != null && existingConfig.getHomeActivityEnableWorks() != null
+                        ? existingConfig.getHomeActivityEnableWorks()
+                        : true);
+        targetConfig.setHomeActivityEnableHonors(systemConfig.getHomeActivityEnableHonors() != null
+                ? systemConfig.getHomeActivityEnableHonors()
+                : existingConfig != null && existingConfig.getHomeActivityEnableHonors() != null
+                        ? existingConfig.getHomeActivityEnableHonors()
+                        : false);
+        targetConfig.setHomeActivityMaxItems(systemConfig.getHomeActivityMaxItems() != null
+                ? systemConfig.getHomeActivityMaxItems()
+                : existingConfig != null && existingConfig.getHomeActivityMaxItems() != null
+                        ? existingConfig.getHomeActivityMaxItems()
+                        : 6);
+        targetConfig.setHomeActivityMaxItemsPerType(systemConfig.getHomeActivityMaxItemsPerType() != null
+                ? systemConfig.getHomeActivityMaxItemsPerType()
+                : existingConfig != null && existingConfig.getHomeActivityMaxItemsPerType() != null
+                        ? existingConfig.getHomeActivityMaxItemsPerType()
+                        : 3);
         validateSystemConfig(targetConfig);
         targetConfig.setUpdatedAt(LocalDateTime.now());
         if (existingConfig == null) {
@@ -1079,6 +1135,13 @@ public class AdminServiceImpl implements AdminService {
         target.setOssRegionConfigured(!isBlank(systemConfig.getOssRegion()));
         target.setOssBucketNameConfigured(!isBlank(systemConfig.getOssBucketName()));
         target.setOssPublicUrlPrefixConfigured(!isBlank(systemConfig.getOssPublicUrlPrefix()));
+        target.setHomeActivityEnablePosts(systemConfig.getHomeActivityEnablePosts());
+        target.setHomeActivityEnableMoments(systemConfig.getHomeActivityEnableMoments());
+        target.setHomeActivityEnableProjects(systemConfig.getHomeActivityEnableProjects());
+        target.setHomeActivityEnableWorks(systemConfig.getHomeActivityEnableWorks());
+        target.setHomeActivityEnableHonors(systemConfig.getHomeActivityEnableHonors());
+        target.setHomeActivityMaxItems(systemConfig.getHomeActivityMaxItems());
+        target.setHomeActivityMaxItemsPerType(systemConfig.getHomeActivityMaxItemsPerType());
         return target;
     }
 
@@ -1097,6 +1160,18 @@ public class AdminServiceImpl implements AdminService {
     private void validateSystemConfig(SystemConfig systemConfig) {
         if (!"local".equals(systemConfig.getStorageType()) && !"oss".equals(systemConfig.getStorageType())) {
             throw new BusinessException("存储方式仅支持 local 或 oss");
+        }
+        if (systemConfig.getHomeActivityMaxItems() == null) {
+            throw new BusinessException("第三屏最多展示条数不能为空");
+        }
+        if (systemConfig.getHomeActivityMaxItems() < 1 || systemConfig.getHomeActivityMaxItems() > 20) {
+            throw new BusinessException("第三屏最多展示条数需在 1 到 20 之间");
+        }
+        if (systemConfig.getHomeActivityMaxItemsPerType() == null) {
+            throw new BusinessException("单类型最多展示条数不能为空");
+        }
+        if (systemConfig.getHomeActivityMaxItemsPerType() < 1 || systemConfig.getHomeActivityMaxItemsPerType() > 10) {
+            throw new BusinessException("单类型最多展示条数需在 1 到 10 之间");
         }
         if (!"oss".equals(systemConfig.getStorageType())) {
             return;

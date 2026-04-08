@@ -16,6 +16,8 @@
       <el-table-column prop="title" label="标题" min-width="220" />
       <el-table-column prop="category" label="分类" width="140" />
       <el-table-column prop="tags" label="标签" min-width="180" show-overflow-tooltip />
+      <el-table-column prop="homeFeaturedText" label="首页第三屏" width="120" />
+      <el-table-column prop="homeFeaturedOrder" label="首页排序" width="110" />
       <el-table-column prop="statusText" label="状态" width="120" />
       <el-table-column prop="publishedAt" label="发布时间" width="180" />
       <el-table-column prop="updatedAt" label="更新时间" width="180" />
@@ -73,6 +75,14 @@
             />
           </el-form-item>
         </div>
+        <div class="mt-2 grid gap-4 sm:grid-cols-2">
+          <el-form-item label="首页第三屏候选">
+            <el-switch v-model="form.homeFeatured" :active-value="1" :inactive-value="0" />
+          </el-form-item>
+          <el-form-item label="首页排序">
+            <el-input-number v-model="form.homeFeaturedOrder" :min="0" class="!w-full" />
+          </el-form-item>
+        </div>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -110,7 +120,9 @@ const form = reactive<Partial<PostData>>({
   category: '',
   tags: '',
   published: 1,
-  publishedAt: ''
+  publishedAt: '',
+  homeFeatured: 0,
+  homeFeaturedOrder: 0
 });
 
 /**
@@ -120,6 +132,7 @@ const posts = computed(() =>
   rawList.value.map((item) => ({
     ...item,
     statusText: item.published === 1 ? '已发布' : '草稿',
+    homeFeaturedText: item.homeFeatured === 1 ? '首页精选' : '未入选',
     raw: item
   }))
 );
@@ -134,7 +147,9 @@ function resetForm(): void {
     category: '',
     tags: '',
     published: 1,
-    publishedAt: ''
+    publishedAt: '',
+    homeFeatured: 0,
+    homeFeaturedOrder: 0
   });
 }
 
