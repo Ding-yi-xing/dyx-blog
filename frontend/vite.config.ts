@@ -1,6 +1,9 @@
 import { defineConfig, loadEnv } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import path from 'node:path';
+import AutoImport from 'unplugin-auto-import/vite';
+import Components from 'unplugin-vue-components/vite';
+import { ElementPlusResolver } from 'unplugin-vue-components/resolvers';
 
 function resolveManualChunk(id: string): string | undefined {
   if (!id.includes('node_modules') && !id.includes('/src/utils/footprintGeo')) {
@@ -41,18 +44,29 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, __dirname);
 
   return {
-    plugins: [vue()],
+    plugins: [
+      vue(),
+      AutoImport({
+        dts: 'src/auto-imports.d.ts',
+        resolvers: [ElementPlusResolver()],
+        imports: ['vue', 'vue-router'],
+      }),
+      Components({
+        dts: 'src/components.d.ts',
+        resolvers: [ElementPlusResolver()],
+      }),
+    ],
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, './src')
-      }
+        '@': path.resolve(__dirname, './src'),
+      },
     },
     build: {
       rollupOptions: {
         output: {
-          manualChunks: resolveManualChunk
-        }
-      }
+          manualChunks: resolveManualChunk,
+        },
+      },
     },
     server: {
       port: 5173,
@@ -60,13 +74,13 @@ export default defineConfig(({ mode }) => {
       proxy: {
         '/api': {
           target: env.VITE_API_PROXY_TARGET,
-          changeOrigin: true
+          changeOrigin: true,
         },
         '/media': {
           target: env.VITE_MEDIA_PROXY_TARGET,
-          changeOrigin: true
-        }
-      }
-    }
+          changeOrigin: true,
+        },
+      },
+    },
   };
 });
