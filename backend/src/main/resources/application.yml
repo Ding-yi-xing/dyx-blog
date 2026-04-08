@@ -13,8 +13,8 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
   servlet:
     multipart:
-      max-file-size: 100MB
-      max-request-size: 100MB
+      max-file-size: 1GB
+      max-request-size: 1GB
   web:
     resources:
       static-locations: classpath:/static/,file:uploads/
@@ -36,19 +36,18 @@ logging:
     com.dyx.blog: info
 
 jwt:
-  secret: ${JWT_SECRET:dyx-blog-prod-secret-key-at-least-32-chars-long!!!}
+  secret: ${JWT_SECRET}
   expire-hours: 24
 
 file:
   upload-path: uploads/
   access-prefix: /media/
-  max-upload-size-bytes: 104857600
+  max-upload-size-bytes: 1073741824
 
 dyx:
   security:
-    encrypt-key: ${DYX_ENCRYPT_KEY:dyx-blog-dev-encrypt-key-32chars!!!}
+    encrypt-key: ${DYX_ENCRYPT_KEY}
     cors-allowed-origins:
-      - http://118.178.186.196
       - http://localhost:*
       - http://127.0.0.1:*
       - http://[::1]:*

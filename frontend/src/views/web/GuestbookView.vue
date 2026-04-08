@@ -43,7 +43,17 @@
         <p class="text-sm dyx-text-meta">{{ messages.length }} 条</p>
       </div>
 
-      <div v-if="messages.length" class="mt-6 grid gap-4">
+      <div v-if="loading" class="mt-6 grid gap-4">
+        <el-skeleton
+          v-for="n in 3"
+          :key="n"
+          animated
+          :rows="3"
+          class="rounded-[28px] border border-[rgb(var(--dyx-border-subtle-rgb)/0.58)] bg-[rgb(var(--dyx-bg-surface-rgb)/0.46)] px-5 py-5"
+        />
+      </div>
+
+      <div v-else-if="messages.length" class="mt-6 grid gap-4">
         <article
           v-for="item in messages"
           :key="item.id"
@@ -81,6 +91,7 @@ import { resolveErrorMessage } from '@/utils/error';
  * 负责展示留言介绍和公开留言列表，并提供访客提交留言能力。
  */
 const guestbookData = ref<{ guestbookIntro?: string; messages?: GuestbookMessageData[] }>({});
+const loading = ref(false);
 const submitting = ref(false);
 const form = reactive({
   content: '',
@@ -121,8 +132,10 @@ function resetForm(): void {
  * @author Dyx
  */
 async function loadGuestbookData(): Promise<void> {
+  loading.value = true;
   const response = await getGuestbookData();
   guestbookData.value = response.data ?? {};
+  loading.value = false;
 }
 
 /**

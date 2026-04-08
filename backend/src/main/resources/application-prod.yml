@@ -15,11 +15,18 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
   servlet:
     multipart:
-      max-file-size: 2GB
-      max-request-size: 2GB
+      max-file-size: 1GB
+      max-request-size: 1GB
   web:
     resources:
       static-locations: classpath:/static/,file:uploads/
+  data:
+    redis:
+      # Redis 主机与端口，建议通过环境变量配置
+      host: ${SPRING_DATA_REDIS_HOST}
+      port: ${SPRING_DATA_REDIS_PORT}
+      # 如有密码可通过环境变量配置，默认为空
+      password: ${SPRING_DATA_REDIS_PASSWORD:}
 
 mybatis-plus:
   configuration:
@@ -46,20 +53,20 @@ file:
   # 生产环境上传路径（相对于 jar 包所在目录）
   upload-path: uploads/
   access-prefix: /media/
+  max-upload-size-bytes: 1073741824
 
 dyx:
   security:
     # 强烈建议在生产环境通过环境变量设置加密密钥
-    encrypt-key: ${ENCRYPT_KEY}
+    encrypt-key: ${DYX_ENCRYPT_KEY}
     cors-allowed-origins:
-      - http://118.178.186.196
       - http://localhost:*
       - http://127.0.0.1:*
       - http://[::1]:*
       - http://192.168.*:*
       - http://10.*:*
       - http://172.*:*
-      - http://www.dyx.company:*
-      - https://www.dyx.company:*
-      - https://dyx.company:*
-      - http://dyx.company:*
+      - http://www.dyx.company
+      - https://www.dyx.company
+      - https://dyx.company
+      - http://dyx.company

@@ -65,110 +65,154 @@
         <p class="text-sm uppercase tracking-[0.35em] dyx-text-meta">个人作品</p>
       </div>
 
-      <div
-        ref="worksScroller"
-        class="works-scroll mt-8 overflow-x-auto pb-4 md:overflow-visible md:pb-0"
-        @wheel="handleWorksWheel"
-        @pointerdown="handleHorizontalPointerDown('works', $event)"
-        @pointermove="handleHorizontalPointerMove('works', $event)"
-        @pointerup="handleHorizontalPointerUp('works')"
-        @pointercancel="handleHorizontalPointerUp('works')"
-        @pointerleave="handleHorizontalPointerUp('works')"
-        @click.capture="suppressHorizontalDragClick"
-      >
-        <div class="flex min-w-max gap-5 md:min-w-0 md:grid md:grid-cols-2 xl:grid-cols-3">
-          <article
-            v-for="item in works"
-            :key="item.id"
-            class="dyx-page-card w-[min(84vw,320px)] flex-none overflow-hidden rounded-[28px] shadow-dyx-soft transition hover:-translate-y-1 md:w-auto"
-          >
-            <div v-if="resolveWorkMediaCount(item)" class="relative">
-              <button
-                type="button"
-                class="work-media-shell group relative block h-48 w-full overflow-hidden bg-black text-left"
-                @click="openWorkViewer(item)"
-              >
-                <video
-                  v-if="shouldRenderWorkVideoCover(item)"
-                  :src="resolveVideoPosterAtSecond(item.videoUrl)"
-                  muted
-                  playsinline
-                  webkit-playsinline="true"
-                  x5-playsinline="true"
-                  x5-video-player-type="h5"
-                  preload="metadata"
-                  class="block h-48 w-full object-cover"
-                ></video>
-                <el-image
-                  v-else-if="resolveWorkCover(item)"
-                  :src="resolveWorkCover(item)"
-                  fit="cover"
-                  class="block h-48 w-full transition duration-300 group-hover:scale-[1.03]"
-                />
-                <div v-else class="flex h-48 w-full items-center justify-center bg-[rgb(var(--dyx-bg-surface-muted-rgb)/0.18)] text-sm text-white/72">
-                  暂无预览素材
-                </div>
-
-                <div class="work-media-overlay">
-                  <span>{{ resolveWorkMediaCount(item) > 1 ? `查看全部 ${resolveWorkMediaCount(item)} 项素材` : '查看素材' }}</span>
-                </div>
-
-                <div v-if="resolveWorkHasVideo(item)" class="work-media-play">
-                  <span class="work-media-play-icon"></span>
-                </div>
-
-                <div v-if="resolveWorkMediaCount(item) > 1" class="work-media-badge">
-                  <span class="work-media-badge-dot"></span>
-                  <span>{{ resolveWorkMediaCount(item) }} 项素材</span>
-                </div>
-
-                <div v-if="resolveWorkPreviewStack(item).length" class="work-media-stack" aria-hidden="true">
-                  <button
-                    v-for="preview in resolveWorkPreviewStack(item)"
-                    :key="preview.key"
-                    type="button"
-                    class="work-media-stack-item"
-                    :style="{
-                      backgroundImage: `url(${preview.thumb})`,
-                      transform: `translateX(${preview.offset * 12}px) rotate(${preview.offset === 0 ? '-4deg' : preview.offset === 1 ? '0deg' : '4deg'})`,
-                      zIndex: String(6 - preview.offset)
-                    }"
-                    :aria-label="`查看素材 ${preview.offset + 1}`"
-                    @click.stop="openWorkViewer(item, preview.index)"
-                  ></button>
-                </div>
-              </button>
-            </div>
-            <div class="p-6">
-              <div class="flex flex-wrap items-center gap-3 text-xs dyx-text-meta">
-                <span class="rounded-full bg-[rgb(var(--dyx-bg-surface-muted-rgb)/0.8)] px-3 py-1.5 dyx-text-main">{{ resolveWorkTypeText(item) }}</span>
-                <span>{{ resolveWorkMediaCount(item) }} 项素材</span>
-                <span v-if="item.workLink">含作品链接</span>
-              </div>
-              <h3 class="mt-4 text-2xl font-semibold dyx-text-main">{{ item.title }}</h3>
-              <p class="mt-4 text-sm leading-7 dyx-text-muted">{{ item.summary || '暂无作品说明。' }}</p>
-              <div class="mt-5 flex flex-wrap gap-3">
-                <button type="button" class="dyx-ghost-pill inline-flex" @click="openWorkViewer(item)">
-                  查看素材
-                </button>
-                <a
-                  v-if="item.workLink"
-                  :href="item.workLink"
-                  target="_blank"
-                  rel="noreferrer"
-                  class="dyx-ghost-pill inline-flex"
-                >
-                  查看作品链接
-                </a>
-              </div>
-            </div>
-          </article>
-
-          <article v-if="!works.length" class="rounded-[28px] border border-dashed border-[rgb(var(--dyx-border-subtle-rgb)/0.72)] bg-[rgb(var(--dyx-bg-surface-rgb)/0.36)] p-8 text-sm dyx-text-meta md:col-span-2 xl:col-span-3">
-            暂无已发布作品内容。
-          </article>
-        </div>
+      <div v-if="!worksLoaded" class="mt-8 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+        <el-skeleton
+          v-for="n in 3"
+          :key="`work-skeleton-${n}`"
+          animated
+          :rows="4"
+          class="dyx-page-card w-[min(84vw,320px)] flex-none rounded-[28px] p-6 shadow-dyx-soft md:w-auto"
+        />
       </div>
+
+      <el-tooltip
+        v-else
+        v-model:visible="worksScrollTipVisible"
+        manual
+        effect="dark"
+        placement="top"
+        :offset="10"
+        content="在这里可以按住拖动或用滚轮左右浏览作品，滚轮不会滚动整页"
+      >
+        <div
+          ref="worksScroller"
+          class="works-scroll mt-8 overflow-x-auto pb-4 md:overflow-visible md:pb-0"
+          @wheel="handleWorksWheel"
+        >
+          <div class="flex min-w-max gap-5 md:min-w-0 md:grid md:grid-cols-2 xl:grid-cols-3">
+            <article
+              v-for="item in works"
+              :key="item.id"
+              class="dyx-page-card w-[min(84vw,320px)] flex-none overflow-hidden rounded-[28px] shadow-dyx-soft transition hover:-translate-y-1 md:w-auto"
+            >
+              <div v-if="resolveWorkMediaCount(item)" class="relative">
+                <button
+                  type="button"
+                  class="work-media-shell group relative block h-48 w-full overflow-hidden bg-black text-left"
+                  @click="openWorkViewer(item)"
+                >
+                  <video
+                    v-if="shouldRenderWorkVideoCover(item)"
+                    :src="resolveVideoPosterAtSecond(item.videoUrl)"
+                    muted
+                    playsinline
+                    webkit-playsinline="true"
+                    x5-playsinline="true"
+                    x5-video-player-type="h5"
+                    preload="metadata"
+                    class="block h-48 w-full object-cover"
+                  ></video>
+                  <el-image
+                    v-else-if="resolveWorkCover(item)"
+                    :src="resolveWorkCover(item)"
+                    fit="cover"
+                    class="block h-48 w-full transition duration-300 group-hover:scale-[1.03]"
+                  />
+                  <div
+                    v-else
+                    class="flex h-48 w-full items-center justify-center bg-[rgb(var(--dyx-bg-surface-muted-rgb)/0.18)] text-sm text-white/72"
+                  >
+                    暂无预览素材
+                  </div>
+
+                  <div class="work-media-overlay">
+                    <span>
+                      {{
+                        resolveWorkMediaCount(item) > 1
+                          ? `查看全部 ${resolveWorkMediaCount(item)} 项素材`
+                          : '查看素材'
+                      }}
+                    </span>
+                  </div>
+
+                  <div v-if="resolveWorkHasVideo(item)" class="work-media-play">
+                    <span class="work-media-play-icon"></span>
+                  </div>
+
+                  <div
+                    v-if="resolveWorkMediaCount(item) > 1"
+                    class="work-media-badge"
+                  >
+                    <span class="work-media-badge-dot"></span>
+                    <span>{{ resolveWorkMediaCount(item) }} 项素材</span>
+                  </div>
+
+                  <div
+                    v-if="resolveWorkPreviewStack(item).length"
+                    class="work-media-stack"
+                    aria-hidden="true"
+                  >
+                    <button
+                      v-for="preview in resolveWorkPreviewStack(item)"
+                      :key="preview.key"
+                      type="button"
+                      class="work-media-stack-item"
+                      :style="{
+                        backgroundImage: `url(${preview.thumb})`,
+                        transform: `translateX(${preview.offset * 12}px) rotate(${preview.offset === 0 ? '-4deg' : preview.offset === 1 ? '0deg' : '4deg'})`,
+                        zIndex: String(6 - preview.offset)
+                      }"
+                      :aria-label="`查看素材 ${preview.offset + 1}`"
+                      @click.stop="openWorkViewer(item, preview.index)"
+                    ></button>
+                  </div>
+                </button>
+              </div>
+              <div class="p-6">
+                <div class="flex flex-wrap items-center gap-3 text-xs dyx-text-meta">
+                  <span
+                    class="rounded-full bg-[rgb(var(--dyx-bg-surface-muted-rgb)/0.8)] px-3 py-1.5 dyx-text-main"
+                    >{{ resolveWorkTypeText(item) }}</span
+                  >
+                  <span>{{ resolveWorkMediaCount(item) }} 项素材</span>
+                  <span v-if="item.workLink">含作品链接</span>
+                </div>
+                <h3 class="mt-4 text-2xl font-semibold dyx-text-main">
+                  {{ item.title }}
+                </h3>
+                <p class="mt-4 text-sm leading-7 dyx-text-muted">
+                  {{ item.summary || '暂无作品说明。' }}
+                </p>
+                <div class="mt-5 flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    class="dyx-ghost-pill inline-flex"
+                    @click="openWorkViewer(item)"
+                  >
+                    查看素材
+                  </button>
+                  <a
+                    v-if="item.workLink"
+                    :href="item.workLink"
+                    target="_blank"
+                    rel="noreferrer"
+                    class="dyx-ghost-pill inline-flex"
+                  >
+                    查看作品链接
+                  </a>
+                </div>
+              </div>
+            </article>
+
+            <article
+              v-if="!works.length"
+              class="rounded-[28px] border border-dashed border-[rgb(var(--dyx-border-subtle-rgb)/0.72)] bg-[rgb(var(--dyx-bg-surface-rgb)/0.36)] p-8 text-sm dyx-text-meta md:col-span-2 xl:col-span-3"
+            >
+              暂无已发布作品内容。
+            </article>
+          </div>
+        </div>
+      </el-tooltip>
     </div>
 
     <el-dialog
@@ -272,73 +316,83 @@
         <p class="text-sm uppercase tracking-[0.35em] dyx-text-meta">荣誉时间线</p>
       </div>
 
-      <div
-        ref="honorsScroller"
-        class="honors-scroll mt-10 overflow-x-auto pb-4"
-        @wheel="handleHonorsWheel"
-        @pointerdown="handleHorizontalPointerDown('honors', $event)"
-        @pointermove="handleHorizontalPointerMove('honors', $event)"
-        @pointerup="handleHorizontalPointerUp('honors')"
-        @pointercancel="handleHorizontalPointerUp('honors')"
-        @pointerleave="handleHorizontalPointerUp('honors')"
-        @click.capture="suppressHorizontalDragClick"
+      <el-tooltip
+        v-if="honors.length"
+        v-model:visible="honorsScrollTipVisible"
+        manual
+        effect="dark"
+        placement="top"
+        :offset="10"
+        content="按住拖动或用滚轮左右浏览荣誉时间线"
       >
-        <div v-if="honors.length" class="relative flex min-w-max items-start gap-6 px-1 py-4">
-          <div class="absolute left-0 right-0 top-[74px] h-px bg-[rgb(var(--dyx-border-subtle-rgb)/0.8)]"></div>
+        <div
+          ref="honorsScroller"
+          class="honors-scroll mt-10 overflow-x-auto pb-4"
+          @wheel="handleHonorsWheel"
+          @pointerdown="handleHorizontalPointerDown('honors', $event)"
+          @pointermove="handleHorizontalPointerMove('honors', $event)"
+          @pointerup="handleHorizontalPointerUp('honors')"
+          @pointercancel="handleHorizontalPointerUp('honors')"
+          @pointerleave="handleHorizontalPointerUp('honors')"
+          @click.capture="suppressHorizontalDragClick"
+        >
+          <div class="relative flex min-w-max items-start gap-6 px-1 py-4">
+            <div class="absolute left-0 right-0 top-[74px] h-px bg-[rgb(var(--dyx-border-subtle-rgb)/0.8)]"></div>
 
-          <article
-            v-for="item in honors"
-            :key="item.id"
-            class="relative w-[340px] flex-none snap-start pt-24 first:ml-1 last:mr-1 md:w-[380px]"
-          >
-            <p class="absolute left-0 top-0 text-sm font-medium tracking-[0.08em] dyx-text-meta">{{ formatDateYmd(item.awardAt) || '未设置时间' }}</p>
-            <div class="absolute left-0 top-[66px] h-4 w-4 rounded-full border-4 border-[rgb(var(--dyx-bg-surface-rgb))] bg-[rgb(var(--dyx-text-main-rgb))] shadow-sm"></div>
+            <article
+              v-for="item in honors"
+              :key="item.id"
+              class="relative w-[340px] flex-none snap-start pt-24 first:ml-1 last:mr-1 md:w-[380px]"
+            >
+              <p class="absolute left-0 top-0 text-sm font-medium tracking-[0.08em] dyx-text-meta">{{ formatDateYmd(item.awardAt) || '未设置时间' }}</p>
+              <div class="absolute left-0 top-[66px] h-4 w-4 rounded-full border-4 border-[rgb(var(--dyx-bg-surface-rgb))] bg-[rgb(var(--dyx-text-main-rgb))] shadow-sm"></div>
 
-            <div class="dyx-page-card rounded-[28px] p-6 shadow-dyx-soft transition hover:-translate-y-1">
-              <div class="flex flex-wrap items-center gap-3">
-                <h3 class="text-2xl font-semibold dyx-text-main">{{ item.title }}</h3>
-                <span v-if="item.issuer" class="rounded-full bg-[rgb(var(--dyx-bg-surface-muted-rgb)/0.8)] px-3 py-1 text-xs dyx-text-meta">{{ item.issuer }}</span>
+              <div class="dyx-page-card rounded-[28px] p-6 shadow-dyx-soft transition hover:-translate-y-1">
+                <div class="flex flex-wrap items-center gap-3">
+                  <h3 class="text-2xl font-semibold dyx-text-main">{{ item.title }}</h3>
+                  <span v-if="item.issuer" class="rounded-full bg-[rgb(var(--dyx-bg-surface-muted-rgb)/0.8)] px-3 py-1 text-xs dyx-text-meta">{{ item.issuer }}</span>
+                </div>
+                <p class="mt-4 text-sm leading-7 dyx-text-muted">{{ item.description || '暂无荣誉说明。' }}</p>
+                <div v-if="resolveHonorMedia(item).length" class="mt-6 grid gap-3 sm:grid-cols-2">
+                  <template v-for="(url, index) in resolveHonorMedia(item)" :key="`${item.id}-${index}`">
+                    <div v-if="isImageUrl(url)" class="honor-media-shell flex h-40 w-full items-center justify-center overflow-hidden rounded-2xl bg-black" @pointerdown.stop>
+                      <el-image
+                        :src="url"
+                        :preview-src-list="resolveHonorImages(item)"
+                        :initial-index="resolveHonorImages(item).indexOf(url)"
+                        fit="cover"
+                        preview-teleported
+                        class="block h-40 w-full cursor-zoom-in"
+                      />
+                    </div>
+                    <div v-else-if="isVideoUrl(url)" class="honor-media-shell flex h-40 w-full items-center justify-center overflow-hidden rounded-2xl bg-black" @pointerdown.stop>
+                      <video
+                        :src="url"
+                        controls
+                        preload="metadata"
+                        class="block h-40 w-full rounded-2xl bg-black object-cover"
+                      ></video>
+                    </div>
+                  </template>
+                </div>
+                <a
+                  v-if="item.attachmentUrl"
+                  :href="item.attachmentUrl"
+                  target="_blank"
+                  rel="noreferrer"
+                  class="dyx-ghost-pill mt-5 inline-flex"
+                >
+                  查看证书附件
+                </a>
               </div>
-              <p class="mt-4 text-sm leading-7 dyx-text-muted">{{ item.description || '暂无荣誉说明。' }}</p>
-              <div v-if="resolveHonorMedia(item).length" class="mt-6 grid gap-3 sm:grid-cols-2">
-                <template v-for="(url, index) in resolveHonorMedia(item)" :key="`${item.id}-${index}`">
-                  <div v-if="isImageUrl(url)" class="honor-media-shell flex h-40 w-full items-center justify-center overflow-hidden rounded-2xl bg-black" @pointerdown.stop>
-                    <el-image
-                      :src="url"
-                      :preview-src-list="resolveHonorImages(item)"
-                      :initial-index="resolveHonorImages(item).indexOf(url)"
-                      fit="cover"
-                      preview-teleported
-                      class="block h-40 w-full cursor-zoom-in"
-                    />
-                  </div>
-                  <div v-else-if="isVideoUrl(url)" class="honor-media-shell flex h-40 w-full items-center justify-center overflow-hidden rounded-2xl bg-black" @pointerdown.stop>
-                    <video
-                      :src="url"
-                      controls
-                      preload="metadata"
-                      class="block h-40 w-full rounded-2xl bg-black object-cover"
-                    ></video>
-                  </div>
-                </template>
-              </div>
-              <a
-                v-if="item.attachmentUrl"
-                :href="item.attachmentUrl"
-                target="_blank"
-                rel="noreferrer"
-                class="dyx-ghost-pill mt-5 inline-flex"
-              >
-                查看证书附件
-              </a>
-            </div>
-          </article>
+            </article>
+          </div>
         </div>
+      </el-tooltip>
 
-        <article v-else class="rounded-[28px] border border-dashed border-[rgb(var(--dyx-border-subtle-rgb)/0.72)] bg-[rgb(var(--dyx-bg-surface-rgb)/0.36)] p-8 text-sm dyx-text-meta">
-          暂无已发布荣誉内容。
-        </article>
-      </div>
+      <article v-else class="rounded-[28px] border border-dashed border-[rgb(var(--dyx-border-subtle-rgb)/0.72)] bg-[rgb(var(--dyx-bg-surface-rgb)/0.36)] p-8 text-sm dyx-text-meta">
+        暂无已发布荣誉内容。
+      </article>
     </div>
   </section>
 </template>
@@ -388,6 +442,7 @@ interface HorizontalDragState {
 const profile = ref<ProfileData>({});
 const honors = ref<HonorData[]>([]);
 const works = ref<WorkData[]>([]);
+const worksLoaded = ref(false);
 const honorsScroller = ref<HTMLElement>();
 const worksScroller = ref<HTMLElement>();
 const horizontalDragState = ref<Record<HorizontalScrollerKey, HorizontalDragState>>({
@@ -409,6 +464,12 @@ const workViewerVisible = ref(false);
 const activeWork = ref<WorkData | null>(null);
 const activeWorkMediaIndex = ref(0);
 const currentTheme = inject<Ref<ThemeMode> | undefined>('dyx-theme');
+
+const WORKS_TIP_STORAGE_KEY = 'dyx-tip-works-scroll-shown';
+const HONORS_TIP_STORAGE_KEY = 'dyx-tip-honors-scroll-shown';
+
+const worksScrollTipVisible = ref(false);
+const honorsScrollTipVisible = ref(false);
 
 const activeTheme = computed<ThemeMode>(() => currentTheme?.value ?? 'dark');
 const contactMethods = computed(() => resolveProfileContactMethods(profile.value));
@@ -438,6 +499,7 @@ async function loadAboutData(): Promise<void> {
   profile.value = profileResponse.status === 'fulfilled' ? (profileResponse.value.data ?? {}) : {};
   honors.value = honorResponse.status === 'fulfilled' ? (honorResponse.value.data ?? []) : [];
   works.value = workResponse.status === 'fulfilled' ? (workResponse.value.data ?? []) : [];
+  worksLoaded.value = true;
 }
 
 function resolveWorkMediaItems(item: WorkData): WorkMediaItem[] {
@@ -569,10 +631,53 @@ function getHorizontalScroller(key: HorizontalScrollerKey): HTMLElement | undefi
   return key === 'works' ? worksScroller.value : honorsScroller.value;
 }
 
+function hideWorksScrollTip(): void {
+  if (!worksScrollTipVisible.value) {
+    return;
+  }
+  worksScrollTipVisible.value = false;
+  if (typeof window !== 'undefined') {
+    window.localStorage.setItem(WORKS_TIP_STORAGE_KEY, '1');
+  }
+}
+
+function hideHonorsScrollTip(): void {
+  if (!honorsScrollTipVisible.value) {
+    return;
+  }
+  honorsScrollTipVisible.value = false;
+  if (typeof window !== 'undefined') {
+    window.localStorage.setItem(HONORS_TIP_STORAGE_KEY, '1');
+  }
+}
+
+function showInitialHorizontalTips(): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  if (!window.localStorage.getItem(WORKS_TIP_STORAGE_KEY)) {
+    worksScrollTipVisible.value = true;
+    window.setTimeout(() => {
+      hideWorksScrollTip();
+    }, 3800);
+  }
+
+  if (!window.localStorage.getItem(HONORS_TIP_STORAGE_KEY)) {
+    honorsScrollTipVisible.value = true;
+    window.setTimeout(() => {
+      hideHonorsScrollTip();
+    }, 4500);
+  }
+}
+
 function handleHorizontalPointerDown(key: HorizontalScrollerKey, event: PointerEvent): void {
   const container = getHorizontalScroller(key);
   if (!container || event.pointerType === 'touch') {
     return;
+  }
+  if (key === 'honors') {
+    hideHonorsScrollTip();
   }
   const state = horizontalDragState.value[key];
   state.pointerId = event.pointerId;
@@ -642,10 +747,12 @@ function handleHorizontalWheel(container: HTMLElement | undefined, event: WheelE
 }
 
 function handleWorksWheel(event: WheelEvent): void {
+  hideWorksScrollTip();
   handleHorizontalWheel(worksScroller.value, event);
 }
 
 function handleHonorsWheel(event: WheelEvent): void {
+  hideHonorsScrollTip();
   const container = honorsScroller.value;
   if (!container) {
     return;
@@ -656,6 +763,7 @@ function handleHonorsWheel(event: WheelEvent): void {
 onMounted(() => {
   void recordSiteVisit('profile');
   void loadAboutData();
+  showInitialHorizontalTips();
 });
 </script>
 

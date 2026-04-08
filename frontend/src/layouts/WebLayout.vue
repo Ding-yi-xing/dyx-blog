@@ -16,8 +16,6 @@ import DyxTopNav from '@/components/web/DyxTopNav.vue';
 type ThemeMode = 'light' | 'dark';
 
 const THEME_STORAGE_KEY = 'dyx-theme';
-const DAY_THEME_START_HOUR = 8;
-const NIGHT_THEME_START_HOUR = 18;
 
 /**
  * 前台站点布局组件。
@@ -86,8 +84,6 @@ const mainClass = computed(() =>
     : 'relative z-10 pb-16 pt-24 sm:pb-20 sm:pt-28'
 );
 
-let scheduledThemeTimer: number | null = null;
-
 /**
  * 同步主题到文档根节点。
  *
@@ -115,95 +111,6 @@ function getStoredTheme(): ThemeMode | null {
 }
 
 /**
- * 根据当前时间推导自动主题。
- *
- * @param now 当前时间，默认使用系统时间。
- * @returns 白天返回 light，夜间返回 dark。
- * @throws 该函数不会主动抛出异常；仅执行本地时间判断。
- * @author Dyx
- */
-function getAutoTheme(now = new Date()): ThemeMode {
-  const hour = now.getHours();
-  return hour >= DAY_THEME_START_HOUR && hour < NIGHT_THEME_START_HOUR ? 'light' : 'dark';
-}
-
-/**
- * 清理已注册的自动主题切换定时器。
- *
- * @returns 无返回值。
- * @throws 该函数不会主动抛出异常；仅在存在定时器时执行清理。
- * @author Dyx
- */
-function clearScheduledThemeTimer(): void {
-  if (scheduledThemeTimer !== null) {
-    window.clearTimeout(scheduledThemeTimer);
-    scheduledThemeTimer = null;
-  }
-}
-
-/**
- * 计算下一次自动主题切换的时间边界。
- *
- * @param now 当前时间，默认使用系统时间。
- * @returns 返回下一个 08:00 或 18:00 的时间点。
- * @throws 该函数不会主动抛出异常；仅执行本地时间计算。
- * @author Dyx
- */
-function getNextThemeBoundary(now = new Date()): Date {
-  const nextBoundary = new Date(now);
-  nextBoundary.setSeconds(0, 0);
-  const hour = now.getHours();
-  if (hour < DAY_THEME_START_HOUR) {
-    nextBoundary.setHours(DAY_THEME_START_HOUR, 0, 0, 0);
-    return nextBoundary;
-  }
-  if (hour < NIGHT_THEME_START_HOUR) {
-    nextBoundary.setHours(NIGHT_THEME_START_HOUR, 0, 0, 0);
-    return nextBoundary;
-  }
-  nextBoundary.setDate(nextBoundary.getDate() + 1);
-  nextBoundary.setHours(DAY_THEME_START_HOUR, 0, 0, 0);
-  return nextBoundary;
-}
-
-/**
- * 在未设置手动主题偏好时，安排下一次自动主题切换。
- *
- * @param now 用于计算切换边界的当前时间。
- * @returns 无返回值。
- * @throws 该函数不会主动抛出异常；仅注册本地定时器。
- * @author Dyx
- */
-function scheduleNextThemeSwitch(now = new Date()): void {
-  clearScheduledThemeTimer();
-  if (getStoredTheme()) {
-    return;
-  }
-  const nextBoundary = getNextThemeBoundary(now);
-  const delay = Math.max(1000, nextBoundary.getTime() - now.getTime());
-  scheduledThemeTimer = window.setTimeout(() => {
-    if (!getStoredTheme()) {
-      const currentTime = new Date();
-      syncDocumentTheme(getAutoTheme(currentTime));
-      scheduleNextThemeSwitch(currentTime);
-    }
-  }, delay);
-}
-
-/**
- * 应用自动主题并安排后续自动切换。
- *
- * @returns 无返回值。
- * @throws 该函数不会主动抛出异常；仅执行主题同步与定时器注册。
- * @author Dyx
- */
-function applyAutoTheme(): void {
-  const now = new Date();
-  syncDocumentTheme(getAutoTheme(now));
-  scheduleNextThemeSwitch(now);
-}
-
-/**
  * 手动切换前台主题，并写入本地持久化偏好。
  *
  * @returns 无返回值。
@@ -214,17 +121,15 @@ function toggleTheme(): void {
   const nextTheme: ThemeMode = theme.value === 'dark' ? 'light' : 'dark';
   syncDocumentTheme(nextTheme);
   window.localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
-  clearScheduledThemeTimer();
 }
 
 onMounted(() => {
   const storedTheme = getStoredTheme();
   if (storedTheme) {
     syncDocumentTheme(storedTheme);
-    clearScheduledThemeTimer();
-    return;
+  } else {
+    syncDocumentTheme('dark');
   }
-  applyAutoTheme();
 });
 
 watch(
@@ -238,7 +143,6 @@ watch(
 );
 
 onBeforeUnmount(() => {
-  clearScheduledThemeTimer();
   setTopNavVisible(true);
 });
 </script>

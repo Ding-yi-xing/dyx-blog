@@ -112,8 +112,15 @@
         <div class="absolute inset-y-0 right-0 z-[2] w-[15%] touch-pan-y"></div>
         <div class="absolute inset-0 z-0" :class="footprintBackdropClass"></div>
         <div class="absolute inset-0 z-[1] overflow-hidden">
+          <div
+            v-if="!hasInitLoadedOnce"
+            class="flex h-full w-full items-center justify-center text-sm"
+            :class="footprintEmptyClass"
+          >
+            <el-skeleton animated :rows="4" class="w-[min(480px,90%)] rounded-2xl bg-black/10 px-6 py-5" />
+          </div>
           <HomeFootprintMap
-            v-if="footprints.length"
+            v-else-if="footprints.length"
             class="h-full w-full"
             :items="footprintMapData"
             :visited-province-names="visitedProvinceNames"
@@ -161,7 +168,19 @@
         </div>
 
         <div
-          v-if="footprints.length"
+          v-if="!hasInitLoadedOnce"
+          class="pointer-events-none absolute inset-x-0 bottom-0 z-10 px-3 pb-3 sm:px-6 sm:pb-5 lg:px-8 lg:pb-6"
+        >
+          <div
+            class="pointer-events-auto mx-auto w-full rounded-[26px] border px-4 py-4 backdrop-blur md:ml-auto md:mr-0 md:max-w-[18rem] md:rounded-[22px] md:px-4 md:py-3 lg:max-w-[20rem] xl:max-w-[22rem] xl:rounded-[24px] xl:px-4 xl:py-3"
+            :class="footprintStatsClass"
+          >
+            <el-skeleton animated :rows="2" />
+          </div>
+        </div>
+
+        <div
+          v-else-if="footprints.length"
           class="pointer-events-none absolute inset-x-0 bottom-0 z-10 px-3 pb-3 sm:px-6 sm:pb-5 lg:px-8 lg:pb-6"
         >
           <div
@@ -199,25 +218,73 @@
       >
         <div class="absolute inset-0" :class="activityBackdropClass"></div>
         <div class="relative z-10 flex h-full items-center justify-center px-4">
-          <div class="text-center space-y-6">
-            <h2
-              class="home-section-title text-3xl font-semibold tracking-tight sm:text-4xl"
-              :class="activityTitleClass"
-            >
-              这页还没想好放什么
-            </h2>
-            <p
-              class="text-sm leading-7 sm:text-lg opacity-80"
-              :class="activityTextClass"
-            >
-              可以在
-              <RouterLink
-                to="/guestbook"
-                class="home-section-link border-b border-current"
-                >留言</RouterLink
+          <div class="flex w-full max-w-6xl flex-col gap-8 lg:flex-row lg:items-stretch">
+            <div class="flex-1 space-y-4 text-left">
+              <p class="home-meta text-[11px] font-medium uppercase tracking-[0.3em]" :class="activityMetaClass">
+                能力与精选项目
+              </p>
+              <h2
+                class="home-section-title text-2xl font-semibold tracking-tight sm:text-3xl"
+                :class="activityTitleClass"
               >
-              中给我点建议
-            </p>
+                我擅长什么，以及这些能力落在了哪些具体项目里。
+              </h2>
+              <p
+                class="max-w-xl text-sm leading-7 sm:text-[15px]"
+                :class="activityTextClass"
+              >
+                这里挑了一小部分代表性的经历和作品，用来补充首页第一屏里那几行文案背后的具体内容。更多细节可以在“项目经历”和“关于我 / 简历”里展开看。
+              </p>
+            </div>
+
+            <div class="flex-1 min-w-0">
+              <div v-if="!hasInitLoadedOnce" class="grid gap-4 sm:grid-cols-2">
+                <el-skeleton
+                  v-for="n in 2"
+                  :key="`activity-skeleton-${n}`"
+                  animated
+                  :rows="4"
+                  class="dyx-page-card rounded-2xl p-4 shadow-dyx-soft/70"
+                />
+              </div>
+
+              <div v-else class="grid gap-4 sm:grid-cols-2">
+                <article
+                  v-for="item in featuredProjects"
+                  :key="`project-${item.id}`"
+                  class="dyx-page-card rounded-2xl p-4 shadow-dyx-soft/70"
+                >
+                  <p class="text-[11px] font-medium tracking-[0.22em] uppercase" :class="activityMetaClass">
+                    项目
+                  </p>
+                  <h3 class="mt-2 text-base font-semibold" :class="activityTitleClass">
+                    {{ item.name }}
+                  </h3>
+                  <p class="mt-2 line-clamp-3 text-xs leading-6" :class="activityTextClass">
+                    {{ item.description || '这个项目还在整理描述。' }}
+                  </p>
+                  <p v-if="item.techStack" class="mt-2 text-[11px] leading-5 opacity-80" :class="activityTextClass">
+                    {{ item.techStack }}
+                  </p>
+                </article>
+
+                <article
+                  v-for="item in featuredWorks"
+                  :key="`work-${item.id}`"
+                  class="dyx-page-card rounded-2xl p-4 shadow-dyx-soft/70"
+                >
+                  <p class="text-[11px] font-medium tracking-[0.22em] uppercase" :class="activityMetaClass">
+                    作品
+                  </p>
+                  <h3 class="mt-2 text-base font-semibold" :class="activityTitleClass">
+                    {{ item.title }}
+                  </h3>
+                  <p class="mt-2 line-clamp-3 text-xs leading-6" :class="activityTextClass">
+                    {{ item.summary || '这个作品的说明还在补充中。' }}
+                  </p>
+                </article>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -234,6 +301,7 @@
           </p>
         </div>
       </section>
+
     </div>
 
     <GlobalInitOverlay :visible="isInitLoading" :theme="activeTheme" />
@@ -254,6 +322,8 @@ import HomeFootprintMap from "@/components/web/HomeFootprintMap.vue";
 import {
   createDefaultHeroConfig,
   getHomeData,
+  getProjects,
+  getWorks,
   recordSiteVisit,
   resolveHeroConfig,
   type HeroConfigData,
@@ -261,6 +331,8 @@ import {
   type HeroTagsBlock,
   type HeroTextBlock,
   type HomeData,
+  type ProjectData,
+  type WorkData,
 } from "@/api/modules/site";
 import { getCurrentYear } from "@/utils/date";
 import { buildFootprintMapItems } from "@/utils/footprintGeo";
@@ -310,6 +382,10 @@ const currentYear = getCurrentYear();
 
 const homeData = ref<HomeData>({});
 const heroConfigState = ref<HeroConfigData>(createDefaultHeroConfig());
+const projects = ref<ProjectData[]>([]);
+const works = ref<WorkData[]>([]);
+const featuredProjects = computed(() => projects.value.slice(0, 2));
+const featuredWorks = computed(() => works.value.slice(0, 2));
 const isInitLoading = ref(true);
 const isHeroReady = ref(false);
 const isAboveFoldReady = ref(false);
@@ -319,7 +395,6 @@ const setTopNavVisible = inject<((visible: boolean) => void) | undefined>(
 );
 const currentTheme = inject<Ref<ThemeMode> | undefined>("dyx-theme");
 
-const profile = computed(() => homeData.value.profile ?? {});
 const footprints = computed(() =>
   (homeData.value.footprints ?? []).filter((item) => item.published !== 0)
 );
@@ -399,6 +474,9 @@ const activityTitleClass = computed(() =>
 );
 const activityTextClass = computed(() =>
   activeTheme.value === "dark" ? "text-slate-300" : "text-slate-600"
+);
+const activityMetaClass = computed(() =>
+  activeTheme.value === "dark" ? "text-slate-400" : "text-slate-500"
 );
 const footprintMapData = computed(() =>
   buildFootprintMapItems(footprints.value)
@@ -574,11 +652,19 @@ async function finishInitLoading(): Promise<void> {
 }
 
 async function loadHomeData(): Promise<void> {
-  heroConfigState.value = createDefaultHeroConfig(profile.value);
-  isHeroReady.value = false;
-  const response = await getHomeData();
-  homeData.value = response.data ?? {};
+  const response = await Promise.allSettled([
+    getHomeData(),
+    getProjects(),
+    getWorks(),
+  ]);
+  const [homeResponse, projectResponse, workResponse] = response;
+  homeData.value =
+    homeResponse.status === "fulfilled" ? homeResponse.value.data ?? {} : {};
   heroConfigState.value = resolveHeroConfig(homeData.value.profile);
+  projects.value =
+    projectResponse.status === "fulfilled" ? projectResponse.value.data ?? [] : [];
+  works.value =
+    workResponse.status === "fulfilled" ? workResponse.value.data ?? [] : [];
   isHeroReady.value = true;
   await finishInitLoading();
 }
@@ -593,17 +679,25 @@ onMounted(() => {
   if (!el) return;
 
   wheelHandler = (event: WheelEvent) => {
-    if (Math.abs(event.deltaY) < 8) {
+    // 某些设备滚轮 deltaY 很小，降低阈值保证能触发翻页
+    const delta = event.deltaY;
+    if (Math.abs(delta) < 1) {
       return;
     }
     event.preventDefault();
     if (wheelNavigationLocked) {
       return;
     }
+    const rawNextIndex = currentSectionIndex.value + (delta > 0 ? 1 : -1);
+    const maxIndex = HOME_SECTION_COUNT - 1;
+    const clampedIndex = Math.max(0, Math.min(rawNextIndex, maxIndex));
+    // 已在边界（比如已经在最后一屏），不触发锁定，避免卡死
+    if (clampedIndex === currentSectionIndex.value) {
+      return;
+    }
     wheelNavigationLocked = true;
-    scrollToSection(currentSectionIndex.value + (event.deltaY > 0 ? 1 : -1));
+    scrollToSection(clampedIndex);
   };
-
   scrollSyncHandler = () => {
     scheduleScrollSync();
     clearScrollSnapTimer();

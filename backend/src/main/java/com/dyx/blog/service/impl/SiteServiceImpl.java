@@ -1,9 +1,11 @@
 package com.dyx.blog.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.dyx.blog.common.dto.GuestbookDataDTO;
+import com.dyx.blog.common.dto.GuestbookPublicMessageDTO;
 import com.dyx.blog.common.dto.HomeDataDTO;
 import com.dyx.blog.common.exception.BusinessException;
 import com.dyx.blog.common.util.ClientIpUtil;
@@ -199,7 +201,9 @@ public class SiteServiceImpl implements SiteService {
         if (post == null || post.getPublished() == null || post.getPublished() != 1) {
             throw new BusinessException("文章不存在或未发布");
         }
-        jdbcTemplate.update("UPDATE dyx_post SET view_count = COALESCE(view_count, 0) + 1 WHERE id = ?", id);
+        dyxPostMapper.update(null, new LambdaUpdateWrapper<Post>()
+                .setSql("view_count = COALESCE(view_count, 0) + 1")
+                .eq(Post::getId, id));
         post.setViewCount((post.getViewCount() == null ? 0 : post.getViewCount()) + 1);
         return post;
     }

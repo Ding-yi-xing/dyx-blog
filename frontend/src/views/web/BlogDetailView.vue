@@ -15,9 +15,9 @@
     </article>
 
     <article class="dyx-page-card rounded-[36px] px-6 py-8 md:px-8 md:py-10">
-      <p v-if="loading" class="text-[15px] leading-8 dyx-text-muted">
-        正在加载文章内容...
-      </p>
+      <div v-if="loading" class="space-y-4">
+        <el-skeleton animated :rows="6" />
+      </div>
       <p v-else-if="errorMessage" class="text-[15px] leading-8 text-rose-500">
         {{ errorMessage }}
       </p>
