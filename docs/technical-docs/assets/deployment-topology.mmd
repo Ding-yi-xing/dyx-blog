@@ -1,7 +1,0 @@
-flowchart TB
-    User[User Browser] --> Nginx[Nginx]
-    Nginx --> Frontend[Vue dist]
-    Nginx --> Backend[Spring Boot 8080]
-    Backend --> MySQL[(MySQL)]
-    Backend --> Uploads[(uploads/ local storage)]
-    Backend -.optional.-> OSS[(Aliyun OSS)]
