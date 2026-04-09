@@ -8,6 +8,7 @@ import com.dyx.blog.common.dto.GuestbookDataDTO;
 import com.dyx.blog.common.dto.GuestbookPublicMessageDTO;
 import com.dyx.blog.common.dto.HomeDataDTO;
 import com.dyx.blog.common.dto.HomeActivityItemDTO;
+import com.dyx.blog.common.dto.HomeDeferredDataDTO;
 import com.dyx.blog.common.exception.BusinessException;
 import com.dyx.blog.common.util.ClientIpUtil;
 import com.dyx.blog.common.util.HeroConfigUtil;
@@ -84,33 +85,24 @@ public class SiteServiceImpl implements SiteService {
      */
     @Override
     public HomeDataDTO getHomeData() {
-        SystemConfig systemConfig = dyxSystemConfigMapper.selectById(1L);
-        if (systemConfig == null) {
-            systemConfig = new SystemConfig();
-        }
-        if (systemConfig.getHomeActivityEnablePosts() == null) {
-            systemConfig.setHomeActivityEnablePosts(false);
-        }
-        if (systemConfig.getHomeActivityEnableMoments() == null) {
-            systemConfig.setHomeActivityEnableMoments(false);
-        }
-        if (systemConfig.getHomeActivityEnableProjects() == null) {
-            systemConfig.setHomeActivityEnableProjects(true);
-        }
-        if (systemConfig.getHomeActivityEnableWorks() == null) {
-            systemConfig.setHomeActivityEnableWorks(true);
-        }
-        if (systemConfig.getHomeActivityEnableHonors() == null) {
-            systemConfig.setHomeActivityEnableHonors(false);
-        }
-        if (systemConfig.getHomeActivityMaxItems() == null) {
-            systemConfig.setHomeActivityMaxItems(6);
-        }
-        if (systemConfig.getHomeActivityMaxItemsPerType() == null) {
-            systemConfig.setHomeActivityMaxItemsPerType(3);
-        }
+        SystemConfig systemConfig = resolveHomeSystemConfig();
         return HomeDataDTO.builder()
                 .profile(getProfile())
+                .footprints(listFootprints())
+                .systemConfig(buildHomeSystemConfig(systemConfig))
+                .featuredItems(buildHomeFeaturedItems(systemConfig))
+                .build();
+    }
+
+    /**
+     * 获取首页延迟数据。
+     *
+     * @return 首页第二、第三屏数据。
+     */
+    @Override
+    public HomeDeferredDataDTO getHomeDeferredData() {
+        SystemConfig systemConfig = resolveHomeSystemConfig();
+        return HomeDeferredDataDTO.builder()
                 .footprints(listFootprints())
                 .systemConfig(buildHomeSystemConfig(systemConfig))
                 .featuredItems(buildHomeFeaturedItems(systemConfig))
@@ -387,6 +379,35 @@ public class SiteServiceImpl implements SiteService {
             throw new BusinessException("pageSize 需在 1 到 100 之间");
         }
         return pageSize;
+    }
+
+    private SystemConfig resolveHomeSystemConfig() {
+        SystemConfig systemConfig = dyxSystemConfigMapper.selectById(1L);
+        if (systemConfig == null) {
+            systemConfig = new SystemConfig();
+        }
+        if (systemConfig.getHomeActivityEnablePosts() == null) {
+            systemConfig.setHomeActivityEnablePosts(false);
+        }
+        if (systemConfig.getHomeActivityEnableMoments() == null) {
+            systemConfig.setHomeActivityEnableMoments(false);
+        }
+        if (systemConfig.getHomeActivityEnableProjects() == null) {
+            systemConfig.setHomeActivityEnableProjects(true);
+        }
+        if (systemConfig.getHomeActivityEnableWorks() == null) {
+            systemConfig.setHomeActivityEnableWorks(true);
+        }
+        if (systemConfig.getHomeActivityEnableHonors() == null) {
+            systemConfig.setHomeActivityEnableHonors(false);
+        }
+        if (systemConfig.getHomeActivityMaxItems() == null) {
+            systemConfig.setHomeActivityMaxItems(6);
+        }
+        if (systemConfig.getHomeActivityMaxItemsPerType() == null) {
+            systemConfig.setHomeActivityMaxItemsPerType(3);
+        }
+        return systemConfig;
     }
 
     private Map<String, Object> buildHomeSystemConfig(SystemConfig systemConfig) {

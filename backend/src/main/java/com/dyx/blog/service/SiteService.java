@@ -2,6 +2,7 @@ package com.dyx.blog.service;
 
 import com.dyx.blog.common.dto.GuestbookDataDTO;
 import com.dyx.blog.common.dto.HomeDataDTO;
+import com.dyx.blog.common.dto.HomeDeferredDataDTO;
 import com.dyx.blog.entity.Footprint;
 import com.dyx.blog.entity.GuestbookMessage;
 import com.dyx.blog.entity.Honor;
@@ -26,6 +27,13 @@ public interface SiteService {
      * @return 首页展示数据。
      */
     HomeDataDTO getHomeData();
+
+    /**
+     * 获取首页延迟加载数据。
+     *
+     * @return 首页第二、第三屏所需数据。
+     */
+    HomeDeferredDataDTO getHomeDeferredData();
 
     /**
      * 获取个人资料信息。

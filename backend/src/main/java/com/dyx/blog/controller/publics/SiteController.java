@@ -2,6 +2,7 @@ package com.dyx.blog.controller.publics;
 
 import com.dyx.blog.common.dto.GuestbookDataDTO;
 import com.dyx.blog.common.dto.HomeDataDTO;
+import com.dyx.blog.common.dto.HomeDeferredDataDTO;
 import com.dyx.blog.common.response.Result;
 import com.dyx.blog.entity.Footprint;
 import com.dyx.blog.entity.GuestbookMessage;
@@ -44,6 +45,16 @@ public class SiteController {
     @GetMapping("/home")
     public Result<HomeDataDTO> getHomeData() {
         return Result.success(dyxSiteService.getHomeData());
+    }
+
+    /**
+     * 获取首页延迟数据。
+     *
+     * @return 首页第二、第三屏所需数据。
+     */
+    @GetMapping("/home/deferred")
+    public Result<HomeDeferredDataDTO> getHomeDeferredData() {
+        return Result.success(dyxSiteService.getHomeDeferredData());
     }
 
     /**

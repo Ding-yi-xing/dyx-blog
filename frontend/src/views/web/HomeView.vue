@@ -114,7 +114,7 @@
         <div class="absolute inset-0 z-0" :class="footprintBackdropClass"></div>
         <div class="absolute inset-0 z-[1] overflow-hidden">
           <div
-            v-if="!hasInitLoadedOnce"
+            v-if="isDeferredLoading"
             class="flex h-full w-full items-center justify-center text-sm"
             :class="footprintEmptyClass"
           >
@@ -169,7 +169,7 @@
         </div>
 
         <div
-          v-if="!hasInitLoadedOnce"
+          v-if="isDeferredLoading"
           class="pointer-events-none absolute inset-x-0 bottom-0 z-10 px-3 pb-3 sm:px-6 sm:pb-5 lg:px-8 lg:pb-6"
         >
           <div
@@ -241,7 +241,7 @@
 
             <div class="min-h-0 min-w-0 flex-1 pb-2 pr-1 sm:pb-0 sm:pr-0">
               <div
-                v-if="!hasInitLoadedOnce"
+                v-if="isDeferredLoading"
                 class="activity-cards-scroll -mx-1 overflow-x-auto pb-2 scrollbar-none sm:mx-0 sm:overflow-visible sm:pb-0"
               >
                 <div class="activity-cards-track flex min-w-max gap-4 sm:grid sm:min-w-0 sm:grid-cols-2 lg:h-full lg:content-start">
@@ -259,7 +259,10 @@
                 v-else
                 class="activity-cards-scroll -mx-1 overflow-x-auto pb-2 scrollbar-none sm:mx-0 sm:overflow-visible sm:pb-0"
               >
-                <div class="activity-cards-track flex min-w-max gap-4 sm:grid sm:min-w-0 sm:grid-cols-2 lg:h-full lg:content-start">
+                <div
+                  v-if="featuredItems.length"
+                  class="activity-cards-track flex min-w-max gap-4 sm:grid sm:min-w-0 sm:grid-cols-2 lg:h-full lg:content-start"
+                >
                   <article
                     v-for="item in featuredItems"
                     :key="`${item.type}-${item.refId}`"
@@ -284,6 +287,13 @@
                     </p>
                   </article>
                 </div>
+                <div
+                  v-else
+                  class="dyx-page-card flex min-h-[220px] items-center justify-center rounded-2xl p-6 text-center text-sm leading-7 shadow-dyx-soft/70"
+                  :class="activityTextClass"
+                >
+                  首页精选内容正在整理中，后续会逐步补充。
+                </div>
               </div>
             </div>
           </div>
@@ -305,7 +315,7 @@
 
     </div>
 
-    <GlobalInitOverlay :visible="isInitLoading" :theme="activeTheme" />
+    <GlobalInitOverlay :visible="isCriticalLoading" :theme="activeTheme" />
   </section>
 </template>
 
@@ -322,15 +332,18 @@ import {
 import { useRouter } from "vue-router";
 import {
   createDefaultHeroConfig,
-  getHomeData,
+  getHomeDeferredData,
+  getProfile,
   recordSiteVisit,
   resolveHeroConfig,
   type HeroConfigData,
   type HeroImageBlock,
   type HeroTagsBlock,
   type HeroTextBlock,
-  type HomeData,
   type HomeActivityItemData,
+  type HomeData,
+  type HomeDeferredData,
+  type ProfileData,
 } from "@/api/modules/site";
 import { getCurrentYear } from "@/utils/date";
 import { buildFootprintMapItems } from "@/utils/footprintGeo";
@@ -388,8 +401,8 @@ const heroConfigState = ref<HeroConfigData>(createDefaultHeroConfig());
 const featuredItems = computed<HomeActivityItemData[]>(
   () => homeData.value.featuredItems ?? []
 );
-const isInitLoading = ref(true);
-const hasInitLoadedOnce = ref(false);
+const isCriticalLoading = ref(true);
+const isDeferredLoading = ref(true);
 const setTopNavVisible = inject<((visible: boolean) => void) | undefined>(
   "dyx-set-top-nav-visible"
 );
@@ -558,7 +571,7 @@ const hasHeroBackground = computed(
   () => !!heroImageBlock.value?.backgroundImageUrl?.trim()
 );
 const shouldActivateMap = computed(
-  () => hasInitLoadedOnce.value && currentSectionIndex.value >= 1
+  () => !isDeferredLoading.value && currentSectionIndex.value >= 1
 );
 
 const scrollContainer = ref<HTMLElement | null>(null);
@@ -709,23 +722,56 @@ function resolveActivityTypeLabel(type?: string): string {
   }
 }
 
-async function loadHomeData(): Promise<void> {
-  const response = await getHomeData();
-  const result = response as { data?: HomeData };
-  homeData.value = result.data ?? {};
-  heroConfigState.value = resolveHeroConfig(homeData.value.profile);
-  hasInitLoadedOnce.value = true;
-  isInitLoading.value = false;
+async function loadHomeCriticalData(): Promise<void> {
+  try {
+    const response = await getProfile();
+    const result = response as { data?: ProfileData };
+    const profile = result.data;
+    homeData.value = {
+      ...homeData.value,
+      profile,
+    };
+    heroConfigState.value = resolveHeroConfig(profile);
+  } finally {
+    isCriticalLoading.value = false;
+  }
 }
 
-onMounted(async () => {
+async function loadHomeDeferredData(): Promise<void> {
+  try {
+    const response = await getHomeDeferredData();
+    const result = response as { data?: HomeDeferredData };
+    const deferredData = result.data ?? {};
+    homeData.value = {
+      ...homeData.value,
+      ...deferredData,
+    };
+  } finally {
+    isDeferredLoading.value = false;
+  }
+}
+
+function scheduleDeferredHomeDataLoad(): void {
+  if (typeof window === "undefined") {
+    void loadHomeDeferredData();
+    return;
+  }
+  window.requestAnimationFrame(() => {
+    void loadHomeDeferredData();
+  });
+}
+
+onMounted(() => {
   currentSectionIndex.value = 0;
   updateTopNavVisibility();
-  void recordSiteVisit("home");
-  await loadHomeData();
 
   const el = scrollContainer.value;
-  if (!el) return;
+  if (!el) {
+    void loadHomeCriticalData();
+    scheduleDeferredHomeDataLoad();
+    void recordSiteVisit("home");
+    return;
+  }
 
   wheelHandler = (event: WheelEvent) => {
     if (isActivityScrollTarget(event.target) && currentSectionIndex.value === HOME_SECTION_COUNT - 1) {
@@ -780,6 +826,10 @@ onMounted(async () => {
   } else {
     isFootprintMapVisible.value = true;
   }
+
+  void recordSiteVisit("home");
+  void loadHomeCriticalData();
+  scheduleDeferredHomeDataLoad();
 });
 
 onBeforeUnmount(() => {

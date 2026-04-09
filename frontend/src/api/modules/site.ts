@@ -206,6 +206,12 @@ export interface HomeData {
   systemConfig?: HomeSystemConfigData;
   featuredItems?: HomeActivityItemData[];
 }
+
+export interface HomeDeferredData {
+  footprints?: FootprintData[];
+  systemConfig?: HomeSystemConfigData;
+  featuredItems?: HomeActivityItemData[];
+}
 export interface GuestbookMessageData {
   id?: number;
   content?: string;
@@ -509,6 +515,17 @@ export function isExternalContactHref(href?: string): boolean {
  */
 export function getHomeData() {
   return publicHttp.get('/site/home');
+}
+
+/**
+ * 获取首页延迟展示数据。
+ *
+ * @returns 返回首页第二、第三屏所需的足迹、系统配置与精选内容。
+ * @throws 该函数不会主动抛出同步异常；接口失败时会以 Promise reject 形式返回。
+ * @author Dyx
+ */
+export function getHomeDeferredData() {
+  return publicHttp.get('/site/home/deferred');
 }
 
 /**
