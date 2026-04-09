@@ -52,7 +52,7 @@
 CREATE DATABASE dyx_blog DEFAULT CHARACTER SET utf8mb4;
 
 # 导入初始化脚本
-mysql -u root -p dyx_blog < backend/src/main/resources/sql/dyx-blog-init.sql
+mysql -u root -p dyx_blog < backend/src/main/resources/sql/dyx_blog.sql
 ```
 
 ### 2. 启动后端
@@ -142,7 +142,6 @@ dyx-blog/
 │   │   └── main.ts
 │   ├── public/
 │   └── package.json
-└── docs/              # 项目文档
 ```
 
 ## 核心功能
