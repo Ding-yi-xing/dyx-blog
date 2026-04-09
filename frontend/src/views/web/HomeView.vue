@@ -220,8 +220,8 @@
       >
         <div class="absolute inset-0" :class="activityBackdropClass"></div>
         <div class="relative z-10 flex h-full items-start justify-center px-4 pt-14 sm:pt-16 lg:items-center lg:pt-0">
-          <div class="flex h-full w-full max-w-6xl flex-col gap-6 pb-28 lg:flex-row lg:items-stretch lg:gap-8 lg:pb-0">
-            <div class="shrink-0 flex-1 space-y-4 text-left lg:self-center">
+          <div class="flex h-full w-full max-w-6xl flex-col gap-6 pb-28 lg:flex-row lg:items-center lg:gap-8 lg:pb-0">
+            <div class="shrink-0 flex-1 space-y-4 text-left">
               <p class="home-meta text-[11px] font-medium uppercase tracking-[0.3em]" :class="activityMetaClass">
                 能力与精选项目
               </p>
@@ -239,44 +239,51 @@
               </p>
             </div>
 
-            <div class="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain pb-2 pr-1 scrollbar-none lg:overflow-visible lg:pb-0 lg:pr-0">
-              <div v-if="!hasInitLoadedOnce" class="grid gap-4 sm:grid-cols-2 lg:h-full lg:content-start">
-                <el-skeleton
-                  v-for="n in 2"
-                  :key="`activity-skeleton-${n}`"
-                  animated
-                  :rows="4"
-                  class="dyx-page-card rounded-2xl p-4 shadow-dyx-soft/70"
-                />
+            <div class="min-h-0 min-w-0 flex-1 pb-2 pr-1 sm:pb-0 sm:pr-0">
+              <div
+                v-if="!hasInitLoadedOnce"
+                class="activity-cards-scroll -mx-1 overflow-x-auto pb-2 scrollbar-none sm:mx-0 sm:overflow-visible sm:pb-0"
+              >
+                <div class="activity-cards-track flex min-w-max gap-4 sm:grid sm:min-w-0 sm:grid-cols-2 lg:h-full lg:content-start">
+                  <el-skeleton
+                    v-for="n in 2"
+                    :key="`activity-skeleton-${n}`"
+                    animated
+                    :rows="4"
+                    class="dyx-page-card w-[min(84vw,320px)] flex-none rounded-2xl p-4 shadow-dyx-soft/70 sm:w-auto"
+                  />
+                </div>
               </div>
 
               <div
                 v-else
-                class="grid gap-4 sm:grid-cols-2 lg:h-full lg:content-start"
+                class="activity-cards-scroll -mx-1 overflow-x-auto pb-2 scrollbar-none sm:mx-0 sm:overflow-visible sm:pb-0"
               >
-                <article
-                  v-for="item in featuredItems"
-                  :key="`${item.type}-${item.refId}`"
-                  class="dyx-page-card rounded-2xl p-4 shadow-dyx-soft/70"
-                  :class="isFeaturedItemClickable(item)
-                    ? 'cursor-pointer transition duration-200 hover:-translate-y-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent'
-                    : ''"
-                  :tabindex="isFeaturedItemClickable(item) ? 0 : undefined"
-                  :role="isFeaturedItemClickable(item) ? 'button' : undefined"
-                  @click="handleFeaturedItemClick(item)"
-                  @keydown.enter.prevent="handleFeaturedItemClick(item)"
-                  @keydown.space.prevent="handleFeaturedItemClick(item)"
-                >
-                  <p class="text-[11px] font-medium tracking-[0.22em] uppercase" :class="activityMetaClass">
-                    {{ resolveActivityTypeLabel(item.type) }}
-                  </p>
-                  <h3 class="mt-2 text-base font-semibold" :class="activityTitleClass">
-                    {{ item.title }}
-                  </h3>
-                  <p class="mt-2 line-clamp-3 text-xs leading-6" :class="activityTextClass">
-                    {{ item.summary || '这条精选内容的描述还在整理中。' }}
-                  </p>
-                </article>
+                <div class="activity-cards-track flex min-w-max gap-4 sm:grid sm:min-w-0 sm:grid-cols-2 lg:h-full lg:content-start">
+                  <article
+                    v-for="item in featuredItems"
+                    :key="`${item.type}-${item.refId}`"
+                    class="dyx-page-card w-[min(84vw,320px)] flex-none rounded-2xl p-4 shadow-dyx-soft/70 sm:w-auto"
+                    :class="isFeaturedItemClickable(item)
+                      ? 'cursor-pointer transition duration-200 hover:-translate-y-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent'
+                      : ''"
+                    :tabindex="isFeaturedItemClickable(item) ? 0 : undefined"
+                    :role="isFeaturedItemClickable(item) ? 'button' : undefined"
+                    @click="handleFeaturedItemClick(item)"
+                    @keydown.enter.prevent="handleFeaturedItemClick(item)"
+                    @keydown.space.prevent="handleFeaturedItemClick(item)"
+                  >
+                    <p class="text-[11px] font-medium tracking-[0.22em] uppercase" :class="activityMetaClass">
+                      {{ resolveActivityTypeLabel(item.type) }}
+                    </p>
+                    <h3 class="mt-2 text-base font-semibold" :class="activityTitleClass">
+                      {{ item.title }}
+                    </h3>
+                    <p class="mt-2 line-clamp-3 text-xs leading-6" :class="activityTextClass">
+                      {{ item.summary || '这条精选内容的描述还在整理中。' }}
+                    </p>
+                  </article>
+                </div>
               </div>
             </div>
           </div>
@@ -793,3 +800,32 @@ onBeforeUnmount(() => {
   setTopNavVisible?.(true);
 });
 </script>
+
+<style scoped>
+.activity-cards-scroll {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x;
+}
+
+.activity-cards-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.activity-cards-track {
+  scroll-snap-type: x mandatory;
+}
+
+.activity-cards-track > article,
+.activity-cards-track > :deep(.el-skeleton) {
+  scroll-snap-align: start;
+}
+
+@media (min-width: 640px) {
+  .activity-cards-track {
+    scroll-snap-type: none;
+  }
+}
+</style>

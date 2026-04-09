@@ -2,7 +2,7 @@
   <div class="min-h-screen bg-slate-100">
     <div class="flex min-h-screen">
       <aside
-        class="hidden w-64 flex-col border-r border-slate-200 bg-slate-950 px-5 py-8 text-slate-200 lg:flex overflow-y-auto max-h-screen sticky top-0"
+        class="hidden w-64 shrink-0 flex-col border-r border-slate-200 bg-slate-950 px-5 py-8 text-slate-200 lg:flex overflow-y-auto max-h-screen sticky top-0"
       >
         <div>
           <div class="text-lg font-semibold">dyx-blog Admin</div>
@@ -37,7 +37,7 @@
         </el-menu>
       </aside>
 
-      <div class="flex min-h-screen flex-1 flex-col">
+      <div class="flex min-h-screen min-w-0 flex-1 flex-col">
         <header
           class="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-4 sm:px-6"
         >

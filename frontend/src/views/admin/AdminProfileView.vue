@@ -29,9 +29,10 @@
               :key="index"
               class="rounded-[20px] border border-slate-200 bg-white p-4 shadow-sm"
             >
-              <div class="grid gap-4 md:grid-cols-[1fr_1.6fr_0.9fr_auto] md:items-end">
+              <div class="grid gap-4 md:grid-cols-[0.95fr_1.15fr_1.35fr_0.9fr_auto] md:items-end">
                 <el-input v-model="item.label" placeholder="展示标签，如 邮箱 / GitHub / 微信" />
-                <el-input v-model="item.value" placeholder="联系方式内容" />
+                <el-input v-model="item.value" placeholder="显示内容，如 hello@example.com / Fortunate-Xing" />
+                <el-input v-model="item.href" placeholder="跳转链接，可选填；如 mailto:、https://、weixin://" />
                 <el-select v-model="item.type" class="!w-full" placeholder="选择性质">
                   <el-option label="文本" value="text" />
                   <el-option label="链接" value="link" />
@@ -127,7 +128,8 @@ function createEmptyContact(): ContactMethodData {
   return {
     type: 'text',
     label: '',
-    value: ''
+    value: '',
+    href: ''
   };
 }
 
@@ -183,16 +185,35 @@ function removeContact(index: number): void {
  * @author Dyx
  */
 function findLegacyContactValue(type: string): string {
-  return contactMethods.value.find((item) => {
+  const matched = contactMethods.value.find((item) => {
     const value = item.value?.trim() || '';
-    if (!value || item.type !== type) {
+    const href = item.href?.trim() || '';
+    if ((!value && !href) || item.type !== type) {
       return false;
     }
-    if (type === 'wechat' && /^[a-z][a-z\d+.-]*:/i.test(value)) {
+    if (type === 'wechat' && /^[a-z][a-z\d+.-]*:/i.test(href || value)) {
       return false;
     }
     return true;
-  })?.value?.trim() || '';
+  });
+  if (!matched) {
+    return '';
+  }
+  const value = matched.value?.trim() || '';
+  const href = matched.href?.trim() || '';
+  if (value) {
+    return value;
+  }
+  if (type === 'email') {
+    return href.replace(/^mailto:/i, '').trim();
+  }
+  if (type === 'phone') {
+    return href.replace(/^tel:/i, '').trim();
+  }
+  if (type === 'github') {
+    return href.replace(/^https?:\/\/github\.com\//i, '').replace(/^github\.com\//i, '').trim();
+  }
+  return href;
 }
 
 /**

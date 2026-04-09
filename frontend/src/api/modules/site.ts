@@ -7,6 +7,7 @@ export interface ContactMethodData {
   type?: string;
   label?: string;
   value?: string;
+  href?: string;
 }
 
 export interface HeroBaseBlock {
@@ -315,11 +316,12 @@ function normalizeContactType(item?: ContactMethodData | null): ContactMethodDat
   const type = item?.type?.trim().toLowerCase() || '';
   const label = item?.label?.trim().toLowerCase() || '';
   const value = item?.value?.trim() || '';
+  const href = item?.href?.trim() || '';
   const normalized = `${type} ${label}`;
   if (type === 'text' || type === 'link' || type === 'email' || type === 'phone' || type === 'wechat' || type === 'github') {
     return type;
   }
-  if (normalized.includes('email') || normalized.includes('邮箱') || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+  if (normalized.includes('email') || normalized.includes('邮箱') || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(href || value)) {
     return 'email';
   }
   if (normalized.includes('phone') || normalized.includes('mobile') || normalized.includes('电话') || normalized.includes('手机')) {
@@ -328,10 +330,10 @@ function normalizeContactType(item?: ContactMethodData | null): ContactMethodDat
   if (normalized.includes('wechat') || normalized.includes('微信')) {
     return 'wechat';
   }
-  if (normalized.includes('github') || /^https?:\/\/github\.com\//i.test(value) || /^github\.com\//i.test(value) || /^@[\w-]+$/.test(value)) {
+  if (normalized.includes('github') || /^https?:\/\/github\.com\//i.test(href || value) || /^github\.com\//i.test(href || value) || /^@[\w-]+$/.test(href || value)) {
     return 'github';
   }
-  if (/^[a-z][a-z\d+.-]*:/i.test(value) || /^(https?:)?\/\//i.test(value) || /^www\./i.test(value) || /^[\w.-]+\.[a-z]{2,}(?:[/:?#].*)?$/i.test(value)) {
+  if (/^[a-z][a-z\d+.-]*:/i.test(href || value) || /^(https?:)?\/\//i.test(href || value) || /^www\./i.test(href || value) || /^[\w.-]+\.[a-z]{2,}(?:[/:?#].*)?$/i.test(href || value)) {
     return 'link';
   }
   return 'text';
@@ -364,14 +366,14 @@ function resolveDefaultContactLabel(type?: ContactMethodData['type']): string {
  */
 export function parseContactMethods(value?: string | ContactMethodData[] | null): ContactMethodData[] {
   if (Array.isArray(value)) {
-    return value.filter((item) => item?.value);
+    return value.filter((item) => item?.value || item?.href);
   }
   if (!value) {
     return [];
   }
   try {
     const parsed = JSON.parse(value) as ContactMethodData[];
-    return Array.isArray(parsed) ? parsed.filter((item) => item?.value) : [];
+    return Array.isArray(parsed) ? parsed.filter((item) => item?.value || item?.href) : [];
   } catch {
     return [];
   }
@@ -391,9 +393,10 @@ export function stringifyContactMethods(items: ContactMethodData[]): string {
       .map((item) => ({
         type: normalizeContactType(item),
         label: item.label?.trim(),
-        value: item.value?.trim()
+        value: item.value?.trim(),
+        href: item.href?.trim()
       }))
-      .filter((item) => item.value)
+      .filter((item) => item.value || item.href)
   );
 }
 
@@ -413,22 +416,24 @@ export function resolveProfileContactMethods(
     return parsed
       .map((item) => {
         const value = item.value?.trim();
+        const href = item.href?.trim();
         const type = normalizeContactType(item);
         return {
           type,
           label: item.label?.trim() || resolveDefaultContactLabel(type),
-          value
+          value: value || href || '',
+          href: href || ''
         };
       })
-      .filter((item) => !!item.value);
+      .filter((item) => !!item.value || !!item.href);
   }
   const fallbackContacts: Array<ContactMethodData | null> = [
-    profile?.email ? { type: 'email', label: '邮箱', value: profile.email } : null,
-    profile?.phone ? { type: 'phone', label: '电话', value: profile.phone } : null,
-    profile?.wechat ? { type: 'wechat', label: '微信', value: profile.wechat } : null,
-    profile?.githubUrl ? { type: 'github', label: 'GitHub', value: profile.githubUrl } : null
+    profile?.email ? { type: 'email', label: '邮箱', value: profile.email, href: profile.email } : null,
+    profile?.phone ? { type: 'phone', label: '电话', value: profile.phone, href: profile.phone } : null,
+    profile?.wechat ? { type: 'wechat', label: '微信', value: profile.wechat, href: profile.wechat } : null,
+    profile?.githubUrl ? { type: 'github', label: 'GitHub', value: profile.githubUrl, href: profile.githubUrl } : null
   ];
-  return fallbackContacts.filter((item): item is ContactMethodData => !!item?.value);
+  return fallbackContacts.filter((item): item is ContactMethodData => !!item?.value || !!item?.href);
 }
 
 /**
@@ -440,8 +445,10 @@ export function resolveProfileContactMethods(
  * @author Dyx
  */
 export function resolveContactHref(item?: ContactMethodData | null): string {
-  const value = item?.value?.trim();
-  if (!value) {
+  const value = item?.value?.trim() || '';
+  const rawHref = item?.href?.trim() || '';
+  const source = rawHref || value;
+  if (!source) {
     return '';
   }
   const type = normalizeContactType(item);
@@ -449,33 +456,34 @@ export function resolveContactHref(item?: ContactMethodData | null): string {
     return '';
   }
   if (type === 'email') {
-    return `mailto:${value}`;
+    const emailValue = source.replace(/^mailto:/i, '');
+    return emailValue ? `mailto:${emailValue}` : '';
   }
   if (type === 'phone') {
-    const phoneValue = value.replace(/[^\d+]/g, '');
+    const phoneValue = source.replace(/^tel:/i, '').replace(/[^\d+]/g, '');
     return phoneValue ? `tel:${phoneValue}` : '';
   }
   if (type === 'github') {
-    if (/^https?:\/\//i.test(value)) {
-      return value;
+    if (/^https?:\/\//i.test(source)) {
+      return source;
     }
-    const githubPath = value
+    const githubPath = source
       .replace(/^@/, '')
       .replace(/^https?:\/\/github\.com\//i, '')
       .replace(/^github\.com\//i, '');
     return githubPath ? `https://github.com/${githubPath}` : '';
   }
-  if (type === 'wechat' && !/^[a-z][a-z\d+.-]*:/i.test(value)) {
+  if (type === 'wechat' && !/^[a-z][a-z\d+.-]*:/i.test(source)) {
     return '';
   }
-  if (/^[a-z][a-z\d+.-]*:/i.test(value)) {
-    return value;
+  if (/^[a-z][a-z\d+.-]*:/i.test(source)) {
+    return source;
   }
-  if (/^(https?:)?\/\//i.test(value)) {
-    return value.startsWith('//') ? `https:${value}` : value;
+  if (/^(https?:)?\/\//i.test(source)) {
+    return source.startsWith('//') ? `https:${source}` : source;
   }
-  if (/^www\./i.test(value) || /^[\w.-]+\.[a-z]{2,}(?:[/:?#].*)?$/i.test(value)) {
-    return `https://${value}`;
+  if (/^www\./i.test(source) || /^[\w.-]+\.[a-z]{2,}(?:[/:?#].*)?$/i.test(source)) {
+    return `https://${source}`;
   }
   return '';
 }
@@ -493,9 +501,9 @@ export function isExternalContactHref(href?: string): boolean {
 }
 
 /**
- * 获取公开首页聚合数据。
+ * 获取首页聚合展示数据。
  *
- * @returns 返回首页资料、最新内容、精选项目、足迹与系统配置等聚合数据。
+ * @returns 返回首页所需的资料、足迹、系统配置与精选内容。
  * @throws 该函数不会主动抛出同步异常；接口失败时会以 Promise reject 形式返回。
  * @author Dyx
  */

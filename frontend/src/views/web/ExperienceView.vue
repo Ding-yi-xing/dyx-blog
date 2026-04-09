@@ -112,7 +112,7 @@
               <article
                 v-for="item in projects"
                 :key="item.id"
-                class="dyx-page-card rounded-[24px] px-5 py-5 print:break-inside-avoid print:border-[rgb(var(--dyx-border-subtle-rgb)/0.72)] print:bg-white"
+                class="dyx-page-card flex h-full flex-col rounded-[24px] px-5 py-5 print:break-inside-avoid print:border-[rgb(var(--dyx-border-subtle-rgb)/0.72)] print:bg-white"
               >
                 <div class="flex flex-wrap items-center gap-3 text-xs dyx-text-meta">
                   <span
@@ -125,9 +125,24 @@
                 <h3 class="mt-3 text-xl font-semibold dyx-text-main">
                   {{ item.name }}
                 </h3>
-                <p class="mt-3 text-sm leading-7 dyx-text-muted">
-                  {{ item.description || '暂无项目描述。' }}
-                </p>
+                <div class="mt-3">
+                  <p
+                    :ref="(el) => setProjectDescriptionRef(item, el)"
+                    class="text-sm leading-7 dyx-text-muted print:!line-clamp-none"
+                    :class="isProjectDescriptionExpanded(item) ? '' : 'line-clamp-5'"
+                  >
+                    {{ item.description || '暂无项目描述。' }}
+                  </p>
+                  <button
+                    v-if="shouldShowProjectDescriptionToggle(item)"
+                    type="button"
+                    class="mt-2 inline-flex text-sm font-medium dyx-text-main underline-offset-4 transition hover:underline print:hidden"
+                    :aria-expanded="isProjectDescriptionExpanded(item)"
+                    @click="toggleProjectDescription(item)"
+                  >
+                    {{ isProjectDescriptionExpanded(item) ? '收起' : '展开更多' }}
+                  </button>
+                </div>
                 <div class="mt-4 flex flex-wrap gap-3">
                   <button
                     v-if="item.projectLink && isVideoUrl(item.projectLink)"
@@ -142,7 +157,7 @@
                     :href="item.projectLink"
                     target="_blank"
                     rel="noreferrer"
-                    class="inline-flex text-sm dyx-text-main underline-offset-4 hover:underline print:dyx-text-main"
+                    class="inline-flex break-all text-sm dyx-text-main underline-offset-4 hover:underline print:dyx-text-main"
                   >
                     {{ item.projectLink }}
                   </a>
@@ -237,7 +252,7 @@
 
 <script setup lang="ts">
 import { ElMessage } from 'element-plus';
-import { computed, inject, onMounted, ref, type Ref } from 'vue';
+import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, type Ref } from 'vue';
 import {
   getHonors,
   getProfile,
@@ -259,6 +274,9 @@ const profile = ref<ProfileData>({});
 const projects = ref<ProjectData[]>([]);
 const honors = ref<HonorData[]>([]);
 const loading = ref(false);
+const expandedProjectIds = ref<Array<number | string>>([]);
+const projectDescriptionRefs = ref<Record<string, HTMLParagraphElement | null>>({});
+const collapsibleProjectIds = ref<Array<number | string>>([]);
 
 const projectVideoDialogVisible = ref(false);
 const activeProjectVideoUrl = ref('');
@@ -279,6 +297,53 @@ const linkedContactMethods = computed(() =>
     };
   })
 );
+
+function getProjectKey(item: ProjectData): number | string {
+  return item.id ?? item.name ?? '';
+}
+
+function setProjectDescriptionRef(item: ProjectData, el: Element | { $el?: Element } | null): void {
+  const key = String(getProjectKey(item));
+  if (!key) {
+    return;
+  }
+  const rawElement = el instanceof Element ? el : el?.$el ?? null;
+  projectDescriptionRefs.value[key] = rawElement instanceof HTMLParagraphElement ? rawElement : null;
+}
+
+async function refreshCollapsibleProjects(): Promise<void> {
+  await nextTick();
+  const nextIds = projects.value
+    .filter((item) => {
+      const key = String(getProjectKey(item));
+      const element = key ? projectDescriptionRefs.value[key] : null;
+      return !!element && element.scrollHeight > element.clientHeight + 1;
+    })
+    .map((item) => getProjectKey(item));
+  collapsibleProjectIds.value = nextIds;
+  expandedProjectIds.value = expandedProjectIds.value.filter((id) => nextIds.includes(id));
+}
+
+function shouldShowProjectDescriptionToggle(item: ProjectData): boolean {
+  return collapsibleProjectIds.value.includes(getProjectKey(item));
+}
+
+function isProjectDescriptionExpanded(item: ProjectData): boolean {
+  const key = getProjectKey(item);
+  return key !== '' && expandedProjectIds.value.includes(key);
+}
+
+function toggleProjectDescription(item: ProjectData): void {
+  const key = getProjectKey(item);
+  if (key === '' || !shouldShowProjectDescriptionToggle(item)) {
+    return;
+  }
+  if (expandedProjectIds.value.includes(key)) {
+    expandedProjectIds.value = expandedProjectIds.value.filter((itemKey) => itemKey !== key);
+    return;
+  }
+  expandedProjectIds.value = [...expandedProjectIds.value, key];
+}
 
 function splitParagraphs(value?: string): string[] {
   return (value ?? '')
@@ -301,6 +366,8 @@ async function loadResumeData(): Promise<void> {
       projectResponse.status === 'fulfilled' ? (projectResponse.value.data ?? []) : [];
     honors.value =
       honorResponse.status === 'fulfilled' ? (honorResponse.value.data ?? []) : [];
+    projectDescriptionRefs.value = {};
+    await refreshCollapsibleProjects();
   } finally {
     loading.value = false;
   }
@@ -326,9 +393,18 @@ function openProjectVideo(url: string): void {
   projectVideoDialogVisible.value = true;
 }
 
+function handleWindowResize(): void {
+  void refreshCollapsibleProjects();
+}
+
 onMounted(() => {
+  window.addEventListener('resize', handleWindowResize);
   void recordSiteVisit('resume');
   void loadResumeData();
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', handleWindowResize);
 });
 </script>
 
