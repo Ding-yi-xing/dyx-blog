@@ -70,3 +70,18 @@ dyx:
       - https://www.dyx.company
       - https://dyx.company
       - http://dyx.company
+  site:
+    visit-stat:
+      pending-key: dyx:site:visit:stat:pending
+      flush-key-prefix: "dyx:site:visit:stat:flush:"
+      flush-index-key: dyx:site:visit:stat:flush:index
+      flush-interval-ms: 60000
+    rate-limit:
+      guestbook:
+        enabled: true
+        limit: 5
+        window-seconds: 300
+      visit:
+        enabled: true
+        limit: 60
+        window-seconds: 60

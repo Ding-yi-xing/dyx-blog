@@ -5,7 +5,7 @@
         <div>
           <p class="text-xs font-medium uppercase tracking-[0.24em] text-slate-400">Visit logs</p>
           <h2 class="mt-3 text-2xl font-semibold tracking-tight text-slate-950">访问日志</h2>
-          <p class="mt-2 text-sm text-slate-500">按时间倒序查看公开站点访问明细，包含页面、IP、设备类型、设备名称与 User-Agent。</p>
+          <p class="mt-2 text-sm text-slate-500">按时间倒序查看公开站点访问明细，包含页面、IP、设备类型、设备名称、实际地址与 User-Agent。</p>
         </div>
         <div class="flex flex-wrap items-center justify-end gap-3">
           <div class="rounded-2xl bg-slate-100 px-4 py-3 text-right">
@@ -66,6 +66,11 @@
         <el-table-column prop="ipAddress" label="IP" min-width="150" />
         <el-table-column prop="deviceTypeLabel" label="设备类型" min-width="120" />
         <el-table-column prop="deviceName" label="设备名称" min-width="140" />
+        <el-table-column label="实际地址" min-width="220">
+          <template #default="scope">
+            {{ scope.row.actualAddress || '-' }}
+          </template>
+        </el-table-column>
         <el-table-column label="User-Agent" min-width="360">
           <template #default="scope">
             <div class="whitespace-normal break-all text-xs leading-6 text-slate-500">

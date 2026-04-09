@@ -1,6 +1,7 @@
 package com.dyx.blog.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.dyx.blog.common.constant.SystemConstant;
 import com.dyx.blog.common.context.UserContext;
 import com.dyx.blog.common.dto.DashboardSummaryDTO;
@@ -17,6 +18,7 @@ import com.dyx.blog.entity.Moment;
 import com.dyx.blog.entity.Post;
 import com.dyx.blog.entity.Profile;
 import com.dyx.blog.entity.Project;
+import com.dyx.blog.entity.SiteVisitLog;
 import com.dyx.blog.entity.SystemConfig;
 import com.dyx.blog.entity.User;
 import com.dyx.blog.entity.Work;
@@ -32,6 +34,8 @@ import com.dyx.blog.mapper.SystemConfigMapper;
 import com.dyx.blog.mapper.UserMapper;
 import com.dyx.blog.mapper.WorkMapper;
 import com.dyx.blog.service.AdminService;
+import com.dyx.blog.service.IpLookupService;
+import com.dyx.blog.service.support.SiteVisitStatRedisService;
 import com.dyx.blog.storage.OssMediaStorage;
 import com.dyx.blog.vo.AdminSystemConfigVo;
 import com.dyx.blog.vo.AdminUserVo;
@@ -82,8 +86,10 @@ public class AdminServiceImpl implements AdminService {
     private final SiteVisitLogMapper dyxSiteVisitLogMapper;
     private final SystemConfigMapper dyxSystemConfigMapper;
     private final JdbcTemplate jdbcTemplate;
+    private final SiteVisitStatRedisService siteVisitStatRedisService;
     private final ObjectMapper objectMapper;
     private final PasswordEncoder passwordEncoder;
+    private final IpLookupService ipLookupService;
 
     /**
      * 获取后台仪表盘摘要。
@@ -723,6 +729,12 @@ public class AdminServiceImpl implements AdminService {
         if (systemConfig.getHomeActivityEnablePosts() == null) {
             systemConfig.setHomeActivityEnablePosts(false);
         }
+        if (systemConfig.getIpLookupEnabled() == null) {
+            systemConfig.setIpLookupEnabled(false);
+        }
+        if (isBlank(systemConfig.getIpLookupApiUrl())) {
+            systemConfig.setIpLookupApiUrl("https://v2.xxapi.cn/api/ip");
+        }
         if (systemConfig.getHomeActivityEnableMoments() == null) {
             systemConfig.setHomeActivityEnableMoments(false);
         }
@@ -798,6 +810,16 @@ public class AdminServiceImpl implements AdminService {
         targetConfig.setFootprintDescription(normalizeNullableValue(systemConfig.getFootprintDescription()));
         targetConfig.setCopyrightText(normalizeNullableValue(systemConfig.getCopyrightText()));
         targetConfig.setTechSupportText(normalizeNullableValue(systemConfig.getTechSupportText()));
+        targetConfig.setIpLookupEnabled(systemConfig.getIpLookupEnabled() != null
+                ? systemConfig.getIpLookupEnabled()
+                : existingConfig != null && existingConfig.getIpLookupEnabled() != null
+                        ? existingConfig.getIpLookupEnabled()
+                        : false);
+        targetConfig.setIpLookupApiUrl(systemConfig.getIpLookupApiUrl() != null
+                ? normalizeNullableValue(systemConfig.getIpLookupApiUrl())
+                : existingConfig != null
+                        ? normalizeNullableValue(existingConfig.getIpLookupApiUrl())
+                        : "https://v2.xxapi.cn/api/ip");
         targetConfig.setHomeActivityEnablePosts(systemConfig.getHomeActivityEnablePosts() != null
                 ? systemConfig.getHomeActivityEnablePosts()
                 : existingConfig != null && existingConfig.getHomeActivityEnablePosts() != null
@@ -839,6 +861,9 @@ public class AdminServiceImpl implements AdminService {
             dyxSystemConfigMapper.insert(targetConfig);
         } else {
             dyxSystemConfigMapper.updateById(targetConfig);
+        }
+        if (Boolean.TRUE.equals(targetConfig.getIpLookupEnabled())) {
+            backfillMissingActualAddresses(targetConfig.getIpLookupApiUrl());
         }
 
         // 返回前解密，确保前端看到的是明文
@@ -948,7 +973,8 @@ public class AdminServiceImpl implements AdminService {
     private long queryTotalSiteVisits() {
         Long total = jdbcTemplate.queryForObject("SELECT COALESCE(SUM(visit_count), 0) FROM dyx_site_visit_stat",
                 Long.class);
-        return total == null ? 0L : total;
+        long persistedTotal = total == null ? 0L : total;
+        return persistedTotal + siteVisitStatRedisService.getPendingTotal();
     }
 
     private List<Map<String, Object>> queryDailySiteVisits() {
@@ -977,6 +1003,47 @@ public class AdminServiceImpl implements AdminService {
             result.add(item);
         }
         return result;
+    }
+
+    private void backfillMissingActualAddresses(String apiUrl) {
+        String normalizedApiUrl = normalizeNullableValue(apiUrl);
+        if (isBlank(normalizedApiUrl)) {
+            return;
+        }
+        List<SiteVisitLog> pendingLogs = dyxSiteVisitLogMapper.selectList(new LambdaQueryWrapper<SiteVisitLog>()
+                .select(SiteVisitLog::getIpAddress)
+                .and(wrapper -> wrapper.isNull(SiteVisitLog::getActualAddress)
+                        .or()
+                        .eq(SiteVisitLog::getActualAddress, ""))
+                .groupBy(SiteVisitLog::getIpAddress)
+                .orderByAsc(SiteVisitLog::getIpAddress));
+        for (SiteVisitLog pendingLog : pendingLogs) {
+            String ipAddress = normalizeNullableValue(pendingLog.getIpAddress());
+            if (!ipLookupService.shouldLookup(ipAddress)) {
+                continue;
+            }
+            SiteVisitLog latestResolvedLog = dyxSiteVisitLogMapper.selectOne(new LambdaQueryWrapper<SiteVisitLog>()
+                    .select(SiteVisitLog::getActualAddress)
+                    .eq(SiteVisitLog::getIpAddress, ipAddress)
+                    .isNotNull(SiteVisitLog::getActualAddress)
+                    .ne(SiteVisitLog::getActualAddress, "")
+                    .orderByDesc(SiteVisitLog::getCreatedAt)
+                    .orderByDesc(SiteVisitLog::getId)
+                    .last("LIMIT 1"));
+            String actualAddress = latestResolvedLog == null ? null : normalizeNullableValue(latestResolvedLog.getActualAddress());
+            if (isBlank(actualAddress)) {
+                actualAddress = normalizeNullableValue(ipLookupService.resolveActualAddress(ipAddress, normalizedApiUrl));
+            }
+            if (isBlank(actualAddress)) {
+                continue;
+            }
+            dyxSiteVisitLogMapper.update(null, new LambdaUpdateWrapper<SiteVisitLog>()
+                    .set(SiteVisitLog::getActualAddress, actualAddress)
+                    .eq(SiteVisitLog::getIpAddress, ipAddress)
+                    .and(wrapper -> wrapper.isNull(SiteVisitLog::getActualAddress)
+                            .or()
+                            .eq(SiteVisitLog::getActualAddress, "")));
+        }
     }
 
     private List<Map<String, Object>> queryDeviceTypeDistribution() {
@@ -1043,7 +1110,7 @@ public class AdminServiceImpl implements AdminService {
         List<Map<String, Object>> records = new ArrayList<>();
         if (totalCount > 0) {
             StringBuilder dataSql = new StringBuilder(
-                    "SELECT id, page_key, ip_address, user_agent, device_type, device_name, created_at");
+                    "SELECT id, page_key, ip_address, actual_address, user_agent, device_type, device_name, created_at");
             dataSql.append(baseSql).append(" ORDER BY created_at DESC LIMIT ? OFFSET ?");
             List<Object> dataParams = new ArrayList<>(params);
             dataParams.add(pageSize);
@@ -1058,6 +1125,7 @@ public class AdminServiceImpl implements AdminService {
                 item.put("pageKey", currentPageKey);
                 item.put("pageLabel", mapPageKeyLabel(currentPageKey));
                 item.put("ipAddress", row.getOrDefault("ip_address", "unknown"));
+                item.put("actualAddress", row.getOrDefault("actual_address", ""));
                 item.put("userAgent", row.getOrDefault("user_agent", "unknown"));
                 item.put("deviceType", currentDeviceType);
                 item.put("deviceTypeLabel", mapDeviceTypeLabel(currentDeviceType));
@@ -1130,6 +1198,8 @@ public class AdminServiceImpl implements AdminService {
         target.setFootprintDescription(systemConfig.getFootprintDescription());
         target.setCopyrightText(systemConfig.getCopyrightText());
         target.setTechSupportText(systemConfig.getTechSupportText());
+        target.setIpLookupEnabled(systemConfig.getIpLookupEnabled());
+        target.setIpLookupApiUrl(systemConfig.getIpLookupApiUrl());
         target.setUpdatedAt(systemConfig.getUpdatedAt());
         target.setOssEndpointConfigured(!isBlank(systemConfig.getOssEndpoint()));
         target.setOssRegionConfigured(!isBlank(systemConfig.getOssRegion()));
@@ -1160,6 +1230,15 @@ public class AdminServiceImpl implements AdminService {
     private void validateSystemConfig(SystemConfig systemConfig) {
         if (!"local".equals(systemConfig.getStorageType()) && !"oss".equals(systemConfig.getStorageType())) {
             throw new BusinessException("存储方式仅支持 local 或 oss");
+        }
+        if (Boolean.TRUE.equals(systemConfig.getIpLookupEnabled())) {
+            if (isBlank(systemConfig.getIpLookupApiUrl())) {
+                throw new BusinessException("启用 IP 查询时请先配置接口地址");
+            }
+            String ipLookupApiUrl = systemConfig.getIpLookupApiUrl().trim().toLowerCase();
+            if (!ipLookupApiUrl.startsWith("http://") && !ipLookupApiUrl.startsWith("https://")) {
+                throw new BusinessException("IP 查询接口地址仅支持 http 或 https");
+            }
         }
         if (systemConfig.getHomeActivityMaxItems() == null) {
             throw new BusinessException("第三屏最多展示条数不能为空");

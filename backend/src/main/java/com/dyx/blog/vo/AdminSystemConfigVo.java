@@ -20,6 +20,12 @@ public class AdminSystemConfigVo {
     /** OSS 基础目录。 */
     private String ossBaseDir;
 
+    /** 是否启用 IP 实际地址查询。 */
+    private Boolean ipLookupEnabled;
+
+    /** IP 查询接口地址。 */
+    private String ipLookupApiUrl;
+
     /** 足迹模块眉标题。 */
     private String footprintEyebrow;
 

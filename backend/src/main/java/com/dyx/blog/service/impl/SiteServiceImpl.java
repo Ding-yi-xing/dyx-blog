@@ -20,9 +20,9 @@ import com.dyx.blog.entity.Moment;
 import com.dyx.blog.entity.Post;
 import com.dyx.blog.entity.Profile;
 import com.dyx.blog.entity.Project;
+import com.dyx.blog.entity.SiteVisitLog;
 import com.dyx.blog.entity.SystemConfig;
 import com.dyx.blog.entity.Work;
-import com.dyx.blog.entity.SiteVisitLog;
 import com.dyx.blog.mapper.FootprintMapper;
 import com.dyx.blog.mapper.GuestbookMessageMapper;
 import com.dyx.blog.mapper.HonorMapper;
@@ -33,13 +33,15 @@ import com.dyx.blog.mapper.ProjectMapper;
 import com.dyx.blog.mapper.SiteVisitLogMapper;
 import com.dyx.blog.mapper.SystemConfigMapper;
 import com.dyx.blog.mapper.WorkMapper;
+import com.dyx.blog.service.IpLookupService;
 import com.dyx.blog.service.SiteService;
+import com.dyx.blog.service.support.DistributedRateLimitService;
+import com.dyx.blog.service.support.SiteVisitStatRedisService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.net.URLEncoder;
@@ -75,8 +77,10 @@ public class SiteServiceImpl implements SiteService {
     private final FootprintMapper dyxFootprintMapper;
     private final GuestbookMessageMapper dyxGuestbookMessageMapper;
     private final SiteVisitLogMapper dyxSiteVisitLogMapper;
-    private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
+    private final IpLookupService ipLookupService;
+    private final DistributedRateLimitService distributedRateLimitService;
+    private final SiteVisitStatRedisService siteVisitStatRedisService;
 
     /**
      * 获取首页聚合数据。
@@ -564,27 +568,61 @@ public class SiteServiceImpl implements SiteService {
         try {
             String normalizedPageKey = normalizePageKey(pageKey);
             String clientIp = ClientIpUtil.resolveClientIp(request);
+            if (!distributedRateLimitService.allowVisit(clientIp, normalizedPageKey)) {
+                return;
+            }
             String userAgent = resolveUserAgent(request);
+            String actualAddress = resolveVisitActualAddress(clientIp);
 
             SiteVisitLog visitLog = new SiteVisitLog();
             visitLog.setPageKey(normalizedPageKey);
             visitLog.setIpAddress(clientIp);
+            visitLog.setActualAddress(actualAddress);
             visitLog.setUserAgent(userAgent);
             visitLog.setDeviceType(resolveDeviceType(userAgent));
             visitLog.setDeviceName(resolveDeviceName(userAgent));
             visitLog.setCreatedAt(LocalDateTime.now());
 
             dyxSiteVisitLogMapper.insert(visitLog);
-
-            // 异步累加统计
-            jdbcTemplate.update(
-                    "INSERT INTO dyx_site_visit_stat (page_key, visit_count, updated_at) VALUES (?, 1, NOW()) " +
-                            "ON DUPLICATE KEY UPDATE visit_count = visit_count + 1, updated_at = NOW()",
-                    normalizedPageKey);
-
+            backfillVisitActualAddress(clientIp, actualAddress);
+            siteVisitStatRedisService.increment(normalizedPageKey);
         } catch (Exception e) {
             log.error("记录访问日志失败 [{}]: {}", pageKey, e.getMessage());
         }
+    }
+
+    private String resolveVisitActualAddress(String clientIp) {
+        SystemConfig systemConfig = dyxSystemConfigMapper.selectById(1L);
+        if (systemConfig == null || !Boolean.TRUE.equals(systemConfig.getIpLookupEnabled())) {
+            return null;
+        }
+        String apiUrl = normalizeNullableValue(systemConfig.getIpLookupApiUrl());
+        if (!ipLookupService.shouldLookup(clientIp) || isBlank(apiUrl)) {
+            return null;
+        }
+        SiteVisitLog latestResolvedLog = dyxSiteVisitLogMapper.selectOne(new LambdaQueryWrapper<SiteVisitLog>()
+                .select(SiteVisitLog::getActualAddress)
+                .eq(SiteVisitLog::getIpAddress, clientIp)
+                .isNotNull(SiteVisitLog::getActualAddress)
+                .orderByDesc(SiteVisitLog::getCreatedAt)
+                .orderByDesc(SiteVisitLog::getId)
+                .last("LIMIT 1"));
+        if (latestResolvedLog != null && !isBlank(latestResolvedLog.getActualAddress())) {
+            return latestResolvedLog.getActualAddress();
+        }
+        return normalizeNullableValue(ipLookupService.resolveActualAddress(clientIp, apiUrl));
+    }
+
+    private void backfillVisitActualAddress(String clientIp, String actualAddress) {
+        if (isBlank(clientIp) || isBlank(actualAddress)) {
+            return;
+        }
+        dyxSiteVisitLogMapper.update(null, new LambdaUpdateWrapper<SiteVisitLog>()
+                .set(SiteVisitLog::getActualAddress, actualAddress)
+                .eq(SiteVisitLog::getIpAddress, clientIp)
+                .and(wrapper -> wrapper.isNull(SiteVisitLog::getActualAddress)
+                        .or()
+                        .eq(SiteVisitLog::getActualAddress, "")));
     }
 
     private String normalizePageKey(String pageKey) {
@@ -679,6 +717,14 @@ public class SiteServiceImpl implements SiteService {
                 || normalizedUserAgent.contains("slurp")
                 || normalizedUserAgent.contains("curl")
                 || normalizedUserAgent.contains("wget");
+    }
+
+    private String normalizeNullableValue(String value) {
+        if (value == null) {
+            return null;
+        }
+        String normalized = value.trim();
+        return normalized.isEmpty() ? null : normalized;
     }
 
     private String truncate(String value, int maxLength) {

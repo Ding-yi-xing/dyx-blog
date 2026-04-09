@@ -1,6 +1,7 @@
 package com.dyx.blog.config;
 
 import com.dyx.blog.common.interceptor.JwtAuthInterceptor;
+import com.dyx.blog.common.interceptor.PublicRateLimitInterceptor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -22,6 +23,7 @@ import java.util.List;
 public class WebMvcConfig implements WebMvcConfigurer {
 
     private final JwtAuthInterceptor dyxJwtAuthInterceptor;
+    private final PublicRateLimitInterceptor publicRateLimitInterceptor;
     private final FileProperties dyxFileProperties;
     private final DyxSecurityProperties dyxSecurityProperties;
 
@@ -61,6 +63,8 @@ public class WebMvcConfig implements WebMvcConfigurer {
         registry.addInterceptor(dyxJwtAuthInterceptor)
                 .addPathPatterns("/api/dyx-manager/**")
                 .excludePathPatterns("/api/auth/login", "/api/dyx-manager/media/content");
+        registry.addInterceptor(publicRateLimitInterceptor)
+                .addPathPatterns("/api/site/guestbook/messages");
     }
 
     /**

@@ -53,6 +53,7 @@ export interface RecentVisitRecord {
   pageKey: string;
   pageLabel: string;
   ipAddress: string;
+  actualAddress?: string;
   userAgent: string;
   deviceType: string;
   deviceTypeLabel: string;
@@ -95,6 +96,8 @@ export interface SystemConfigData {
   ossBucketName?: string;
   ossPublicUrlPrefix?: string;
   ossBaseDir?: string;
+  ipLookupEnabled?: boolean;
+  ipLookupApiUrl?: string;
   footprintEyebrow?: string;
   footprintTitle?: string;
   footprintSubtitle?: string;

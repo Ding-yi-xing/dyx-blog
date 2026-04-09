@@ -25,6 +25,9 @@ public class SiteVisitLog {
     /** 访客 IP 地址。 */
     private String ipAddress;
 
+    /** IP 查询得到的实际地址。 */
+    private String actualAddress;
+
     /** 浏览器 User-Agent 原始字符串。 */
     private String userAgent;
 
