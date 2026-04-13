@@ -178,6 +178,8 @@ export interface HomeSystemConfigData {
   footprintDescription?: string;
   copyrightText?: string;
   techSupportText?: string;
+  homeAnnouncementEnabled?: boolean;
+  homeAnnouncementContent?: string;
   homeActivityEnablePosts?: boolean;
   homeActivityEnableMoments?: boolean;
   homeActivityEnableProjects?: boolean;
@@ -195,7 +197,7 @@ export interface HomeActivityItemData {
   coverImage?: string;
   highlightTime?: string;
 }
-
+  
 /**
  * 首页聚合数据结构。
  * 仅保留首页当前实际使用的资料、足迹与首页系统配置。

@@ -118,7 +118,11 @@
             class="flex h-full w-full items-center justify-center text-sm"
             :class="footprintEmptyClass"
           >
-            <el-skeleton animated :rows="4" class="w-[min(480px,90%)] rounded-2xl bg-black/10 px-6 py-5" />
+            <el-skeleton
+              animated
+              :rows="4"
+              class="w-[min(480px,90%)] rounded-2xl bg-black/10 px-6 py-5"
+            />
           </div>
           <HomeFootprintMap
             v-else-if="footprints.length && isFootprintMapVisible"
@@ -219,10 +223,17 @@
         :class="activitySectionClass"
       >
         <div class="absolute inset-0" :class="activityBackdropClass"></div>
-        <div class="relative z-10 flex h-full items-start justify-center px-4 pt-14 sm:pt-16 lg:items-center lg:pt-0">
-          <div class="flex h-full w-full max-w-6xl flex-col gap-6 pb-28 lg:flex-row lg:items-center lg:gap-8 lg:pb-0">
+        <div
+          class="relative z-10 flex h-full items-start justify-center px-4 pt-14 sm:pt-16 lg:items-center lg:pt-0"
+        >
+          <div
+            class="flex h-full w-full max-w-6xl flex-col gap-6 pb-28 lg:flex-row lg:items-center lg:gap-8 lg:pb-0"
+          >
             <div class="shrink-0 flex-1 space-y-4 text-left">
-              <p class="home-meta text-[11px] font-medium uppercase tracking-[0.3em]" :class="activityMetaClass">
+              <p
+                class="home-meta text-[11px] font-medium uppercase tracking-[0.3em]"
+                :class="activityMetaClass"
+              >
                 能力与精选项目
               </p>
               <h2
@@ -235,7 +246,8 @@
                 class="max-w-xl text-sm leading-7 sm:text-[15px]"
                 :class="activityTextClass"
               >
-                这里挑了一小部分代表性的经历和作品，用来补充首页第一屏里那几行文案背后的具体内容。更多细节可以在“项目经历”和“关于我 / 简历”里展开看。
+                这里挑了一小部分代表性的经历和作品，用来补充首页第一屏里那几行文案背后的具体内容。更多细节可以在“项目经历”和“关于我
+                / 简历”里展开看。
               </p>
             </div>
 
@@ -244,7 +256,9 @@
                 v-if="isDeferredLoading"
                 class="activity-cards-scroll -mx-1 overflow-x-auto pb-2 scrollbar-none sm:mx-0 sm:overflow-visible sm:pb-0"
               >
-                <div class="activity-cards-track flex min-w-max gap-4 sm:grid sm:min-w-0 sm:grid-cols-2 lg:h-full lg:content-start">
+                <div
+                  class="activity-cards-track flex min-w-max gap-4 sm:grid sm:min-w-0 sm:grid-cols-2 lg:h-full lg:content-start"
+                >
                   <el-skeleton
                     v-for="n in 2"
                     :key="`activity-skeleton-${n}`"
@@ -267,23 +281,34 @@
                     v-for="item in featuredItems"
                     :key="`${item.type}-${item.refId}`"
                     class="dyx-page-card w-[min(84vw,320px)] flex-none rounded-2xl p-4 shadow-dyx-soft/70 sm:w-auto"
-                    :class="isFeaturedItemClickable(item)
-                      ? 'cursor-pointer transition duration-200 hover:-translate-y-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent'
-                      : ''"
+                    :class="
+                      isFeaturedItemClickable(item)
+                        ? 'cursor-pointer transition duration-200 hover:-translate-y-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent'
+                        : ''
+                    "
                     :tabindex="isFeaturedItemClickable(item) ? 0 : undefined"
                     :role="isFeaturedItemClickable(item) ? 'button' : undefined"
                     @click="handleFeaturedItemClick(item)"
                     @keydown.enter.prevent="handleFeaturedItemClick(item)"
                     @keydown.space.prevent="handleFeaturedItemClick(item)"
                   >
-                    <p class="text-[11px] font-medium tracking-[0.22em] uppercase" :class="activityMetaClass">
+                    <p
+                      class="text-[11px] font-medium tracking-[0.22em] uppercase"
+                      :class="activityMetaClass"
+                    >
                       {{ resolveActivityTypeLabel(item.type) }}
                     </p>
-                    <h3 class="mt-2 text-base font-semibold" :class="activityTitleClass">
+                    <h3
+                      class="mt-2 text-base font-semibold"
+                      :class="activityTitleClass"
+                    >
                       {{ item.title }}
                     </h3>
-                    <p class="mt-2 line-clamp-3 text-xs leading-6" :class="activityTextClass">
-                      {{ item.summary || '这条精选内容的描述还在整理中。' }}
+                    <p
+                      class="mt-2 line-clamp-3 text-xs leading-6"
+                      :class="activityTextClass"
+                    >
+                      {{ item.summary || "这条精选内容的描述还在整理中。" }}
                     </p>
                   </article>
                 </div>
@@ -312,8 +337,49 @@
           </p>
         </div>
       </section>
-
     </div>
+
+    <el-dialog
+      v-model="announcementVisible"
+      width="min(92vw, 520px)"
+      :close-on-click-modal="false"
+      :show-close="false"
+      align-center
+      class="home-announcement-dialog"
+    >
+      <template #header>
+        <div class="announcement-shell">
+          <div class="announcement-header-row">
+            <div class="announcement-marker" :class="announcementMarkerClass"></div>
+            <p
+              class="announcement-label text-[11px] font-medium uppercase tracking-[0.28em]"
+              :class="announcementMetaClass"
+            >
+              站点公告
+            </p>
+          </div>
+        </div>
+      </template>
+      <div class="announcement-body px-5 py-5 sm:px-6 sm:py-6">
+        <div
+          class="announcement-content text-[14px] leading-7 sm:text-[15px] sm:leading-8"
+          :class="announcementContentTextClass"
+        >
+          {{ announcementContent }}
+        </div>
+      </div>
+      <template #footer>
+        <div class="announcement-footer flex justify-end">
+          <el-button
+            round
+            class="announcement-confirm-btn announcement-confirm-btn--solid !px-7"
+            @click="announcementVisible = false"
+          >
+            知道了
+          </el-button>
+        </div>
+      </template>
+    </el-dialog>
 
     <GlobalInitOverlay :visible="isCriticalLoading" :theme="activeTheme" />
   </section>
@@ -403,6 +469,7 @@ const featuredItems = computed<HomeActivityItemData[]>(
 );
 const isCriticalLoading = ref(true);
 const isDeferredLoading = ref(true);
+const announcementVisible = ref(false);
 const setTopNavVisible = inject<((visible: boolean) => void) | undefined>(
   "dyx-set-top-nav-visible"
 );
@@ -439,6 +506,18 @@ const techSupportText = computed(
     footprintConfig.value.techSupportText?.trim() ||
     "Powered by Vue 3 & Spring Boot 3"
 );
+const announcementEnabled = computed(
+  () => footprintConfig.value.homeAnnouncementEnabled === true
+);
+const announcementContent = computed(
+  () => footprintConfig.value.homeAnnouncementContent?.trim() || ""
+);
+const announcementMetaClass = computed(() => "text-sky-600");
+const announcementMarkerClass = computed(
+  () =>
+    "bg-sky-500 shadow-[0_0_0_6px_rgba(14,165,233,0.12),0_10px_24px_rgba(14,165,233,0.18)]"
+);
+const announcementContentTextClass = computed(() => "text-slate-700");
 const footprintSectionClass = computed(() =>
   activeTheme.value === "dark"
     ? "bg-[#0a0a0f]"
@@ -596,7 +675,10 @@ function isActivityScrollTarget(target: EventTarget | null): boolean {
 }
 
 function isLargeScreen(): boolean {
-  return typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches;
+  return (
+    typeof window !== "undefined" &&
+    window.matchMedia("(min-width: 1024px)").matches
+  );
 }
 
 function updateCurrentSectionFromScrollPosition(): void {
@@ -605,7 +687,11 @@ function updateCurrentSectionFromScrollPosition(): void {
   if (!container || container.clientHeight <= 0) {
     return;
   }
-  if (!isLargeScreen() && section && container.scrollTop >= section.offsetTop - 8) {
+  if (
+    !isLargeScreen() &&
+    section &&
+    container.scrollTop >= section.offsetTop - 8
+  ) {
     if (currentSectionIndex.value !== HOME_SECTION_COUNT - 1) {
       currentSectionIndex.value = HOME_SECTION_COUNT - 1;
       updateTopNavVisibility();
@@ -614,7 +700,10 @@ function updateCurrentSectionFromScrollPosition(): void {
   }
   const nextIndex = Math.max(
     0,
-    Math.min(HOME_SECTION_COUNT - 1, Math.round(container.scrollTop / container.clientHeight))
+    Math.min(
+      HOME_SECTION_COUNT - 1,
+      Math.round(container.scrollTop / container.clientHeight)
+    )
   );
   if (nextIndex !== currentSectionIndex.value) {
     currentSectionIndex.value = nextIndex;
@@ -670,8 +759,24 @@ function clearScrollFrame(): void {
   }
 }
 
-function isTagsBlock(block: HeroTextBlock | HeroTagsBlock): block is HeroTagsBlock {
+function isTagsBlock(
+  block: HeroTextBlock | HeroTagsBlock
+): block is HeroTagsBlock {
   return block.type === "tags";
+}
+
+function resolveMomentId(rawId: unknown): string | null {
+  if (Array.isArray(rawId)) {
+    return null;
+  }
+  if (typeof rawId !== "string" && typeof rawId !== "number") {
+    return null;
+  }
+  const normalized = String(rawId).trim();
+  if (!/^\d+$/.test(normalized)) {
+    return null;
+  }
+  return Number(normalized) > 0 ? normalized : null;
 }
 
 function resolveFeaturedItemRoute(item: HomeActivityItemData): string | null {
@@ -680,8 +785,10 @@ function resolveFeaturedItemRoute(item: HomeActivityItemData): string | null {
   switch (normalizedType) {
     case "POST":
       return refId == null ? "/blog" : `/blog/${refId}`;
-    case "MOMENT":
-      return refId == null ? "/moments" : `/moments/${refId}`;
+    case "MOMENT": {
+      const momentId = resolveMomentId(refId);
+      return momentId ? `/moments/${momentId}` : null;
+    }
     case "PROJECT":
       return "/resume";
     case "WORK":
@@ -746,6 +853,8 @@ async function loadHomeDeferredData(): Promise<void> {
       ...homeData.value,
       ...deferredData,
     };
+    announcementVisible.value =
+      announcementEnabled.value && announcementContent.value.length > 0;
   } finally {
     isDeferredLoading.value = false;
   }
@@ -774,7 +883,10 @@ onMounted(() => {
   }
 
   wheelHandler = (event: WheelEvent) => {
-    if (isActivityScrollTarget(event.target) && currentSectionIndex.value === HOME_SECTION_COUNT - 1) {
+    if (
+      isActivityScrollTarget(event.target) &&
+      currentSectionIndex.value === HOME_SECTION_COUNT - 1
+    ) {
       return;
     }
     const delta = event.deltaY;
@@ -876,6 +988,119 @@ onBeforeUnmount(() => {
 @media (min-width: 640px) {
   .activity-cards-track {
     scroll-snap-type: none;
+  }
+}
+
+:deep(.home-announcement-dialog .el-overlay-dialog) {
+  padding: 24px;
+}
+
+:deep(.home-announcement-dialog) {
+  border-radius: 28px;
+}
+
+:deep(.home-announcement-dialog .el-dialog) {
+  overflow: hidden;
+  border-radius: 28px;
+  border: 1px solid rgb(226 232 240 / 0.95);
+  background-color: rgb(255 255 255) !important;
+  background: rgb(255 255 255);
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.16);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+}
+
+:deep(.home-announcement-dialog .el-dialog__header) {
+  margin-right: 0;
+  padding: 24px 26px 10px;
+}
+
+:deep(.home-announcement-dialog .el-dialog__header),
+:deep(.home-announcement-dialog .el-dialog__body),
+:deep(.home-announcement-dialog .el-dialog__footer) {
+  background: transparent;
+}
+
+:deep(.home-announcement-dialog .el-dialog__body) {
+  padding: 0 26px 18px;
+}
+
+:deep(.home-announcement-dialog .el-dialog__footer) {
+  padding: 0 26px 24px;
+}
+
+.announcement-shell {
+  display: flex;
+  flex-direction: column;
+}
+
+.announcement-header-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.announcement-label {
+  line-height: 1;
+}
+
+.announcement-marker {
+  width: 10px;
+  height: 10px;
+  border-radius: 9999px;
+  flex-shrink: 0;
+}
+
+.announcement-body {
+  position: relative;
+}
+
+.announcement-content {
+  position: relative;
+  z-index: 1;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: rgb(51 65 85);
+}
+
+:deep(.home-announcement-dialog .announcement-confirm-btn) {
+  min-width: 110px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+:deep(.home-announcement-dialog .announcement-confirm-btn--solid) {
+  border: none;
+  color: rgb(255 255 255);
+  background: linear-gradient(135deg, rgb(14 165 233), rgb(2 132 199));
+  box-shadow: 0 12px 28px rgba(14, 165, 233, 0.24);
+}
+
+:deep(.home-announcement-dialog .announcement-confirm-btn--solid:hover) {
+  opacity: 1;
+  filter: brightness(0.97);
+}
+
+@media (max-width: 640px) {
+  :deep(.home-announcement-dialog .el-overlay-dialog) {
+    padding: 14px;
+  }
+
+  :deep(.home-announcement-dialog .el-dialog__header) {
+    padding: 20px 20px 10px;
+  }
+
+  :deep(.home-announcement-dialog .el-dialog__body) {
+    padding: 0 20px 16px;
+  }
+
+  :deep(.home-announcement-dialog .el-dialog__footer) {
+    padding: 0 20px 20px;
+  }
+
+  .announcement-header-row {
+    gap: 10px;
+    align-items: center;
   }
 }
 </style>

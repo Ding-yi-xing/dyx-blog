@@ -1,5 +1,7 @@
 package com.dyx.blog.common.dto;
 
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -21,6 +23,7 @@ public class HomeActivityItemDTO {
     private String type;
 
     /** 原始内容主键。 */
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long refId;
 
     /** 展示标题。 */

@@ -56,7 +56,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { getMomentDetail, recordSiteVisit, type MomentData } from '@/api/modules/site';
 import { formatDateYmd } from '@/utils/date';
@@ -78,11 +78,33 @@ const mediaItems = computed(() => {
 
 const imageItems = computed(() => mediaItems.value.filter((url) => isImageUrl(url)));
 
-async function loadMomentDetail(): Promise<void> {
+function resolveMomentId(rawId: unknown): string | null {
+  if (Array.isArray(rawId)) {
+    return null;
+  }
+  if (typeof rawId !== 'string' && typeof rawId !== 'number') {
+    return null;
+  }
+  const normalized = String(rawId).trim();
+  if (!/^\d+$/.test(normalized)) {
+    return null;
+  }
+  return Number(normalized) > 0 ? normalized : null;
+}
+
+async function loadMomentDetail(rawId: unknown): Promise<void> {
+  const momentId = resolveMomentId(rawId);
+  if (!momentId) {
+    moment.value = {};
+    errorMessage.value = '动态地址无效。';
+    loading.value = false;
+    return;
+  }
+
   loading.value = true;
   errorMessage.value = '';
   try {
-    const response = await getMomentDetail(String(route.params.id));
+    const response = await getMomentDetail(momentId);
     const nextMoment = response.data ?? {};
     if (!nextMoment.id) {
       moment.value = {};
@@ -98,8 +120,15 @@ async function loadMomentDetail(): Promise<void> {
   }
 }
 
+watch(
+  () => route.params.id,
+  (nextId) => {
+    void loadMomentDetail(nextId);
+  },
+  { immediate: true }
+);
+
 onMounted(() => {
   void recordSiteVisit('moment-detail');
-  void loadMomentDetail();
 });
 </script>

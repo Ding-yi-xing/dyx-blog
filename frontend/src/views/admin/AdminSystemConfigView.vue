@@ -12,177 +12,241 @@
       >
     </div>
 
-    <div class="mt-6 grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-      <article class="rounded-[24px] border border-slate-200 bg-slate-50 p-5">
-        <h3 class="text-base font-semibold text-slate-900">存储方式</h3>
-        <el-radio-group
-          v-model="form.storageType"
-          class="mt-4 flex flex-col gap-3"
-        >
-          <el-radio
-            value="local"
-            border
-            class="!mr-0 !h-auto rounded-2xl !py-3 !pl-4 !pr-5"
-          >
+    <el-tabs v-model="activeTab" class="mt-6">
+      <el-tab-pane label="媒体存储" name="storage">
+        <div class="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+          <article class="rounded-[24px] border border-slate-200 bg-slate-50 p-5">
+            <h3 class="text-base font-semibold text-slate-900">存储方式</h3>
+            <el-radio-group
+              v-model="form.storageType"
+              class="mt-4 flex flex-col gap-3"
+            >
+              <el-radio
+                value="local"
+                border
+                class="!mr-0 !h-auto rounded-2xl !py-3 !pl-4 !pr-5"
+              >
+                <div>
+                  <p class="font-medium text-slate-900">本地存储</p>
+                  <p class="text-xs text-slate-500">
+                    上传到 backend/uploads，并通过 /media/ 访问。
+                  </p>
+                </div>
+              </el-radio>
+              <el-radio
+                value="oss"
+                border
+                class="!mr-0 !h-auto rounded-2xl !py-3 !pl-4 !pr-5"
+              >
+                <div>
+                  <p class="font-medium text-slate-900">阿里云 OSS</p>
+                  <p class="text-xs text-slate-500">
+                    上传到 OSS Bucket，媒体链接切换为 OSS 地址。
+                  </p>
+                </div>
+              </el-radio>
+            </el-radio-group>
+          </article>
+
+          <article class="rounded-[24px] border border-slate-200 bg-slate-50 p-5">
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <h3 class="text-base font-semibold text-slate-900">OSS 配置</h3>
+                <p class="text-xs text-slate-500">仅在存储方式为 OSS 时生效。</p>
+              </div>
+              <el-tag :type="form.storageType === 'oss' ? 'success' : 'info'">{{
+                form.storageType === 'oss' ? '已启用' : '未启用'
+              }}</el-tag>
+            </div>
+
+            <el-form label-position="top" class="mt-5 grid gap-4 md:grid-cols-2">
+              <el-form-item label="Endpoint">
+                <el-input
+                  v-model="form.ossEndpoint"
+                  placeholder="未修改则保留当前值；留空保存可清空"
+                />
+                <div class="mt-2 text-xs text-slate-500">
+                  当前状态：{{ form.ossEndpointConfigured ? '已配置' : '未配置' }}
+                </div>
+              </el-form-item>
+              <el-form-item label="Region">
+                <el-input
+                  v-model="form.ossRegion"
+                  placeholder="未修改则保留当前值；留空保存可清空"
+                />
+                <div class="mt-2 text-xs text-slate-500">
+                  当前状态：{{ form.ossRegionConfigured ? '已配置' : '未配置' }}
+                </div>
+              </el-form-item>
+              <el-form-item label="Bucket" class="md:col-span-2">
+                <el-input
+                  v-model="form.ossBucketName"
+                  placeholder="未修改则保留当前值；留空保存可清空"
+                />
+                <div class="mt-2 text-xs text-slate-500">
+                  当前状态：{{ form.ossBucketNameConfigured ? '已配置' : '未配置' }}
+                </div>
+              </el-form-item>
+              <el-form-item label="公开访问前缀" class="md:col-span-2">
+                <el-input
+                  v-model="form.ossPublicUrlPrefix"
+                  placeholder="未修改则保留当前值；留空保存可清空"
+                />
+                <div class="mt-2 text-xs text-slate-500">
+                  当前状态：{{ form.ossPublicUrlPrefixConfigured ? '已配置' : '未配置' }}
+                </div>
+              </el-form-item>
+              <el-form-item label="OSS 目录" class="md:col-span-2">
+                <el-input
+                  v-model="form.ossBaseDir"
+                  placeholder="例如 dyx-blog/media"
+                />
+              </el-form-item>
+            </el-form>
+          </article>
+        </div>
+      </el-tab-pane>
+
+      <el-tab-pane label="IP 查询" name="ipLookup">
+        <article class="rounded-[24px] border border-slate-200 bg-slate-50 p-5">
+          <div class="flex items-center justify-between gap-3">
             <div>
-              <p class="font-medium text-slate-900">本地存储</p>
+              <h3 class="text-base font-semibold text-slate-900">IP 查询配置</h3>
               <p class="text-xs text-slate-500">
-                上传到 backend/uploads，并通过 /media/ 访问。
+                两种查询方式只能选择一种；切换方案后会按当前方案重新查询并隔离结果。
               </p>
             </div>
-          </el-radio>
-          <el-radio
-            value="oss"
-            border
-            class="!mr-0 !h-auto rounded-2xl !py-3 !pl-4 !pr-5"
-          >
+            <el-tag :type="form.ipLookupEnabled ? 'success' : 'info'">{{
+              form.ipLookupEnabled ? '已启用' : '未启用'
+            }}</el-tag>
+          </div>
+
+          <el-form label-position="top" class="mt-5 grid gap-4 md:grid-cols-2">
+            <el-form-item label="启用 IP 查询" class="md:col-span-2">
+              <el-switch v-model="form.ipLookupEnabled" />
+            </el-form-item>
+            <el-form-item label="查询方案" class="md:col-span-2">
+              <el-radio-group v-model="form.ipLookupProvider" class="flex flex-wrap gap-3">
+                <el-radio value="xxapi" border>通用接口</el-radio>
+                <el-radio value="ipdatacloud" border>IP数据云</el-radio>
+              </el-radio-group>
+            </el-form-item>
+            <el-form-item label="接口地址" class="md:col-span-2">
+              <el-input
+                v-model="form.ipLookupApiUrl"
+                :placeholder="
+                  form.ipLookupProvider === 'ipdatacloud'
+                    ? '例如 https://api.ipdatacloud.com/v2/query'
+                    : '例如 https://v2.xxapi.cn/api/ip'
+                "
+              />
+            </el-form-item>
+            <template v-if="form.ipLookupProvider === 'ipdatacloud'">
+              <el-form-item label="接口密钥" class="md:col-span-2">
+                <el-input
+                  v-model="form.ipLookupApiKey"
+                  placeholder="未修改则保留当前值；留空保存可清空"
+                  show-password
+                />
+                <div class="mt-2 text-xs text-slate-500">
+                  当前状态：{{ form.ipLookupApiKeyConfigured ? '已配置' : '未配置' }}
+                </div>
+              </el-form-item>
+            </template>
+          </el-form>
+        </article>
+      </el-tab-pane>
+
+      <el-tab-pane label="首页公告" name="announcement">
+        <article class="rounded-[24px] border border-slate-200 bg-slate-50 p-5">
+          <div class="flex items-center justify-between gap-3">
             <div>
-              <p class="font-medium text-slate-900">阿里云 OSS</p>
+              <h3 class="text-base font-semibold text-slate-900">首页公告弹窗</h3>
               <p class="text-xs text-slate-500">
-                上传到 OSS Bucket，媒体链接切换为 OSS 地址。
+                进入首页后可弹出公告，访客点击“确定”后本次访问内关闭。
               </p>
             </div>
-          </el-radio>
-        </el-radio-group>
-      </article>
-
-      <article class="rounded-[24px] border border-slate-200 bg-slate-50 p-5">
-        <div class="flex items-center justify-between gap-3">
-          <div>
-            <h3 class="text-base font-semibold text-slate-900">OSS 配置</h3>
-            <p class="text-xs text-slate-500">仅在存储方式为 OSS 时生效。</p>
+            <el-tag :type="form.homeAnnouncementEnabled ? 'success' : 'info'">{{
+              form.homeAnnouncementEnabled ? '已启用' : '未启用'
+            }}</el-tag>
           </div>
-          <el-tag :type="form.storageType === 'oss' ? 'success' : 'info'">{{
-            form.storageType === "oss" ? "已启用" : "未启用"
-          }}</el-tag>
-        </div>
 
-        <el-form label-position="top" class="mt-5 grid gap-4 md:grid-cols-2">
-          <el-form-item label="Endpoint">
-            <el-input
-              v-model="form.ossEndpoint"
-              placeholder="未修改则保留当前值；留空保存可清空"
-            />
-            <div class="mt-2 text-xs text-slate-500">
-              当前状态：{{ form.ossEndpointConfigured ? '已配置' : '未配置' }}
+          <el-form label-position="top" class="mt-5 grid gap-4 md:grid-cols-2">
+            <el-form-item label="启用首页公告" class="md:col-span-2">
+              <el-switch v-model="form.homeAnnouncementEnabled" />
+            </el-form-item>
+            <el-form-item label="公告内容" class="md:col-span-2">
+              <el-input
+                v-model="form.homeAnnouncementContent"
+                type="textarea"
+                :rows="6"
+                maxlength="1000"
+                show-word-limit
+                placeholder="请输入首页弹窗公告内容"
+              />
+            </el-form-item>
+          </el-form>
+        </article>
+      </el-tab-pane>
+
+      <el-tab-pane label="首页第三屏" name="homeActivity">
+        <article class="rounded-[24px] border border-slate-200 bg-slate-50 p-5">
+          <div class="flex items-center justify-between gap-3">
+            <div>
+              <h3 class="text-base font-semibold text-slate-900">第三屏聚合配置</h3>
+              <p class="text-xs text-slate-500">
+                控制首页第三屏的版权文案、参与类型与展示数量。
+              </p>
             </div>
-          </el-form-item>
-          <el-form-item label="Region">
-            <el-input
-              v-model="form.ossRegion"
-              placeholder="未修改则保留当前值；留空保存可清空"
-            />
-            <div class="mt-2 text-xs text-slate-500">
-              当前状态：{{ form.ossRegionConfigured ? '已配置' : '未配置' }}
-            </div>
-          </el-form-item>
-          <el-form-item label="Bucket" class="md:col-span-2">
-            <el-input
-              v-model="form.ossBucketName"
-              placeholder="未修改则保留当前值；留空保存可清空"
-            />
-            <div class="mt-2 text-xs text-slate-500">
-              当前状态：{{ form.ossBucketNameConfigured ? '已配置' : '未配置' }}
-            </div>
-          </el-form-item>
-          <el-form-item label="公开访问前缀" class="md:col-span-2">
-            <el-input
-              v-model="form.ossPublicUrlPrefix"
-              placeholder="未修改则保留当前值；留空保存可清空"
-            />
-            <div class="mt-2 text-xs text-slate-500">
-              当前状态：{{ form.ossPublicUrlPrefixConfigured ? '已配置' : '未配置' }}
-            </div>
-          </el-form-item>
-          <el-form-item label="OSS 目录" class="md:col-span-2">
-            <el-input
-              v-model="form.ossBaseDir"
-              placeholder="例如 dyx-blog/media"
-            />
-          </el-form-item>
-        </el-form>
-      </article>
-    </div>
-
-    <article class="mt-6 rounded-[24px] border border-slate-200 bg-slate-50 p-5">
-      <div class="flex items-center justify-between gap-3">
-        <div>
-          <h3 class="text-base font-semibold text-slate-900">IP 查询配置</h3>
-          <p class="text-xs text-slate-500">启用后会调用接口并将返回的 data.address 写入访问日志实际地址字段。</p>
-        </div>
-        <el-tag :type="form.ipLookupEnabled ? 'success' : 'info'">{{ form.ipLookupEnabled ? '已启用' : '未启用' }}</el-tag>
-      </div>
-
-      <el-form label-position="top" class="mt-5 grid gap-4 md:grid-cols-2">
-        <el-form-item label="启用 IP 查询" class="md:col-span-2">
-          <el-switch v-model="form.ipLookupEnabled" />
-        </el-form-item>
-        <el-form-item label="接口地址" class="md:col-span-2">
-          <el-input
-            v-model="form.ipLookupApiUrl"
-            placeholder="例如 https://v2.xxapi.cn/api/ip"
-          />
-        </el-form-item>
-      </el-form>
-    </article>
-
-    <article
-      class="mt-6 rounded-[24px] border border-slate-200 bg-slate-50 p-5"
-    >
-      <div class="flex items-center justify-between gap-3">
-        <div>
-          <h3 class="text-base font-semibold text-slate-900">第三屏聚合配置</h3>
-          <p class="text-xs text-slate-500">
-            控制首页第三屏的版权文案、参与类型与展示数量。
-          </p>
-        </div>
-        <el-tag type="warning">首页第三屏</el-tag>
-      </div>
-
-      <el-form label-position="top" class="mt-5 grid gap-4 md:grid-cols-2">
-        <el-form-item label="版权文案" class="md:col-span-2">
-          <el-input
-            v-model="form.copyrightText"
-            maxlength="255"
-            show-word-limit
-            placeholder="如：© 2026 DYX. All rights reserved."
-          />
-        </el-form-item>
-        <el-form-item label="技术支持文案" class="md:col-span-2">
-          <el-input
-            v-model="form.techSupportText"
-            maxlength="255"
-            show-word-limit
-            placeholder="如：技术支持 · Vue 3 + Spring Boot 3"
-          />
-        </el-form-item>
-        <el-form-item label="首页第三屏参与类型" class="md:col-span-2">
-          <div class="flex flex-wrap gap-3">
-            <el-checkbox v-model="form.homeActivityEnablePosts">博客</el-checkbox>
-            <el-checkbox v-model="form.homeActivityEnableMoments">动态</el-checkbox>
-            <el-checkbox v-model="form.homeActivityEnableProjects">项目</el-checkbox>
-            <el-checkbox v-model="form.homeActivityEnableWorks">作品</el-checkbox>
-            <el-checkbox v-model="form.homeActivityEnableHonors">荣誉</el-checkbox>
+            <el-tag type="warning">首页第三屏</el-tag>
           </div>
-        </el-form-item>
-        <el-form-item label="第三屏最多展示条数">
-          <el-input-number
-            v-model="form.homeActivityMaxItems"
-            :min="1"
-            :max="20"
-            class="!w-full"
-          />
-        </el-form-item>
-        <el-form-item label="单类型最多展示条数">
-          <el-input-number
-            v-model="form.homeActivityMaxItemsPerType"
-            :min="1"
-            :max="10"
-            class="!w-full"
-          />
-        </el-form-item>
-      </el-form>
-    </article>
+
+          <el-form label-position="top" class="mt-5 grid gap-4 md:grid-cols-2">
+            <el-form-item label="版权文案" class="md:col-span-2">
+              <el-input
+                v-model="form.copyrightText"
+                maxlength="255"
+                show-word-limit
+                placeholder="如：© 2026 DYX. All rights reserved."
+              />
+            </el-form-item>
+            <el-form-item label="技术支持文案" class="md:col-span-2">
+              <el-input
+                v-model="form.techSupportText"
+                maxlength="255"
+                show-word-limit
+                placeholder="如：技术支持 · Vue 3 + Spring Boot 3"
+              />
+            </el-form-item>
+            <el-form-item label="首页第三屏参与类型" class="md:col-span-2">
+              <div class="flex flex-wrap gap-3">
+                <el-checkbox v-model="form.homeActivityEnablePosts">博客</el-checkbox>
+                <el-checkbox v-model="form.homeActivityEnableMoments">动态</el-checkbox>
+                <el-checkbox v-model="form.homeActivityEnableProjects">项目</el-checkbox>
+                <el-checkbox v-model="form.homeActivityEnableWorks">作品</el-checkbox>
+                <el-checkbox v-model="form.homeActivityEnableHonors">荣誉</el-checkbox>
+              </div>
+            </el-form-item>
+            <el-form-item label="第三屏最多展示条数">
+              <el-input-number
+                v-model="form.homeActivityMaxItems"
+                :min="1"
+                :max="20"
+                class="!w-full"
+              />
+            </el-form-item>
+            <el-form-item label="单类型最多展示条数">
+              <el-input-number
+                v-model="form.homeActivityMaxItemsPerType"
+                :min="1"
+                :max="10"
+                class="!w-full"
+              />
+            </el-form-item>
+          </el-form>
+        </article>
+      </el-tab-pane>
+    </el-tabs>
 
     <div
       class="mt-6 rounded-[24px] border border-dashed border-slate-300 bg-slate-50 px-5 py-4 text-sm leading-7 text-slate-500"
@@ -200,9 +264,15 @@
         3. 公开访问前缀用于自定义 CDN / Bucket 访问域名；未填写时会按 Bucket +
         Endpoint 自动生成公开地址。
       </p>
-      <p>4. 启用 IP 查询后，后端会调用接口返回的 <code>data.address</code> 填充访问日志中的“实际地址”。</p>
-      <p>5. 首页第二屏文案已迁移到“足迹管理”页编辑，这里只保留第三屏聚合与存储配置。</p>
-      <p>6. 本地模式下“导入 uploads 文件”仍可用，OSS 模式下会自动禁用。</p>
+      <p>
+        4. 通用接口使用返回的 <code>data.address</code>；IP数据云使用
+        <code>multi_street</code> 第一个对象并拼接国家、省份、市、区、街道。
+      </p>
+      <p>
+        5. 切换 IP 查询方案后，相同 IP 会按当前方案重新查询；不同方案的结果不会互相复用；保存后历史日志中非当前方案的地址也会按当前方案重新回填。
+      </p>
+      <p>6. 首页第二屏文案已迁移到“足迹管理”页编辑，这里只保留第三屏聚合与存储配置。</p>
+      <p>7. 本地模式下“导入 uploads 文件”仍可用，OSS 模式下会自动禁用。</p>
     </div>
   </section>
 </template>
@@ -217,11 +287,15 @@ import {
 } from '@/api/modules/admin';
 import { resolveErrorMessage } from '@/utils/error';
 
+const DEFAULT_XXAPI_URL = 'https://v2.xxapi.cn/api/ip';
+const DEFAULT_IPDATACLOUD_URL = 'https://api.ipdatacloud.com/v2/query';
+
 /**
  * 后台系统配置页。
  * 负责维护媒体存储方式、IP 查询参数以及首页第三屏聚合配置。
  */
 const saving = ref(false);
+const activeTab = ref<'storage' | 'ipLookup' | 'announcement' | 'homeActivity'>('storage');
 const form = reactive<SystemConfigData>({
   id: 1,
   storageType: 'local',
@@ -231,14 +305,23 @@ const form = reactive<SystemConfigData>({
   ossPublicUrlPrefix: undefined,
   ossBaseDir: '',
   ipLookupEnabled: false,
-  ipLookupApiUrl: 'https://v2.xxapi.cn/api/ip',
+  ipLookupProvider: 'xxapi',
+  ipLookupApiUrl: DEFAULT_XXAPI_URL,
+  ipLookupApiKey: undefined,
+  ipLookupApiKeyConfigured: false,
   copyrightText: '',
   techSupportText: '',
+  homeAnnouncementEnabled: false,
+  homeAnnouncementContent: '',
   ossEndpointConfigured: false,
   ossRegionConfigured: false,
   ossBucketNameConfigured: false,
   ossPublicUrlPrefixConfigured: false
 });
+
+function resolveDefaultIpLookupApiUrl(provider?: string): string {
+  return provider === 'ipdatacloud' ? DEFAULT_IPDATACLOUD_URL : DEFAULT_XXAPI_URL;
+}
 
 /**
  * 将系统配置接口返回的数据回填到表单。
@@ -259,9 +342,15 @@ function applyFormData(data?: SystemConfigData): void {
   form.ossPublicUrlPrefix = data?.ossPublicUrlPrefix ?? form.ossPublicUrlPrefix;
   form.ossBaseDir = data?.ossBaseDir ?? '';
   form.ipLookupEnabled = data?.ipLookupEnabled ?? false;
-  form.ipLookupApiUrl = data?.ipLookupApiUrl ?? 'https://v2.xxapi.cn/api/ip';
+  form.ipLookupProvider = data?.ipLookupProvider ?? 'xxapi';
+  form.ipLookupApiUrl =
+    data?.ipLookupApiUrl ?? resolveDefaultIpLookupApiUrl(form.ipLookupProvider);
+  form.ipLookupApiKey = data?.ipLookupApiKey ?? form.ipLookupApiKey;
+  form.ipLookupApiKeyConfigured = Boolean(data?.ipLookupApiKeyConfigured);
   form.copyrightText = data?.copyrightText ?? '';
   form.techSupportText = data?.techSupportText ?? '';
+  form.homeAnnouncementEnabled = data?.homeAnnouncementEnabled ?? false;
+  form.homeAnnouncementContent = data?.homeAnnouncementContent ?? '';
   form.ossEndpointConfigured = Boolean(data?.ossEndpointConfigured);
   form.ossRegionConfigured = Boolean(data?.ossRegionConfigured);
   form.ossBucketNameConfigured = Boolean(data?.ossBucketNameConfigured);
@@ -306,9 +395,13 @@ function buildPayload(): SystemConfigData {
     ossPublicUrlPrefix: form.ossPublicUrlPrefix,
     ossBaseDir: form.ossBaseDir,
     ipLookupEnabled: form.ipLookupEnabled,
+    ipLookupProvider: form.ipLookupProvider,
     ipLookupApiUrl: form.ipLookupApiUrl,
+    ipLookupApiKey: form.ipLookupApiKey,
     copyrightText: form.copyrightText,
     techSupportText: form.techSupportText,
+    homeAnnouncementEnabled: form.homeAnnouncementEnabled,
+    homeAnnouncementContent: form.homeAnnouncementContent,
     homeActivityEnablePosts: form.homeActivityEnablePosts,
     homeActivityEnableMoments: form.homeActivityEnableMoments,
     homeActivityEnableProjects: form.homeActivityEnableProjects,

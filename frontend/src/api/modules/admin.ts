@@ -98,12 +98,17 @@ export interface SystemConfigData {
   ossBaseDir?: string;
   ipLookupEnabled?: boolean;
   ipLookupApiUrl?: string;
+  ipLookupProvider?: 'xxapi' | 'ipdatacloud' | string;
+  ipLookupApiKey?: string;
+  ipLookupApiKeyConfigured?: boolean;
   footprintEyebrow?: string;
   footprintTitle?: string;
   footprintSubtitle?: string;
   footprintDescription?: string;
   copyrightText?: string;
   techSupportText?: string;
+  homeAnnouncementEnabled?: boolean;
+  homeAnnouncementContent?: string;
   updatedAt?: string;
   ossEndpointConfigured?: boolean;
   ossRegionConfigured?: boolean;

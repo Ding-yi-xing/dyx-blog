@@ -11,10 +11,12 @@ public interface IpLookupService {
      * 查询失败或无需查询时返回 null。
      *
      * @param ip 客户端 IP。
+     * @param provider 查询方案。
      * @param apiUrl 查询接口地址。
+     * @param apiKey 查询接口密钥。
      * @return 实际地址或 null。
      */
-    String resolveActualAddress(String ip, String apiUrl);
+    String resolveActualAddress(String ip, String provider, String apiUrl, String apiKey);
 
     /**
      * 判断当前 IP 是否需要发起外部查询。

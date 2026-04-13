@@ -26,6 +26,12 @@ public class AdminSystemConfigVo {
     /** IP 查询接口地址。 */
     private String ipLookupApiUrl;
 
+    /** 当前启用的 IP 查询方案。 */
+    private String ipLookupProvider;
+
+    /** IP 查询接口密钥是否已配置。 */
+    private Boolean ipLookupApiKeyConfigured;
+
     /** 足迹模块眉标题。 */
     private String footprintEyebrow;
 
@@ -43,6 +49,12 @@ public class AdminSystemConfigVo {
 
     /** 页脚技术支持文案。 */
     private String techSupportText;
+
+    /** 是否启用首页公告弹窗。 */
+    private Boolean homeAnnouncementEnabled;
+
+    /** 首页公告内容。 */
+    private String homeAnnouncementContent;
 
     /** 配置最后更新时间。 */
     private LocalDateTime updatedAt;

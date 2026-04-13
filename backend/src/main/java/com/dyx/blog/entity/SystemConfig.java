@@ -42,6 +42,12 @@ public class SystemConfig {
     /** IP 查询接口地址。 */
     private String ipLookupApiUrl;
 
+    /** 当前启用的 IP 查询方案。 */
+    private String ipLookupProvider;
+
+    /** IP 查询接口密钥。 */
+    private String ipLookupApiKey;
+
     /** 足迹模块眉标题。 */
     private String footprintEyebrow;
 
@@ -59,6 +65,12 @@ public class SystemConfig {
 
     /** 页脚技术支持文案。 */
     private String techSupportText;
+
+    /** 是否启用首页公告弹窗。 */
+    private Boolean homeAnnouncementEnabled;
+
+    /** 首页公告内容。 */
+    private String homeAnnouncementContent;
 
     /** 是否启用博客作为首页第三屏精选来源。 */
     private Boolean homeActivityEnablePosts;

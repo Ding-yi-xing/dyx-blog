@@ -10,6 +10,7 @@ import com.dyx.blog.common.dto.HomeDataDTO;
 import com.dyx.blog.common.dto.HomeActivityItemDTO;
 import com.dyx.blog.common.dto.HomeDeferredDataDTO;
 import com.dyx.blog.common.exception.BusinessException;
+import com.dyx.blog.common.util.AESUtil;
 import com.dyx.blog.common.util.ClientIpUtil;
 import com.dyx.blog.common.util.HeroConfigUtil;
 import com.dyx.blog.common.util.XssUtil;
@@ -63,6 +64,8 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 @Slf4j
 public class SiteServiceImpl implements SiteService {
+
+    private static final String DEFAULT_IP_LOOKUP_PROVIDER = "xxapi";
 
     private static final Pattern ANDROID_DEVICE_PATTERN = Pattern.compile(";\\s*([^;\\)]+?)\\s+Build/",
             Pattern.CASE_INSENSITIVE);
@@ -253,6 +256,9 @@ public class SiteServiceImpl implements SiteService {
      */
     @Override
     public Moment getMomentDetail(Long id) {
+        if (id == null || id <= 0) {
+            throw new BusinessException("动态参数不合法");
+        }
         Moment moment = dyxMomentMapper.selectOne(new LambdaQueryWrapper<Moment>()
                 .eq(Moment::getId, id)
                 .eq(Moment::getPublished, 1)
@@ -393,6 +399,9 @@ public class SiteServiceImpl implements SiteService {
         if (systemConfig.getHomeActivityEnablePosts() == null) {
             systemConfig.setHomeActivityEnablePosts(false);
         }
+        if (systemConfig.getHomeAnnouncementEnabled() == null) {
+            systemConfig.setHomeAnnouncementEnabled(false);
+        }
         if (systemConfig.getHomeActivityEnableMoments() == null) {
             systemConfig.setHomeActivityEnableMoments(false);
         }
@@ -425,6 +434,8 @@ public class SiteServiceImpl implements SiteService {
         result.put("footprintDescription", systemConfig.getFootprintDescription());
         result.put("copyrightText", systemConfig.getCopyrightText());
         result.put("techSupportText", systemConfig.getTechSupportText());
+        result.put("homeAnnouncementEnabled", systemConfig.getHomeAnnouncementEnabled());
+        result.put("homeAnnouncementContent", systemConfig.getHomeAnnouncementContent());
         result.put("homeActivityEnablePosts", systemConfig.getHomeActivityEnablePosts());
         result.put("homeActivityEnableMoments", systemConfig.getHomeActivityEnableMoments());
         result.put("homeActivityEnableProjects", systemConfig.getHomeActivityEnableProjects());
@@ -572,12 +583,17 @@ public class SiteServiceImpl implements SiteService {
                 return;
             }
             String userAgent = resolveUserAgent(request);
+            SystemConfig systemConfig = dyxSystemConfigMapper.selectById(1L);
             String actualAddress = resolveVisitActualAddress(clientIp);
+            String actualAddressProvider = actualAddress == null || systemConfig == null
+                    ? null
+                    : normalizeIpLookupProvider(systemConfig.getIpLookupProvider());
 
             SiteVisitLog visitLog = new SiteVisitLog();
             visitLog.setPageKey(normalizedPageKey);
             visitLog.setIpAddress(clientIp);
             visitLog.setActualAddress(actualAddress);
+            visitLog.setActualAddressProvider(actualAddressProvider);
             visitLog.setUserAgent(userAgent);
             visitLog.setDeviceType(resolveDeviceType(userAgent));
             visitLog.setDeviceName(resolveDeviceName(userAgent));
@@ -596,13 +612,16 @@ public class SiteServiceImpl implements SiteService {
         if (systemConfig == null || !Boolean.TRUE.equals(systemConfig.getIpLookupEnabled())) {
             return null;
         }
+        String provider = normalizeIpLookupProvider(systemConfig.getIpLookupProvider());
         String apiUrl = normalizeNullableValue(systemConfig.getIpLookupApiUrl());
+        String apiKey = normalizeNullableValue(AESUtil.decrypt(systemConfig.getIpLookupApiKey()));
         if (!ipLookupService.shouldLookup(clientIp) || isBlank(apiUrl)) {
             return null;
         }
         SiteVisitLog latestResolvedLog = dyxSiteVisitLogMapper.selectOne(new LambdaQueryWrapper<SiteVisitLog>()
                 .select(SiteVisitLog::getActualAddress)
                 .eq(SiteVisitLog::getIpAddress, clientIp)
+                .eq(SiteVisitLog::getActualAddressProvider, provider)
                 .isNotNull(SiteVisitLog::getActualAddress)
                 .orderByDesc(SiteVisitLog::getCreatedAt)
                 .orderByDesc(SiteVisitLog::getId)
@@ -610,19 +629,29 @@ public class SiteServiceImpl implements SiteService {
         if (latestResolvedLog != null && !isBlank(latestResolvedLog.getActualAddress())) {
             return latestResolvedLog.getActualAddress();
         }
-        return normalizeNullableValue(ipLookupService.resolveActualAddress(clientIp, apiUrl));
+        return normalizeNullableValue(ipLookupService.resolveActualAddress(clientIp, provider, apiUrl, apiKey));
     }
 
     private void backfillVisitActualAddress(String clientIp, String actualAddress) {
+        SystemConfig systemConfig = dyxSystemConfigMapper.selectById(1L);
+        String provider = normalizeIpLookupProvider(systemConfig == null ? null : systemConfig.getIpLookupProvider());
         if (isBlank(clientIp) || isBlank(actualAddress)) {
             return;
         }
         dyxSiteVisitLogMapper.update(null, new LambdaUpdateWrapper<SiteVisitLog>()
                 .set(SiteVisitLog::getActualAddress, actualAddress)
+                .set(SiteVisitLog::getActualAddressProvider, provider)
                 .eq(SiteVisitLog::getIpAddress, clientIp)
                 .and(wrapper -> wrapper.isNull(SiteVisitLog::getActualAddress)
                         .or()
-                        .eq(SiteVisitLog::getActualAddress, "")));
+                        .eq(SiteVisitLog::getActualAddress, ""))
+                .and(wrapper -> wrapper.isNull(SiteVisitLog::getActualAddressProvider)
+                        .or()
+                        .eq(SiteVisitLog::getActualAddressProvider, provider)));
+    }
+
+    private String normalizeIpLookupProvider(String provider) {
+        return isBlank(provider) ? DEFAULT_IP_LOOKUP_PROVIDER : provider.trim().toLowerCase();
     }
 
     private String normalizePageKey(String pageKey) {

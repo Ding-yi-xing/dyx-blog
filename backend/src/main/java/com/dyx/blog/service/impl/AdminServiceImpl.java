@@ -73,6 +73,10 @@ public class AdminServiceImpl implements AdminService {
 
     private static final DateTimeFormatter DAY_LABEL_FORMATTER = DateTimeFormatter.ofPattern("MM-dd");
     private static final int RECENT_VISIT_LIMIT = 8;
+    private static final String DEFAULT_IP_LOOKUP_PROVIDER = "xxapi";
+    private static final String IP_LOOKUP_PROVIDER_IPDATACLOUD = "ipdatacloud";
+    private static final String DEFAULT_XXAPI_URL = "https://v2.xxapi.cn/api/ip";
+    private static final String DEFAULT_IPDATACLOUD_URL = "https://api.ipdatacloud.com/v2/query";
 
     private final PostMapper dyxPostMapper;
     private final MomentMapper dyxMomentMapper;
@@ -720,20 +724,25 @@ public class AdminServiceImpl implements AdminService {
             systemConfig.setStorageType("local");
             systemConfig.setUpdatedAt(LocalDateTime.now());
         } else {
-            // 解密敏感信息
             systemConfig.setOssEndpoint(AESUtil.decrypt(systemConfig.getOssEndpoint()));
             systemConfig.setOssRegion(AESUtil.decrypt(systemConfig.getOssRegion()));
             systemConfig.setOssBucketName(AESUtil.decrypt(systemConfig.getOssBucketName()));
             systemConfig.setOssPublicUrlPrefix(AESUtil.decrypt(systemConfig.getOssPublicUrlPrefix()));
+            systemConfig.setIpLookupApiKey(AESUtil.decrypt(systemConfig.getIpLookupApiKey()));
         }
         if (systemConfig.getHomeActivityEnablePosts() == null) {
             systemConfig.setHomeActivityEnablePosts(false);
         }
+        if (systemConfig.getHomeAnnouncementEnabled() == null) {
+            systemConfig.setHomeAnnouncementEnabled(false);
+        }
         if (systemConfig.getIpLookupEnabled() == null) {
             systemConfig.setIpLookupEnabled(false);
         }
+        String ipLookupProvider = normalizeIpLookupProvider(systemConfig.getIpLookupProvider());
+        systemConfig.setIpLookupProvider(ipLookupProvider);
         if (isBlank(systemConfig.getIpLookupApiUrl())) {
-            systemConfig.setIpLookupApiUrl("https://v2.xxapi.cn/api/ip");
+            systemConfig.setIpLookupApiUrl(resolveDefaultIpLookupApiUrl(ipLookupProvider));
         }
         if (systemConfig.getHomeActivityEnableMoments() == null) {
             systemConfig.setHomeActivityEnableMoments(false);
@@ -778,6 +787,9 @@ public class AdminServiceImpl implements AdminService {
             throw new BusinessException("系统配置不能为空");
         }
         SystemConfig existingConfig = dyxSystemConfigMapper.selectById(1L);
+        String previousIpLookupProvider = existingConfig == null
+                ? DEFAULT_IP_LOOKUP_PROVIDER
+                : normalizeIpLookupProvider(existingConfig.getIpLookupProvider());
         SystemConfig targetConfig = existingConfig == null ? new SystemConfig() : existingConfig;
         targetConfig.setId(1L);
         String nextStorageType = systemConfig.getStorageType() == null
@@ -810,16 +822,31 @@ public class AdminServiceImpl implements AdminService {
         targetConfig.setFootprintDescription(normalizeNullableValue(systemConfig.getFootprintDescription()));
         targetConfig.setCopyrightText(normalizeNullableValue(systemConfig.getCopyrightText()));
         targetConfig.setTechSupportText(normalizeNullableValue(systemConfig.getTechSupportText()));
+        targetConfig.setHomeAnnouncementEnabled(systemConfig.getHomeAnnouncementEnabled() != null
+                ? systemConfig.getHomeAnnouncementEnabled()
+                : existingConfig != null && existingConfig.getHomeAnnouncementEnabled() != null
+                        ? existingConfig.getHomeAnnouncementEnabled()
+                        : false);
+        targetConfig.setHomeAnnouncementContent(normalizeNullableValue(systemConfig.getHomeAnnouncementContent()));
         targetConfig.setIpLookupEnabled(systemConfig.getIpLookupEnabled() != null
                 ? systemConfig.getIpLookupEnabled()
                 : existingConfig != null && existingConfig.getIpLookupEnabled() != null
                         ? existingConfig.getIpLookupEnabled()
                         : false);
+        String nextIpLookupProvider = systemConfig.getIpLookupProvider() != null
+                ? normalizeIpLookupProvider(systemConfig.getIpLookupProvider())
+                : existingConfig != null
+                        ? normalizeIpLookupProvider(existingConfig.getIpLookupProvider())
+                        : DEFAULT_IP_LOOKUP_PROVIDER;
+        targetConfig.setIpLookupProvider(nextIpLookupProvider);
         targetConfig.setIpLookupApiUrl(systemConfig.getIpLookupApiUrl() != null
                 ? normalizeNullableValue(systemConfig.getIpLookupApiUrl())
                 : existingConfig != null
                         ? normalizeNullableValue(existingConfig.getIpLookupApiUrl())
-                        : "https://v2.xxapi.cn/api/ip");
+                        : resolveDefaultIpLookupApiUrl(nextIpLookupProvider));
+        if (systemConfig.getIpLookupApiKey() != null || existingConfig == null) {
+            targetConfig.setIpLookupApiKey(AESUtil.encrypt(normalizeNullableValue(systemConfig.getIpLookupApiKey())));
+        }
         targetConfig.setHomeActivityEnablePosts(systemConfig.getHomeActivityEnablePosts() != null
                 ? systemConfig.getHomeActivityEnablePosts()
                 : existingConfig != null && existingConfig.getHomeActivityEnablePosts() != null
@@ -855,6 +882,7 @@ public class AdminServiceImpl implements AdminService {
                 : existingConfig != null && existingConfig.getHomeActivityMaxItemsPerType() != null
                         ? existingConfig.getHomeActivityMaxItemsPerType()
                         : 3);
+        boolean providerChanged = !previousIpLookupProvider.equals(nextIpLookupProvider);
         validateSystemConfig(targetConfig);
         targetConfig.setUpdatedAt(LocalDateTime.now());
         if (existingConfig == null) {
@@ -863,16 +891,9 @@ public class AdminServiceImpl implements AdminService {
             dyxSystemConfigMapper.updateById(targetConfig);
         }
         if (Boolean.TRUE.equals(targetConfig.getIpLookupEnabled())) {
-            backfillMissingActualAddresses(targetConfig.getIpLookupApiUrl());
+            backfillMissingActualAddresses(getSystemConfig(), providerChanged);
         }
-
-        // 返回前解密，确保前端看到的是明文
-        targetConfig.setOssEndpoint(AESUtil.decrypt(targetConfig.getOssEndpoint()));
-        targetConfig.setOssRegion(AESUtil.decrypt(targetConfig.getOssRegion()));
-        targetConfig.setOssBucketName(AESUtil.decrypt(targetConfig.getOssBucketName()));
-        targetConfig.setOssPublicUrlPrefix(AESUtil.decrypt(targetConfig.getOssPublicUrlPrefix()));
-
-        return toAdminSystemConfigVo(targetConfig);
+        return toAdminSystemConfigVo(getSystemConfig());
     }
 
     /**
@@ -1005,18 +1026,37 @@ public class AdminServiceImpl implements AdminService {
         return result;
     }
 
-    private void backfillMissingActualAddresses(String apiUrl) {
-        String normalizedApiUrl = normalizeNullableValue(apiUrl);
+    private void backfillMissingActualAddresses(SystemConfig systemConfig, boolean providerChanged) {
+        if (systemConfig == null || !Boolean.TRUE.equals(systemConfig.getIpLookupEnabled())) {
+            return;
+        }
+        String provider = normalizeIpLookupProvider(systemConfig.getIpLookupProvider());
+        String normalizedApiUrl = normalizeNullableValue(systemConfig.getIpLookupApiUrl());
+        String normalizedApiKey = normalizeNullableValue(systemConfig.getIpLookupApiKey());
         if (isBlank(normalizedApiUrl)) {
             return;
         }
-        List<SiteVisitLog> pendingLogs = dyxSiteVisitLogMapper.selectList(new LambdaQueryWrapper<SiteVisitLog>()
+        LambdaQueryWrapper<SiteVisitLog> pendingLogsQuery = new LambdaQueryWrapper<SiteVisitLog>()
                 .select(SiteVisitLog::getIpAddress)
-                .and(wrapper -> wrapper.isNull(SiteVisitLog::getActualAddress)
-                        .or()
-                        .eq(SiteVisitLog::getActualAddress, ""))
                 .groupBy(SiteVisitLog::getIpAddress)
-                .orderByAsc(SiteVisitLog::getIpAddress));
+                .orderByAsc(SiteVisitLog::getIpAddress);
+        if (providerChanged) {
+            pendingLogsQuery.and(wrapper -> wrapper.isNull(SiteVisitLog::getActualAddress)
+                    .or()
+                    .eq(SiteVisitLog::getActualAddress, "")
+                    .or()
+                    .isNull(SiteVisitLog::getActualAddressProvider)
+                    .or()
+                    .ne(SiteVisitLog::getActualAddressProvider, provider));
+        } else {
+            pendingLogsQuery.and(wrapper -> wrapper.isNull(SiteVisitLog::getActualAddress)
+                    .or()
+                    .eq(SiteVisitLog::getActualAddress, ""))
+                    .and(wrapper -> wrapper.isNull(SiteVisitLog::getActualAddressProvider)
+                            .or()
+                            .eq(SiteVisitLog::getActualAddressProvider, provider));
+        }
+        List<SiteVisitLog> pendingLogs = dyxSiteVisitLogMapper.selectList(pendingLogsQuery);
         for (SiteVisitLog pendingLog : pendingLogs) {
             String ipAddress = normalizeNullableValue(pendingLog.getIpAddress());
             if (!ipLookupService.shouldLookup(ipAddress)) {
@@ -1025,6 +1065,7 @@ public class AdminServiceImpl implements AdminService {
             SiteVisitLog latestResolvedLog = dyxSiteVisitLogMapper.selectOne(new LambdaQueryWrapper<SiteVisitLog>()
                     .select(SiteVisitLog::getActualAddress)
                     .eq(SiteVisitLog::getIpAddress, ipAddress)
+                    .eq(SiteVisitLog::getActualAddressProvider, provider)
                     .isNotNull(SiteVisitLog::getActualAddress)
                     .ne(SiteVisitLog::getActualAddress, "")
                     .orderByDesc(SiteVisitLog::getCreatedAt)
@@ -1032,17 +1073,32 @@ public class AdminServiceImpl implements AdminService {
                     .last("LIMIT 1"));
             String actualAddress = latestResolvedLog == null ? null : normalizeNullableValue(latestResolvedLog.getActualAddress());
             if (isBlank(actualAddress)) {
-                actualAddress = normalizeNullableValue(ipLookupService.resolveActualAddress(ipAddress, normalizedApiUrl));
+                actualAddress = normalizeNullableValue(ipLookupService.resolveActualAddress(ipAddress, provider, normalizedApiUrl, normalizedApiKey));
             }
             if (isBlank(actualAddress)) {
                 continue;
             }
-            dyxSiteVisitLogMapper.update(null, new LambdaUpdateWrapper<SiteVisitLog>()
+            LambdaUpdateWrapper<SiteVisitLog> updateWrapper = new LambdaUpdateWrapper<SiteVisitLog>()
                     .set(SiteVisitLog::getActualAddress, actualAddress)
-                    .eq(SiteVisitLog::getIpAddress, ipAddress)
-                    .and(wrapper -> wrapper.isNull(SiteVisitLog::getActualAddress)
-                            .or()
-                            .eq(SiteVisitLog::getActualAddress, "")));
+                    .set(SiteVisitLog::getActualAddressProvider, provider)
+                    .eq(SiteVisitLog::getIpAddress, ipAddress);
+            if (providerChanged) {
+                updateWrapper.and(wrapper -> wrapper.isNull(SiteVisitLog::getActualAddress)
+                        .or()
+                        .eq(SiteVisitLog::getActualAddress, "")
+                        .or()
+                        .isNull(SiteVisitLog::getActualAddressProvider)
+                        .or()
+                        .ne(SiteVisitLog::getActualAddressProvider, provider));
+            } else {
+                updateWrapper.and(wrapper -> wrapper.isNull(SiteVisitLog::getActualAddress)
+                        .or()
+                        .eq(SiteVisitLog::getActualAddress, ""))
+                        .and(wrapper -> wrapper.isNull(SiteVisitLog::getActualAddressProvider)
+                                .or()
+                                .eq(SiteVisitLog::getActualAddressProvider, provider));
+            }
+            dyxSiteVisitLogMapper.update(null, updateWrapper);
         }
     }
 
@@ -1183,6 +1239,11 @@ public class AdminServiceImpl implements AdminService {
         if (systemConfig == null) {
             target.setId(1L);
             target.setStorageType("local");
+            target.setIpLookupProvider(DEFAULT_IP_LOOKUP_PROVIDER);
+            target.setIpLookupApiUrl(resolveDefaultIpLookupApiUrl(DEFAULT_IP_LOOKUP_PROVIDER));
+            target.setIpLookupApiKeyConfigured(false);
+            target.setHomeAnnouncementEnabled(false);
+            target.setHomeAnnouncementContent(null);
             target.setOssEndpointConfigured(false);
             target.setOssRegionConfigured(false);
             target.setOssBucketNameConfigured(false);
@@ -1198,8 +1259,12 @@ public class AdminServiceImpl implements AdminService {
         target.setFootprintDescription(systemConfig.getFootprintDescription());
         target.setCopyrightText(systemConfig.getCopyrightText());
         target.setTechSupportText(systemConfig.getTechSupportText());
+        target.setHomeAnnouncementEnabled(Boolean.TRUE.equals(systemConfig.getHomeAnnouncementEnabled()));
+        target.setHomeAnnouncementContent(systemConfig.getHomeAnnouncementContent());
         target.setIpLookupEnabled(systemConfig.getIpLookupEnabled());
+        target.setIpLookupProvider(normalizeIpLookupProvider(systemConfig.getIpLookupProvider()));
         target.setIpLookupApiUrl(systemConfig.getIpLookupApiUrl());
+        target.setIpLookupApiKeyConfigured(!isBlank(systemConfig.getIpLookupApiKey()));
         target.setUpdatedAt(systemConfig.getUpdatedAt());
         target.setOssEndpointConfigured(!isBlank(systemConfig.getOssEndpoint()));
         target.setOssRegionConfigured(!isBlank(systemConfig.getOssRegion()));
@@ -1232,12 +1297,22 @@ public class AdminServiceImpl implements AdminService {
             throw new BusinessException("存储方式仅支持 local 或 oss");
         }
         if (Boolean.TRUE.equals(systemConfig.getIpLookupEnabled())) {
+            String ipLookupProvider = normalizeIpLookupProvider(systemConfig.getIpLookupProvider());
+            systemConfig.setIpLookupProvider(ipLookupProvider);
             if (isBlank(systemConfig.getIpLookupApiUrl())) {
                 throw new BusinessException("启用 IP 查询时请先配置接口地址");
             }
             String ipLookupApiUrl = systemConfig.getIpLookupApiUrl().trim().toLowerCase();
             if (!ipLookupApiUrl.startsWith("http://") && !ipLookupApiUrl.startsWith("https://")) {
                 throw new BusinessException("IP 查询接口地址仅支持 http 或 https");
+            }
+            if (!DEFAULT_IP_LOOKUP_PROVIDER.equals(ipLookupProvider)
+                    && !IP_LOOKUP_PROVIDER_IPDATACLOUD.equals(ipLookupProvider)) {
+                throw new BusinessException("IP 查询方案仅支持 xxapi 或 ipdatacloud");
+            }
+            if (IP_LOOKUP_PROVIDER_IPDATACLOUD.equals(ipLookupProvider)
+                    && isBlank(AESUtil.decrypt(systemConfig.getIpLookupApiKey()))) {
+                throw new BusinessException("启用 ipdatacloud 时请先配置查询密钥");
             }
         }
         if (systemConfig.getHomeActivityMaxItems() == null) {
@@ -1252,6 +1327,10 @@ public class AdminServiceImpl implements AdminService {
         if (systemConfig.getHomeActivityMaxItemsPerType() < 1 || systemConfig.getHomeActivityMaxItemsPerType() > 10) {
             throw new BusinessException("单类型最多展示条数需在 1 到 10 之间");
         }
+        if (Boolean.TRUE.equals(systemConfig.getHomeAnnouncementEnabled())
+                && isBlank(systemConfig.getHomeAnnouncementContent())) {
+            throw new BusinessException("启用首页公告时请先填写公告内容");
+        }
         if (!"oss".equals(systemConfig.getStorageType())) {
             return;
         }
@@ -1264,6 +1343,14 @@ public class AdminServiceImpl implements AdminService {
         if (!OssMediaStorage.hasConfiguredCredentials()) {
             throw new BusinessException("OSS 凭证未配置，请先在服务端环境变量中设置 OSS_ACCESS_KEY_ID 和 OSS_ACCESS_KEY_SECRET");
         }
+    }
+
+    private String normalizeIpLookupProvider(String provider) {
+        return isBlank(provider) ? DEFAULT_IP_LOOKUP_PROVIDER : provider.trim().toLowerCase();
+    }
+
+    private String resolveDefaultIpLookupApiUrl(String provider) {
+        return IP_LOOKUP_PROVIDER_IPDATACLOUD.equals(provider) ? DEFAULT_IPDATACLOUD_URL : DEFAULT_XXAPI_URL;
     }
 
     private String normalizeStorageType(String storageType) {
