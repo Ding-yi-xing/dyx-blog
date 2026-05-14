@@ -12,14 +12,14 @@
 ### 浅色 / 深色模式
 
 <p align="center">
-  <img src="docs/素材/QQ截图20260409114406.png" alt="浅色模式" width="48%" />
-  <img src="docs/素材/QQ截图20260409114643.png" alt="深色模式" width="48%" />
+  <img src="https://www.dyx.company/media/QQ截图20260409114406.png" alt="浅色模式" width="48%" />
+  <img src="https://www.dyx.company/media/d424a9b8-a05c-48d7-8c8c-95879fd3f672.png" alt="深色模式" width="48%" />
 </p>
 
 ### 宣传海报
 
 <p align="center">
-  <img src="docs/素材/宣传海报.jpg" alt="宣传海报" width="70%" />
+  <img src="https://www.dyx.company/media/宣传海报.jpg" alt="宣传海报" width="70%" />
 </p>
 
 ## 项目特色
