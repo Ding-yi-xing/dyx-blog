@@ -7,6 +7,21 @@
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3.1-6db33f?logo=spring-boot)
 ![Java](https://img.shields.io/badge/Java-17-orange?logo=openjdk)
 
+## 网站预览
+
+### 浅色 / 深色模式
+
+<p align="center">
+  <img src="docs/素材/QQ截图20260409114406.png" alt="浅色模式" width="48%" />
+  <img src="docs/素材/QQ截图20260409114643.png" alt="深色模式" width="48%" />
+</p>
+
+### 宣传海报
+
+<p align="center">
+  <img src="docs/素材/宣传海报.jpg" alt="宣传海报" width="70%" />
+</p>
+
 ## 项目特色
 
 - **前台展示**：首页、关于我、简历、博客、动态、留言
