@@ -12,14 +12,14 @@
 ### 浅色 / 深色模式
 
 <p align="center">
-  <img src="https://www.dyx.company/media/QQ截图20260409114406.png" alt="浅色模式" width="48%" />
-  <img src="https://www.dyx.company/media/d424a9b8-a05c-48d7-8c8c-95879fd3f672.png" alt="深色模式" width="48%" />
+  <img src="https://pic1.imgdb.cn/item/6a06708657da1d412e1488aa.png" alt="浅色模式" width="48%" />
+  <img src="https://pic1.imgdb.cn/item/6a06708657da1d412e1488a9.png" alt="深色模式" width="48%" />
 </p>
 
 ### 宣传海报
 
 <p align="center">
-  <img src="https://www.dyx.company/media/宣传海报.jpg" alt="宣传海报" width="70%" />
+  <img src="https://pic1.imgdb.cn/item/6a06708757da1d412e1488ab.jpg" alt="宣传海报" width="70%" />
 </p>
 
 ## 项目特色
@@ -37,6 +37,7 @@
 ## 技术栈
 
 ### 前端
+
 - **框架**：Vue 3 + TypeScript + Pinia + Vue Router
 - **UI**：Element Plus + Tailwind CSS
 - **图表**：ECharts
@@ -45,6 +46,7 @@
 - **图片裁剪**：vue-cropper
 
 ### 后端
+
 - **框架**：Spring Boot 3.3.1
 - **ORM**：MyBatis-Plus
 - **数据库**：MySQL 8.0+
@@ -56,6 +58,7 @@
 ## 快速开始
 
 ### 环境要求
+
 - JDK 17
 - Maven 3.9+
 - Node.js 18+
@@ -109,6 +112,7 @@ npm run build
 ```
 
 前端环境变量说明：
+
 - `frontend/.env.local`：本地开发使用的高德地图 Key、安全密钥与代理目标
 - `frontend/.env.production`：生产构建使用的高德地图 Key、安全密钥与代理目标
 - 仓库中的 `.env` 文件仅保留占位值，构建前请替换为你自己的配置
@@ -116,16 +120,18 @@ npm run build
 ## 访问入口
 
 ### 前台页面
-| 页面 | 路由 |
-|------|------|
-| 首页 | `/` |
-| 关于我 | `/about` |
-| 简历 | `/resume` |
-| 动态 | `/moments` |
-| 博客列表 | `/blog` |
-| 留言 | `/guestbook` |
+
+| 页面     | 路由         |
+| -------- | ------------ |
+| 首页     | `/`          |
+| 关于我   | `/about`     |
+| 简历     | `/resume`    |
+| 动态     | `/moments`   |
+| 博客列表 | `/blog`      |
+| 留言     | `/guestbook` |
 
 ### 后台管理
+
 - 登录页：`/dyx-manager/login`
 - 管理后台：`/dyx-manager`
 
@@ -165,6 +171,7 @@ dyx-blog/
 ## 核心功能
 
 ### 前台功能
+
 - **首页**：Hero 首屏、足迹地图、第三屏精选内容，手机端支持左右滑动浏览精选卡片，第三屏聚合卡片的内容主键会按字符串返回，避免详情跳转因长整型精度丢失而异常，支持按后台系统配置弹出首页公告
 - **关于我**：个人资料、作品展示、荣誉时间线
 - **简历**：教育/工作/项目经历、PDF 下载、打印支持，长项目描述支持展开/收起且项目链接常驻可见
@@ -173,6 +180,7 @@ dyx-blog/
 - **留言**：访客留言互动
 
 ### 后台功能
+
 - **仪表盘**：数据统计、访问趋势、设备分布
 - **访问日志**：页面访问记录、筛选查询、实际地址展示、批量管理
 - **内容管理**：博客、动态、荣誉、作品、留言
@@ -198,6 +206,7 @@ dyx-blog/
 ## SEO 优化
 
 项目已内置 SEO 优化：
+
 - `robots.txt`：声明公开页面抓取策略
 - `sitemap.xml`：站点地图收录
 - 动态 meta 标签：页面标题、描述、Open Graph、Twitter 标签
@@ -205,14 +214,14 @@ dyx-blog/
 
 ## 安全特性
 
-| 特性 | 说明 |
-|------|------|
-| JWT 认证 | Token 鉴权，支持后台登录态 |
-| 角色权限 | 后台登录仅允许 ADMIN 角色，系统配置 / 用户管理 / 访问日志删除需超级管理员权限 |
-| XSS 防护 | Jsoup 白名单清洗 |
-| 密码加密 | BCrypt 强哈希存储 |
-| 敏感信息加密 | AES 加密存储 OSS 配置等 |
-| 安全头部 | CSP、HSTS、X-Frame-Options 等 |
+| 特性         | 说明                                                                          |
+| ------------ | ----------------------------------------------------------------------------- |
+| JWT 认证     | Token 鉴权，支持后台登录态                                                    |
+| 角色权限     | 后台登录仅允许 ADMIN 角色，系统配置 / 用户管理 / 访问日志删除需超级管理员权限 |
+| XSS 防护     | Jsoup 白名单清洗                                                              |
+| 密码加密     | BCrypt 强哈希存储                                                             |
+| 敏感信息加密 | AES 加密存储 OSS 配置等                                                       |
+| 安全头部     | CSP、HSTS、X-Frame-Options 等                                                 |
 
 ## 许可证
 
