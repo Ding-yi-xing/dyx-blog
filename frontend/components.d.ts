@@ -11,10 +11,10 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
-    AdminDashboardCharts: typeof import('./components/admin/AdminDashboardCharts.vue')['default']
-    AdminRichTextEditor: typeof import('./components/admin/AdminRichTextEditor.vue')['default']
-    BusinessImageCropper: typeof import('./components/admin/BusinessImageCropper.vue')['default']
-    DyxTopNav: typeof import('./components/web/DyxTopNav.vue')['default']
+    AdminDashboardCharts: typeof import('./src/components/admin/AdminDashboardCharts.vue')['default']
+    AdminRichTextEditor: typeof import('./src/components/admin/AdminRichTextEditor.vue')['default']
+    BusinessImageCropper: typeof import('./src/components/admin/BusinessImageCropper.vue')['default']
+    DyxTopNav: typeof import('./src/components/web/DyxTopNav.vue')['default']
     ElButton: typeof import('element-plus/es')['ElButton']
     ElCascader: typeof import('element-plus/es')['ElCascader']
     ElCheckbox: typeof import('element-plus/es')['ElCheckbox']
@@ -44,8 +44,8 @@ declare module 'vue' {
     ElTag: typeof import('element-plus/es')['ElTag']
     ElTooltip: typeof import('element-plus/es')['ElTooltip']
     ElUpload: typeof import('element-plus/es')['ElUpload']
-    GlobalInitOverlay: typeof import('./components/common/GlobalInitOverlay.vue')['default']
-    HomeFootprintMap: typeof import('./components/web/HomeFootprintMap.vue')['default']
+    GlobalInitOverlay: typeof import('./src/components/common/GlobalInitOverlay.vue')['default']
+    HomeFootprintMap: typeof import('./src/components/web/HomeFootprintMap.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
   }

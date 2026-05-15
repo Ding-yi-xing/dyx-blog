@@ -47,12 +47,12 @@ export default defineConfig(({ mode }) => {
     plugins: [
       vue(),
       AutoImport({
-        dts: 'src/auto-imports.d.ts',
+        dts: 'auto-imports.d.ts',
         resolvers: [ElementPlusResolver()],
         imports: ['vue', 'vue-router'],
       }),
       Components({
-        dts: 'src/components.d.ts',
+        dts: 'components.d.ts',
         resolvers: [ElementPlusResolver()],
       }),
     ],
