@@ -1,0 +1,45 @@
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# Java
+backend/target/
+backend/.mvn/
+
+# Logs
+*.log
+logs/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Uploads
+backend/uploads/
+
+# Claude
+.claude/
+
+# Playwright
+.playwright-mcp/
+
+# Trae
+.trae/
+
+# Compiled files
+Palindrome.class
+
+# Map screenshots
+map-*.png
+
+# Claude files
+CLAUDE.md
+about-snapshot*.yml
+
+# docs
+docs
