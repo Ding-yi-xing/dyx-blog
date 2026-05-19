@@ -54,6 +54,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -88,6 +89,7 @@ public class MediaServiceImpl implements MediaService {
             "172.20.", "172.21.", "172.22.", "172.23.", "172.24.", "172.25.", "172.26.",
             "172.27.", "172.28.", "172.29.", "172.30.", "172.31.", "192.168."
     );
+    private static final AtomicBoolean IMAGE_IO_PLUGINS_SCANNED = new AtomicBoolean();
 
     private final MediaMapper dyxMediaMapper;
     private final ProfileMapper dyxProfileMapper;
@@ -313,6 +315,7 @@ public class MediaServiceImpl implements MediaService {
 
     private void validateImageContent(Path filePath) {
         try (InputStream inputStream = Files.newInputStream(filePath)) {
+            ensureImageIoPluginsLoaded();
             if (ImageIO.read(inputStream) == null) {
                 throw new BusinessException("图片内容无效或已损坏");
             }
@@ -323,11 +326,18 @@ public class MediaServiceImpl implements MediaService {
 
     private void validateImageContent(MultipartFile file) {
         try (InputStream inputStream = file.getInputStream()) {
+            ensureImageIoPluginsLoaded();
             if (ImageIO.read(inputStream) == null) {
                 throw new BusinessException("图片内容无效或已损坏");
             }
         } catch (IOException exception) {
             throw new BusinessException("图片内容校验失败");
+        }
+    }
+
+    private void ensureImageIoPluginsLoaded() {
+        if (IMAGE_IO_PLUGINS_SCANNED.compareAndSet(false, true)) {
+            ImageIO.scanForPlugins();
         }
     }
 
