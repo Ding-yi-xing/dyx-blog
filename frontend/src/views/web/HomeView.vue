@@ -96,6 +96,9 @@
                 <img
                   :src="heroImageBlock?.imageUrl"
                   :alt="heroImageBlock?.alt || 'avatar'"
+                  fetchpriority="high"
+                  loading="eager"
+                  decoding="async"
                   class="home-hero-photo h-full max-h-[74vh] w-full object-contain object-center lg:max-h-[86vh] lg:object-right"
                 />
               </div>
@@ -393,6 +396,7 @@ import {
   onBeforeUnmount,
   onMounted,
   ref,
+  watch,
   type Ref,
 } from "vue";
 import { useRouter } from "vue-router";
@@ -412,7 +416,7 @@ import {
   type ProfileData,
 } from "@/api/modules/site";
 import { getCurrentYear } from "@/utils/date";
-import { buildFootprintMapItems } from "@/utils/footprintGeo";
+import type { FootprintMapItem } from "@/utils/footprintGeo";
 
 const HomeFootprintMap = defineAsyncComponent(
   () => import("@/components/web/HomeFootprintMap.vue")
@@ -464,6 +468,7 @@ const currentYear = getCurrentYear();
 
 const homeData = ref<HomeData>({});
 const heroConfigState = ref<HeroConfigData>(createDefaultHeroConfig());
+const footprintMapDataState = ref<FootprintMapItem[]>([]);
 const featuredItems = computed<HomeActivityItemData[]>(
   () => homeData.value.featuredItems ?? []
 );
@@ -570,9 +575,7 @@ const activityTextClass = computed(() =>
 const activityMetaClass = computed(() =>
   activeTheme.value === "dark" ? "text-slate-400" : "text-slate-500"
 );
-const footprintMapData = computed(() =>
-  buildFootprintMapItems(footprints.value)
-);
+const footprintMapData = computed(() => footprintMapDataState.value);
 const visitedProvinceNames = computed(() => {
   const uniqueProvinceNames = new Set(
     footprintMapData.value
@@ -829,6 +832,15 @@ function resolveActivityTypeLabel(type?: string): string {
   }
 }
 
+async function rebuildFootprintMapData(): Promise<void> {
+  if (!footprints.value.length) {
+    footprintMapDataState.value = [];
+    return;
+  }
+  const { buildFootprintMapItems } = await import("@/utils/footprintGeo");
+  footprintMapDataState.value = buildFootprintMapItems(footprints.value);
+}
+
 async function loadHomeCriticalData(): Promise<void> {
   try {
     const response = await getProfile();
@@ -869,6 +881,14 @@ function scheduleDeferredHomeDataLoad(): void {
     void loadHomeDeferredData();
   });
 }
+
+watch(
+  footprints,
+  () => {
+    void rebuildFootprintMapData();
+  },
+  { immediate: true }
+);
 
 onMounted(() => {
   currentSectionIndex.value = 0;

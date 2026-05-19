@@ -6,7 +6,7 @@ import Components from 'unplugin-vue-components/vite';
 import { ElementPlusResolver } from 'unplugin-vue-components/resolvers';
 
 function resolveManualChunk(id: string): string | undefined {
-  if (!id.includes('node_modules') && !id.includes('/src/utils/footprintGeo')) {
+  if (!id.includes('node_modules')) {
     return undefined;
   }
 
@@ -29,7 +29,7 @@ function resolveManualChunk(id: string): string | undefined {
     return 'vendor-charts';
   }
 
-  if (id.includes('/node_modules/china-map-data/') || id.includes('/src/utils/footprintGeo')) {
+  if (id.includes('/node_modules/china-map-data/')) {
     return 'vendor-map';
   }
 
