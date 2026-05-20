@@ -4,6 +4,7 @@
       <h2 class="text-xl font-semibold text-slate-900">媒体资源管理</h2>
       <div class="flex flex-wrap gap-3">
         <el-button type="danger" plain :disabled="!selectedIds.length" @click="handleBatchDelete">批量删除</el-button>
+        <el-button plain @click="handleRegisterLink">链接上传</el-button>
         <el-button :loading="importing" plain @click="handleImportExisting">导入 uploads 文件</el-button>
         <el-upload :show-file-list="false" :http-request="handleUpload">
           <el-button type="primary" :loading="uploading">选择文件</el-button>
@@ -19,9 +20,9 @@
         <template #default="scope">
           <div v-if="scope.row.fileUrl" class="flex items-center justify-center">
             <el-image
-              v-if="isImageUrl(scope.row.fileUrl)"
-              :src="scope.row.fileUrl"
-              :preview-src-list="[scope.row.fileUrl]"
+              v-if="isImageMedia(scope.row.fileUrl, scope.row.mediaType)"
+              :src="getPreviewUrl(scope.row.fileUrl, scope.row.mediaType)"
+              :preview-src-list="[getPreviewUrl(scope.row.fileUrl, scope.row.mediaType)]"
               fit="cover"
               preview-teleported
               class="h-16 w-24 overflow-hidden rounded-2xl"
@@ -30,10 +31,10 @@
               v-else
               type="button"
               class="flex h-16 w-24 flex-col justify-between rounded-2xl bg-slate-950 px-3 py-3 text-left text-white"
-              @click="openPreview(scope.row.fileUrl)"
+              @click="openPreview(scope.row.fileUrl, scope.row.mediaType)"
             >
               <span class="w-fit rounded-full bg-white/15 px-2 py-0.5 text-[10px] uppercase tracking-[0.2em]">
-                {{ isVideoUrl(scope.row.fileUrl) ? 'VIDEO' : isPdfUrl(scope.row.fileUrl) ? 'PDF' : 'FILE' }}
+                {{ isVideoMedia(scope.row.fileUrl, scope.row.mediaType) ? 'VIDEO' : isPdfMedia(scope.row.fileUrl, scope.row.mediaType) ? 'PDF' : 'FILE' }}
               </span>
               <span class="line-clamp-2 text-[11px] leading-4">{{ extractFileName(scope.row.fileUrl) || '打开文件' }}</span>
             </button>
@@ -65,7 +66,7 @@
             v-if="scope.row.fileUrl"
             link
             type="primary"
-            @click="openPreview(scope.row.fileUrl)"
+            @click="openPreview(scope.row.fileUrl, scope.row.mediaType)"
           >
             预览
           </el-button>
@@ -105,9 +106,9 @@
 <script setup lang="ts">
 import { ElMessage, ElMessageBox, type UploadRequestOptions } from 'element-plus';
 import { computed, h, onMounted, ref } from 'vue';
-import { deleteAdminMedia, deleteAdminMediaBatch, getAdminMedia, getAdminMediaContentUrl, importExistingAdminMedia, uploadAdminMedia } from '@/api/modules/admin';
+import { deleteAdminMedia, deleteAdminMediaBatch, getAdminMedia, getAdminMediaContentUrl, importExistingAdminMedia, registerAdminMediaLink, uploadAdminMedia } from '@/api/modules/admin';
 import type { MediaData } from '@/api/modules/admin';
-import { extractFileName, isImageUrl, isPdfUrl, isVideoUrl } from '@/utils/media';
+import { extractFileName, isImageMedia, isPdfMedia, isVideoMedia } from '@/utils/media';
 import { resolveErrorMessage } from '@/utils/error';
 
 /**
@@ -170,11 +171,11 @@ async function copyFileUrl(url: string): Promise<void> {
   }
 }
 
-function getPreviewUrl(url: string): string {
-  if (isVideoUrl(url)) {
-    return url;
+function getPreviewUrl(url: string, mediaType?: string | null): string {
+  if (isVideoMedia(url, mediaType) || isImageMedia(url, mediaType) || isPdfMedia(url, mediaType)) {
+    return getAdminMediaContentUrl(url);
   }
-  return getAdminMediaContentUrl(url);
+  return url;
 }
 
 /**
@@ -247,15 +248,15 @@ async function handleUpload(options: UploadRequestOptions): Promise<void> {
  * @throws 该函数不会主动抛出异常；仅执行前端预览逻辑。
  * @author Dyx
  */
-function openPreview(url: string): void {
-  const resolvedPreviewUrl = getPreviewUrl(url);
-  if (isImageUrl(url)) {
+function openPreview(url: string, mediaType?: string | null): void {
+  const resolvedPreviewUrl = getPreviewUrl(url, mediaType);
+  if (isImageMedia(url, mediaType)) {
     previewType.value = 'image';
     previewUrl.value = resolvedPreviewUrl;
     previewVisible.value = true;
     return;
   }
-  if (isVideoUrl(url)) {
+  if (isVideoMedia(url, mediaType)) {
     previewType.value = 'video';
     previewUrl.value = resolvedPreviewUrl;
     previewVisible.value = true;
@@ -321,6 +322,71 @@ async function handleBatchDelete(): Promise<void> {
       return;
     }
     ElMessage.error(resolveErrorMessage(error, '媒体批量删除失败'));
+  }
+}
+
+async function handleRegisterLink(): Promise<void> {
+  const content = h('div', { class: 'space-y-4' }, [
+    h('div', { class: 'space-y-2' }, [
+      h('label', { class: 'block text-sm font-medium text-slate-700' }, '媒体链接'),
+      h('input', {
+        id: 'admin-media-link-url',
+        class: 'w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-slate-500',
+        placeholder: '请输入 http:// 或 https:// 开头的公网媒体链接'
+      })
+    ]),
+    h('div', { class: 'space-y-2' }, [
+      h('label', { class: 'block text-sm font-medium text-slate-700' }, '显示名称（可选）'),
+      h('input', {
+        id: 'admin-media-link-name',
+        class: 'w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-slate-500',
+        placeholder: '留空时将自动使用链接文件名'
+      })
+    ])
+  ]);
+
+  try {
+    await ElMessageBox({
+      title: '链接上传',
+      message: content,
+      showCancelButton: true,
+      confirmButtonText: '登记链接',
+      cancelButtonText: '取消',
+      customClass: 'admin-media-link-dialog',
+      beforeClose: async (action, instance, done) => {
+        if (action !== 'confirm') {
+          done();
+          return;
+        }
+        const urlInput = document.getElementById('admin-media-link-url') as HTMLInputElement | null;
+        const nameInput = document.getElementById('admin-media-link-name') as HTMLInputElement | null;
+        const fileUrl = urlInput?.value.trim() ?? '';
+        const originalName = nameInput?.value.trim() ?? '';
+        if (!fileUrl) {
+          ElMessage.warning('请输入媒体链接');
+          return;
+        }
+        instance.confirmButtonLoading = true;
+        try {
+          await registerAdminMediaLink({
+            fileUrl,
+            originalName: originalName || undefined
+          });
+          await loadMediaList();
+          ElMessage.success('链接登记成功');
+          done();
+        } catch (error) {
+          ElMessage.error(resolveErrorMessage(error, '链接登记失败'));
+        } finally {
+          instance.confirmButtonLoading = false;
+        }
+      }
+    });
+  } catch (error) {
+    if (error === 'cancel' || error === 'close') {
+      return;
+    }
+    ElMessage.error(resolveErrorMessage(error, '链接登记失败'));
   }
 }
 

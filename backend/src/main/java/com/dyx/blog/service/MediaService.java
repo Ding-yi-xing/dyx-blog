@@ -20,6 +20,15 @@ public interface MediaService {
     Media upload(MultipartFile file);
 
     /**
+     * 登记远程媒体链接并保存资源记录。
+     *
+     * @param fileUrl      远程媒体地址。
+     * @param originalName 可选的显示名称。
+     * @return 保存后的媒体资源对象。
+     */
+    Media registerRemoteMedia(String fileUrl, String originalName);
+
+    /**
      * 导入 uploads 目录下已存在的文件。
      *
      * @return 导入后的媒体资源数量。

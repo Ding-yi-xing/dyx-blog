@@ -228,6 +228,15 @@ export function getAdminMediaContentUrl(fileUrl: string) {
   return `/api/dyx-manager/media/content?fileUrl=${encodeURIComponent(fileUrl)}`;
 }
 
+export interface RegisterAdminMediaLinkPayload {
+  fileUrl: string;
+  originalName?: string;
+}
+
+export function registerAdminMediaLink(payload: RegisterAdminMediaLinkPayload) {
+  return adminHttp.post('/dyx-manager/media/register-link', payload);
+}
+
 /**
  * 后台用户数据。
  */

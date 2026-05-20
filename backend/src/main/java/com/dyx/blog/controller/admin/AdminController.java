@@ -673,6 +673,20 @@ public class AdminController {
     }
 
     /**
+     * 登记远程媒体链接。
+     *
+     * @param request 远程媒体链接请求。
+     * @return 保存结果。
+     */
+    @PostMapping("/media/register-link")
+    public Result<?> registerMediaLink(@RequestBody RegisterMediaLinkRequest request) {
+        if (request == null || request.fileUrl == null || request.fileUrl.trim().isEmpty()) {
+            throw new BusinessException("媒体链接不能为空");
+        }
+        return Result.success(dyxMediaService.registerRemoteMedia(request.fileUrl, request.originalName));
+    }
+
+    /**
      * 删除媒体文件。
      *
      * @param id 媒体主键。
@@ -704,5 +718,10 @@ public class AdminController {
     @PostMapping("/media/import-existing")
     public Result<Integer> importExistingMedia() {
         return Result.success(dyxMediaService.importExistingFiles());
+    }
+
+    private static class RegisterMediaLinkRequest {
+        public String fileUrl;
+        public String originalName;
     }
 }

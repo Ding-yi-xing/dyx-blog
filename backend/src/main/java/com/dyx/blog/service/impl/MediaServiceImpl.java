@@ -32,6 +32,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
@@ -45,6 +46,7 @@ import java.net.IDN;
 import java.net.InetAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URLConnection;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -123,6 +125,29 @@ public class MediaServiceImpl implements MediaService {
         media.setFileUrl(storageResult.fileUrl());
         media.setMediaType(normalizeMediaType(file.getContentType()));
         media.setFileSize(file.getSize());
+        media.setCreatedAt(LocalDateTime.now());
+        dyxMediaMapper.insert(media);
+        return media;
+    }
+
+    @Override
+    @Transactional
+    public Media registerRemoteMedia(String fileUrl, String originalName) {
+        URI remoteUri = validateRemoteMediaUri(fileUrl);
+        String normalizedFileUrl = remoteUri.toString();
+        Media existingMedia = dyxMediaMapper.selectOne(new LambdaQueryWrapper<Media>()
+                .eq(Media::getFileUrl, normalizedFileUrl)
+                .last("limit 1"));
+        if (existingMedia != null) {
+            return existingMedia;
+        }
+        String fallbackFileName = extractRemoteFileName(remoteUri);
+        Media media = new Media();
+        media.setOriginalName(resolveRemoteOriginalName(originalName, fallbackFileName));
+        media.setFileName(fallbackFileName);
+        media.setFileUrl(normalizedFileUrl);
+        media.setMediaType(resolveRemoteMediaType(normalizedFileUrl));
+        media.setFileSize(0L);
         media.setCreatedAt(LocalDateTime.now());
         dyxMediaMapper.insert(media);
         return media;
@@ -244,7 +269,9 @@ public class MediaServiceImpl implements MediaService {
         if (referenceModule != null) {
             throw new BusinessException("该媒体仍被" + referenceModule + "引用，请先解除引用后再删除");
         }
-        resolveStorageForMedia(media).delete(media.getFileName(), media.getFileUrl());
+        if (!isExternalMedia(media)) {
+            resolveStorageForMedia(media).delete(media.getFileName(), media.getFileUrl());
+        }
         dyxMediaMapper.deleteById(media.getId());
     }
 
@@ -602,8 +629,8 @@ public class MediaServiceImpl implements MediaService {
         try {
             URI uri = new URI(fileUrl.trim()).normalize();
             String scheme = uri.getScheme();
-            if (!"https".equalsIgnoreCase(scheme)) {
-                throw new BusinessException("远程媒体链接仅支持 HTTPS");
+            if (!"https".equalsIgnoreCase(scheme) && !"http".equalsIgnoreCase(scheme)) {
+                throw new BusinessException("远程媒体链接仅支持 HTTP 或 HTTPS");
             }
             if (uri.getUserInfo() != null || uri.getHost() == null || uri.getPort() != -1) {
                 throw new BusinessException("远程媒体链接无效");
@@ -612,7 +639,7 @@ public class MediaServiceImpl implements MediaService {
             if (isDisallowedRemoteHost(host)) {
                 throw new BusinessException("远程媒体链接不受信任");
             }
-            return new URI(uri.getScheme(), null, host, -1, uri.getPath(), uri.getQuery(), null);
+            return new URI(uri.getScheme().toLowerCase(Locale.ROOT), null, host, -1, uri.getPath(), uri.getQuery(), null);
         } catch (URISyntaxException exception) {
             throw new BusinessException("远程媒体链接无效");
         }
@@ -688,6 +715,31 @@ public class MediaServiceImpl implements MediaService {
         return fileName.replace("\r", "").replace("\n", "").replace("\"", "");
     }
 
+    private String resolveRemoteOriginalName(String originalName, String fallbackFileName) {
+        if (StringUtils.hasText(originalName)) {
+            return sanitizeOriginalFilename(originalName);
+        }
+        return sanitizeOriginalFilename(fallbackFileName);
+    }
+
+    private String extractRemoteFileName(URI remoteUri) {
+        String path = remoteUri.getPath();
+        if (StringUtils.hasText(path)) {
+            int separatorIndex = path.lastIndexOf('/');
+            String candidate = separatorIndex >= 0 ? path.substring(separatorIndex + 1) : path;
+            if (StringUtils.hasText(candidate)) {
+                return sanitizeOriginalFilename(candidate);
+            }
+        }
+        String host = remoteUri.getHost();
+        return StringUtils.hasText(host) ? sanitizeOriginalFilename(host) : "远程媒体";
+    }
+
+    private String resolveRemoteMediaType(String fileUrl) {
+        String contentType = URLConnection.guessContentTypeFromName(fileUrl);
+        return StringUtils.hasText(contentType) ? contentType : MediaType.APPLICATION_OCTET_STREAM_VALUE;
+    }
+
     private Path getUploadDirectory() throws IOException {
         Path uploadDirectory = Paths.get(dyxFileProperties.getUploadPath()).toAbsolutePath().normalize();
         Files.createDirectories(uploadDirectory);
@@ -702,6 +754,9 @@ public class MediaServiceImpl implements MediaService {
         List<Media> mediaList = dyxMediaMapper.selectList(new LambdaQueryWrapper<Media>()
                 .select(Media::getId, Media::getFileName, Media::getFileUrl));
         for (Media media : mediaList) {
+            if (isExternalMedia(media)) {
+                continue;
+            }
             if (storedFileExists(media)) {
                 continue;
             }
@@ -727,8 +782,9 @@ public class MediaServiceImpl implements MediaService {
 
     private void syncOssMediaRecords(OssMediaStorage ossMediaStorage) {
         Set<String> existingFileNames = dyxMediaMapper.selectList(new LambdaQueryWrapper<Media>()
-                        .select(Media::getFileName))
+                        .select(Media::getFileName, Media::getFileUrl))
                 .stream()
+                .filter(this::isManagedOssMedia)
                 .map(Media::getFileName)
                 .filter(StringUtils::hasText)
                 .collect(Collectors.toCollection(HashSet::new));
@@ -769,10 +825,66 @@ public class MediaServiceImpl implements MediaService {
         if (StringUtils.hasText(fileUrl) && fileUrl.startsWith(normalizeAccessPrefix())) {
             return requireStorage("local");
         }
-        if (StringUtils.hasText(fileUrl) && (fileUrl.startsWith("http://") || fileUrl.startsWith("https://"))) {
+        if (isManagedOssMedia(media)) {
             return requireStorage("oss");
         }
         return resolveCurrentStorage();
+    }
+
+    private boolean isExternalMedia(Media media) {
+        if (media == null || !StringUtils.hasText(media.getFileUrl())) {
+            return false;
+        }
+        String fileUrl = media.getFileUrl().trim();
+        return (fileUrl.startsWith("http://") || fileUrl.startsWith("https://")) && !isManagedOssMedia(media);
+    }
+
+    private boolean isManagedOssMedia(Media media) {
+        if (media == null || !StringUtils.hasText(media.getFileUrl())) {
+            return false;
+        }
+        String fileUrl = media.getFileUrl().trim();
+        if (!fileUrl.startsWith("http://") && !fileUrl.startsWith("https://")) {
+            return false;
+        }
+        SystemConfig systemConfig = dyxAdminService.getSystemConfig();
+        String publicUrlPrefix = normalizeOssUrlPrefix(systemConfig == null ? null : systemConfig.getOssPublicUrlPrefix());
+        if (StringUtils.hasText(publicUrlPrefix) && fileUrl.startsWith(publicUrlPrefix)) {
+            return true;
+        }
+        String defaultPublicUrlPrefix = buildDefaultOssPublicUrlPrefix(systemConfig);
+        if (!StringUtils.hasText(defaultPublicUrlPrefix)) {
+            return false;
+        }
+        if (fileUrl.startsWith(defaultPublicUrlPrefix)) {
+            return true;
+        }
+        String httpPrefix = defaultPublicUrlPrefix.replaceFirst("^https://", "http://");
+        return fileUrl.startsWith(httpPrefix);
+    }
+
+    private String normalizeOssUrlPrefix(String prefix) {
+        if (!StringUtils.hasText(prefix)) {
+            return "";
+        }
+        return prefix.trim().replaceAll("/+$", "") + "/";
+    }
+
+    private String buildDefaultOssPublicUrlPrefix(SystemConfig systemConfig) {
+        if (systemConfig == null) {
+            return "";
+        }
+        String endpoint = systemConfig.getOssEndpoint();
+        String bucketName = systemConfig.getOssBucketName();
+        if (!StringUtils.hasText(endpoint) || !StringUtils.hasText(bucketName)) {
+            return "";
+        }
+        String normalizedEndpoint = endpoint.trim();
+        if (!normalizedEndpoint.startsWith("http://") && !normalizedEndpoint.startsWith("https://")) {
+            normalizedEndpoint = "https://" + normalizedEndpoint;
+        }
+        String host = normalizedEndpoint.replaceFirst("^https?://", "").replaceAll("/.*$", "");
+        return "https://" + bucketName.trim() + "." + host + "/";
     }
 
     private MediaStorage requireStorage(String storageType) {

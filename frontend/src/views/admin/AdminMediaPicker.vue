@@ -10,8 +10,8 @@
         class="group relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-50"
       >
         <el-image
-          v-if="isImageUrl(url)"
-          :src="url"
+          v-if="isImageMedia(url, selectedMediaMap.get(url)?.mediaType)"
+          :src="getPreviewUrl(url, selectedMediaMap.get(url)?.mediaType)"
           :preview-src-list="selectedImagePreviewUrls"
           :initial-index="resolveSelectedImagePreviewIndex(url)"
           fit="cover"
@@ -19,8 +19,8 @@
           class="h-32 w-full cursor-zoom-in"
         />
         <video
-          v-else-if="isVideoUrl(url)"
-          :src="url"
+          v-else-if="isVideoMedia(url, selectedMediaMap.get(url)?.mediaType)"
+          :src="getPreviewUrl(url, selectedMediaMap.get(url)?.mediaType)"
           controls
           preload="metadata"
           class="h-32 w-full bg-black object-cover"
@@ -32,7 +32,7 @@
           <span
             class="w-fit rounded-full bg-white/15 px-3 py-1 text-[11px] uppercase tracking-[0.24em]"
           >
-            {{ isPdfUrl(url) ? "PDF" : "FILE" }}
+            {{ isPdfMedia(url, selectedMediaMap.get(url)?.mediaType) ? "PDF" : "FILE" }}
           </span>
           <p class="line-clamp-2 text-sm font-medium leading-6">
             {{ extractFileName(url) || "已选择文件" }}
@@ -109,16 +109,16 @@
             @click="toggleMedia(item.fileUrl)"
           >
             <el-image
-              v-if="isImageUrl(item.fileUrl || '')"
-              :src="item.fileUrl || ''"
-              :preview-src-list="item.fileUrl ? [item.fileUrl] : []"
+              v-if="isImageMedia(item.fileUrl || '', item.mediaType)"
+              :src="getPreviewUrl(item.fileUrl || '', item.mediaType)"
+              :preview-src-list="item.fileUrl ? [getPreviewUrl(item.fileUrl, item.mediaType)] : []"
               fit="cover"
               preview-teleported
               class="h-full w-full cursor-zoom-in"
               @click.stop
             />
             <video
-              v-else-if="isVideoUrl(item.fileUrl)"
+              v-else-if="isVideoMedia(item.fileUrl, item.mediaType)"
               :src="item.fileUrl"
               preload="metadata"
               muted
@@ -132,14 +132,14 @@
               <span
                 class="w-fit rounded-full bg-white/15 px-3 py-1 text-[11px] uppercase tracking-[0.24em]"
               >
-                {{ isPdfUrl(item.fileUrl) ? "PDF" : "FILE" }}
+                {{ isPdfMedia(item.fileUrl, item.mediaType) ? "PDF" : "FILE" }}
               </span>
               <p class="line-clamp-3 text-sm font-medium leading-6">
                 {{ item.originalName || item.fileName || "未命名文件" }}
               </p>
             </div>
             <span
-              v-if="isVideoUrl(item.fileUrl)"
+              v-if="isVideoMedia(item.fileUrl, item.mediaType)"
               class="absolute left-3 top-3 rounded-full bg-black/65 px-3 py-1 text-[11px] uppercase tracking-[0.24em] text-white"
             >
               Video
@@ -177,7 +177,7 @@
                 直接使用
               </el-button>
               <el-button
-                v-if="isImageUrl(item.fileUrl)"
+                v-if="isImageMedia(item.fileUrl, item.mediaType)"
                 type="primary"
                 size="small"
                 plain
@@ -219,7 +219,7 @@
 <script setup lang="ts">
 import { ElMessage, type UploadRequestOptions } from "element-plus";
 import { computed, ref, watch } from "vue";
-import { getAdminMedia, uploadAdminMedia } from "@/api/modules/admin";
+import { getAdminMedia, getAdminMediaContentUrl, uploadAdminMedia } from "@/api/modules/admin";
 import type {
   MediaPickerItem,
   CropConfirmPayload,
@@ -227,9 +227,9 @@ import type {
 } from "@/types/media";
 import {
   extractFileName,
-  isImageUrl,
-  isPdfUrl,
-  isVideoUrl,
+  isImageMedia,
+  isPdfMedia,
+  isVideoMedia,
 } from "@/utils/media";
 import { resolveErrorMessage } from "@/utils/error";
 import BusinessImageCropper from "@/components/admin/BusinessImageCropper.vue";
@@ -268,6 +268,9 @@ const loading = ref(false);
 const uploading = ref(false);
 const mediaList = ref<MediaPickerItem[]>([]);
 const draftUrls = ref<string[]>([]);
+const selectedMediaMap = computed(() =>
+  new Map(mediaList.value.filter((item) => !!item.fileUrl).map((item) => [item.fileUrl as string, item]))
+);
 
 const cropperVisible = ref(false);
 const pendingCropUrl = ref("");
@@ -302,10 +305,25 @@ function applyMedia(url?: string): void {
   draftUrls.value = props.multiple
     ? [...new Set([...draftUrls.value, url])]
     : [url];
+  if (!props.multiple) {
+    emitValue([url]);
+    dialogVisible.value = false;
+  }
+}
+
+function getPreviewUrl(url?: string, mediaType?: string | null): string {
+  if (!url) {
+    return "";
+  }
+  if (isImageMedia(url, mediaType) || isVideoMedia(url, mediaType) || isPdfMedia(url, mediaType)) {
+    return getAdminMediaContentUrl(url);
+  }
+  return url;
 }
 
 function resolveSelectedImagePreviewIndex(url: string): number {
-  return Math.max(0, selectedImagePreviewUrls.value.indexOf(url));
+  const media = selectedMediaMap.value.get(url);
+  return Math.max(0, selectedImagePreviewUrls.value.indexOf(getPreviewUrl(url, media?.mediaType)));
 }
 
 /**
@@ -353,7 +371,14 @@ const selectedUrls = computed(() => {
   return props.modelValue ? [props.modelValue] : [];
 });
 
-const selectedImagePreviewUrls = computed(() => selectedUrls.value.filter((url) => isImageUrl(url)));
+const selectedImagePreviewUrls = computed(() =>
+  selectedUrls.value
+    .map((url) => {
+      const media = selectedMediaMap.value.get(url);
+      return isImageMedia(url, media?.mediaType) ? getPreviewUrl(url, media?.mediaType) : "";
+    })
+    .filter(Boolean)
+);
 
 /**
  * 在外部选中值发生变化时，同步刷新弹窗内部草稿选择。

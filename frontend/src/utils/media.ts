@@ -99,6 +99,18 @@ export function isVideoUrl(value?: string | null): boolean {
   return /\.(mp4|webm|mov|m4v)(?:$|\?)/i.test(value);
 }
 
+export function isImageMedia(value?: string | null, mediaType?: string | null): boolean {
+  return !!mediaType?.toLowerCase().startsWith('image/') || isImageUrl(value);
+}
+
+export function isVideoMedia(value?: string | null, mediaType?: string | null): boolean {
+  return !!mediaType?.toLowerCase().startsWith('video/') || isVideoUrl(value);
+}
+
+export function isPdfMedia(value?: string | null, mediaType?: string | null): boolean {
+  return mediaType?.toLowerCase() === 'application/pdf' || isPdfUrl(value);
+}
+
 /**
  * 从资源地址中提取文件名。
  *
